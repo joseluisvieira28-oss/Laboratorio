@@ -40,6 +40,7 @@ jobs:
           Copy-Item engine/convex_ten_governance/ATUALIZAR_UMA_CANA_READONLY.ps1 output/
           Copy-Item engine/convex_ten_governance/ESTADO_10_CANAS_READONLY.ps1 output/
           Copy-Item engine/convex_ten_governance/RECUPERAR_UMA_CANA_READONLY.ps1 output/
+          Copy-Item engine/convex_ten_governance/RECUPERAR_V07_ORPHAN_READY.ps1 output/
           Copy-Item engine/convex_ten_governance/CUTOVER_10_CANAS_LEIA_PRIMEIRO.md output/
           Get-ChildItem output | Get-FileHash -Algorithm SHA256 | Select-Object @{Name='file';Expression={$_.Path | Split-Path -Leaf}},@{Name='sha256';Expression={$_.Hash.ToLowerInvariant()}} | ConvertTo-Json | Set-Content output/SCRIPTS_HASHES.json
           Compress-Archive -Path output/* -DestinationPath CONVEX10_SAFE_CUTOVER_SCRIPTS_ONLY.zip -Force
