@@ -40,7 +40,9 @@ class MarketGateTests(TestCase):
     def test_stop_tick_rounddown_can_exceed_risk_budget(self):
         a=spec(size="0.1")
         a["priceUnit"]="1"
-        p=risk_one_contract(a,ticker(ask="125.41",bid="125.2"),"SOL_USDT",
+        q=ticker(ask="125.41",bid="125.2")
+        q["fairPrice"]="125.42"
+        p=risk_one_contract(a,q,"SOL_USDT",
                             int(time.time_ns()//1_000_000))
         self.assertFalse(p["one_contract_model_risk_budget_pass"])
 
