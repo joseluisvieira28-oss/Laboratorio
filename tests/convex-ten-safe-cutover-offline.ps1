@@ -39,6 +39,8 @@ if ($probe -match '(?i)Stop-ScheduledTask|Start-ScheduledTask|Disable-ScheduledT
 # any Get-ScheduledTask, copying, stopping or starting. No real machine touched.
 $temp=Join-Path ([IO.Path]::GetTempPath()) ('convex10_negative_'+[Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temp -Force | Out-Null
+$priorLocalAppData=$env:LOCALAPPDATA
+$env:LOCALAPPDATA=$temp
 try {
     foreach($v in @('V07','V11','V12')) {
         $out=& pwsh -NoProfile -File (Join-Path $root 'ATUALIZAR_UMA_CANA_READONLY.ps1') -Version $v -PackageDir $temp -Mode Preflight 2>&1 | Out-String
@@ -48,6 +50,7 @@ try {
     }
     Write-Output 'OFFLINE_MISSING_ARTIFACT_NEGATIVE_GATE_PASS'
 } finally {
+    $env:LOCALAPPDATA=$priorLocalAppData
     Remove-Item -LiteralPath $temp -Recurse -Force
 }
 Write-Output 'CONVEX10_UPGRADE_SCRIPTS_OFFLINE_PASS_NO_TASK_CHANGES'
