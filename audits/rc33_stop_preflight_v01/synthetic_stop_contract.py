@@ -40,7 +40,7 @@ def reconcile_mock_snapshot(
         return fail("RESTART_UNRESOLVED_MUTATION_NO_RESEND")
     if ambiguous_exchange_response or pending_mutation:
         return fail("UNKNOWN_BROKER_OUTCOME_NO_BLIND_RETRY")
-    if snapshot_age_seconds < 0 or snapshot_age_seconds > 5:
+    if not math.isfinite(float(snapshot_age_seconds)) or snapshot_age_seconds < 0 or snapshot_age_seconds > 5:
         return fail("BROKER_SNAPSHOT_STALE")
     if partial_fill:
         return fail("PARTIAL_FILL_REQUIRES_EXPLICIT_COVERAGE_RECONCILIATION")
@@ -71,11 +71,13 @@ def reconcile_mock_snapshot(
         return fail("STOP_FIELDS_INVALID")
     if not all(math.isfinite(x) for x in (vol, price, tp)):
         return fail("STOP_FIELDS_INVALID")
-    if vol < hold:
+    if vol <= 0 or vol < hold:
         return fail("STOP_NOT_COVERING_FULL_POSITION")
+    if vol > hold + 1e-9:
+        return fail("STOP_VOLUME_EXCEEDS_POSITION")
     if price <= 0 or abs(price - expected_stop_price) > max(price_unit * .501, expected_stop_price * 1e-7):
         return fail("STOP_READBACK_PRICE_MISMATCH")
-    if tp > 0:
+    if tp != 0:
         return fail("UNEXPECTED_TAKE_PROFIT")
     # This is deliberately not a LIVE certification; only a MOCK shape invariant.
     return Evidence("MOCK_STOP_READBACK_SHAPE_ACCEPTED_ONLY", True)
