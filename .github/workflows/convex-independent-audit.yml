@@ -39,12 +39,17 @@ jobs:
             if ($LASTEXITCODE -ne 0) {throw 'BUILD_FAILED'}
             & "dist/V${v}_AUDIT_PREVIEW.exe" --help
             if ($LASTEXITCODE -ne 0) {throw 'EXE_SMOKE_FAILED'}
+            & "dist/V${v}_AUDIT_PREVIEW.exe" --self-test
+            if ($LASTEXITCODE -ne 0) {throw 'PACKAGED_OFFLINE_SELFTEST_FAILED'}
             Copy-Item "dist/V${v}_AUDIT_PREVIEW.exe" audit_preview/
           }
-          $manifest=[ordered]@{source_commit=(git rev-parse HEAD);purpose='ISOLATED AUDIT PREVIEW - NOT INSTALLED';files=@()}
-          Get-ChildItem audit_preview/*.exe | ForEach-Object { $manifest.files+=@{name=$_.Name;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} }
-          $manifest | ConvertTo-Json -Depth 5 | Set-Content audit_preview/BUILD_MANIFEST.json -Encoding utf8
           Copy-Item engine/convex_observer_audit/WINDOWS_READONLY_RECEIPT.ps1 audit_preview/
+          Copy-Item engine/convex_observer_audit/VERIFICAR_PACOTE.ps1 audit_preview/
+          Copy-Item engine/convex_observer_audit/LEIA_PRIMEIRO_PREVIEW.md audit_preview/
+          $manifest=[ordered]@{source_commit=(git rev-parse HEAD);purpose='ISOLATED AUDIT PREVIEW - NOT INSTALLED';files=@()}
+          Get-ChildItem audit_preview/* -File | ForEach-Object { $manifest.files+=@{name=$_.Name;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content audit_preview/BUILD_MANIFEST.json -Encoding utf8
+          & audit_preview/VERIFICAR_PACOTE.ps1
       - uses: actions/upload-artifact@v4
         if: matrix.os == 'windows-latest'
         with:
