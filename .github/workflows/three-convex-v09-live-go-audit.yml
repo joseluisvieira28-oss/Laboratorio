@@ -1,0 +1,56 @@
+name: CONVEX V09 Live GO Scientific and Authorization Gates
+on:
+  pull_request:
+    paths:
+      - engine/three_convex_v09/**
+      - .github/workflows/three-convex-v09-live-go-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,windows-latest]
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install detached signing verifier dependency (test public key only)
+        shell: bash
+        run: python -m pip install --disable-pip-version-check "cryptography==46.0.4"
+      - name: V09 stop parity, detached Ed25519, risk audit
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v09 -p 'test_*.py' -v
+      - name: V08 persistent order recovery regression
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v08 -p 'test_*.py' -q
+      - name: V07 installed monitor source regression (fake HTTP)
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v07 -p 'test_*.py' -q
+      - name: V06 broker transport read/stop regression (fake HTTP)
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v06 -p 'test_*.py' -q
+      - name: V05 pinned source original 3-CONVEX regression
+        shell: bash
+        run: |
+          test "$(git hash-object engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt)" = "19c8b8e2363f253458db42111b6701f3a3ef1f4b"
+          python -m unittest discover -s engine/three_convex_v05 -p 'test_*.py' -q
+      - name: NO LIVE GO by construction (no exchange mutation)
+        shell: bash
+        run: |
+          python - <<'PY'
+          from engine.three_convex_v09.trailing_gate import calc_v5_trail
+          from engine.three_convex_v09.authority_gate import AuthorityHalt
+          result=calc_v5_trail(actual_fill=100,completed_tf_close=104,
+            peak_5m_high_so_far=114,previous_broker_stop="100.32",
+            price_tick=".01",closed_tf_confirmed=True)
+          assert result["action"]=="WEAKEN"
+          assert result["real_broker_amend_allowed"] is False
+          assert result["live_go"] is False
+          print("V09_STOP_WEAKENING_SAFETY_HALT_NO_ORDERS")
+          PY
