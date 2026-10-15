@@ -13,6 +13,8 @@ from decimal import Decimal, InvalidOperation
 import json
 import os
 import sys
+import time
+from engine.three_convex_v06.market_gate import risk_one_contract, MarketGateHalt
 
 from engine.three_convex_v06.mexc_futures_live_transport import (
     FuturesV06Transport, PrivateKey, MEXCTransportHalt,
@@ -164,10 +166,14 @@ def inspect(client):
         balance = usdt_balance(client.account_assets())
         fees = {sym:fee_summary(client.account_fees(sym))
                 for sym in ("SOL_USDT","BNB_USDT")}
+        market = {sym:risk_one_contract(
+            client.contract_metadata(sym), client.public_ticker(sym),
+            sym, int(time.time_ns()//1_000_000))
+            for sym in ("SOL_USDT","BNB_USDT")}
         now = datetime.now(timezone.utc).isoformat()
         return {
             "checked_at_utc": now,
-            "status":"AUTHENTICATED_ACCOUNT_VALUES_READ_NO_LIVE_GO",
+            "status":"AUTHENTICATED_ACCOUNT_AND_PUBLIC_MARKET_READS_NO_LIVE_GO",
             "private_api_read_only":True,
             "open_positions_count":positions,
             "open_orders_count_all_pages":orders,
@@ -178,19 +184,22 @@ def inspect(client):
             "position_mode": "HEDGE" if mode==1 else "ONE_WAY",
             **balance,
             "fees_by_symbol": fees,
+            "current_public_contract_and_one_lot_models": market,
+            "both_public_one_lot_risk_budgets_pass": all(v["one_contract_model_risk_budget_pass"] for v in market.values()),
             "account_usdt_equity_authenticated_read": True,
             "account_equity_independently_reconciled": False,
-            "exchange_contract_tick_lot_verified": False,
+            "exchange_contract_tick_lot_verified": True,
+            "exchange_contract_specs_public_not_account_execution_approved": True,
             "isolated_10x_configured_on_position": False,
             "broker_order_transport_present_in_library":True,
             "broker_order_execution_path_armed":False,
             "position_stop_lifecycle_proven":False,
             "trading_authority":"NONE"
         }
-    except (MEXCTransportHalt,ReadonlyGate,ValueError,TypeError) as exc:
+    except (MEXCTransportHalt,ReadonlyGate,MarketGateHalt,ValueError,TypeError) as exc:
         return {
             "status":"ACCOUNT_DATA_INSUFFICIENT_FAIL_CLOSED",
-            "reason":str(exc) if isinstance(exc,ReadonlyGate) else type(exc).__name__,
+            "reason":str(exc) if isinstance(exc,(ReadonlyGate,MarketGateHalt)) else type(exc).__name__,
             "trading_authority":"NONE",
             "broker_order_execution_path_armed":False
         }
@@ -208,7 +217,7 @@ def main(argv=None):
                          os.environ.get("MEXC_API_SECRET",""))
         report=inspect(FuturesV06Transport(creds))
         print(json.dumps(report,sort_keys=True,indent=2))
-        return 0 if report["status"]=="AUTHENTICATED_ACCOUNT_VALUES_READ_NO_LIVE_GO" else 2
+        return 0 if report["status"]=="AUTHENTICATED_ACCOUNT_AND_PUBLIC_MARKET_READS_NO_LIVE_GO" else 2
     except Exception as exc:
         print(json.dumps({"status":"NO_ORDER_FAIL_CLOSED",
                           "exception_type":type(exc).__name__,
