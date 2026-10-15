@@ -54,3 +54,4 @@ try {
     Remove-Item -LiteralPath $temp -Recurse -Force
 }
 Write-Output 'CONVEX10_UPGRADE_SCRIPTS_OFFLINE_PASS_NO_TASK_CHANGES'
+exit 0
