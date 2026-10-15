@@ -35,6 +35,43 @@ jobs:
       - name: V05 pinned parent, risk and stop baseline regression suite
         shell: bash
         run: python -m unittest discover -s engine/three_convex_v05 -p 'test_*.py' -v
+      - name: Existing Telegram bot setup compatibility — mock real sendMessage no getUpdates
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $file='engine/three_convex_v07/windows/CONFIGURAR_TELEGRAM.ps1'
+          $tokens=$null
+          $errors=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file).Path,[ref]$tokens,[ref]$errors)
+          if ($errors.Count -ne 0) { throw "POWERSHELL_PARSE_ERRORS" }
+          $env:LOCALAPPDATA=Join-Path $env:RUNNER_TEMP 'V07_existing_bot_regression'
+          $legacy=Join-Path $env:LOCALAPPDATA 'CryptoEdgeRadar/secrets'
+          New-Item -ItemType Directory -Force -Path $legacy | Out-Null
+          $fakeToken="12345678:" + ("A"*35)
+          $cipher=ConvertTo-SecureString -String $fakeToken -AsPlainText -Force | ConvertFrom-SecureString
+          [IO.File]::WriteAllText((Join-Path $legacy 'telegram_bot_token.dpapi'),$cipher,[Text.Encoding]::UTF8)
+          [IO.File]::WriteAllText((Join-Path $legacy 'telegram_chat_id.txt'),'1234567890',[Text.Encoding]::UTF8)
+          $script:MockRequests=0
+          function global:Invoke-RestMethod {
+            [CmdletBinding()]
+            param([string]$Uri,[string]$Method,[int]$TimeoutSec,[string]$ContentType,[byte[]]$Body)
+            if ($Uri -notlike 'https://api.telegram.org/bot*/sendMessage') { throw 'ILLEGAL_TELEGRAM_API_CALL' }
+            if ($Method -ne 'Post') { throw 'NON_POST_TELEGRAM_TEST' }
+            $decoded=[Text.Encoding]::UTF8.GetString($Body) | ConvertFrom-Json
+            if ([string]$decoded.chat_id -ne '1234567890') { throw 'WRONG_EXISTING_CHAT_ID' }
+            $script:MockRequests += 1
+            return [PSCustomObject]@{ok=$true;result=[PSCustomObject]@{message_id=123456}}
+          }
+          & $file
+          if ($script:MockRequests -ne 1) { throw 'MUST_SEND_EXACTLY_ONE_TEST_MESSAGE' }
+          $target=Join-Path $env:LOCALAPPDATA 'CryptoLab/ThreeConvexV07/secrets'
+          $stored=(Get-Content -LiteralPath (Join-Path $target 'telegram_chat_id.txt') -Raw).Trim()
+          if ($stored -ne '1234567890') { throw 'FAILED_TO_REUSE_OLD_CHAT_ID' }
+          $sec=ConvertTo-SecureString -String (Get-Content -LiteralPath (Join-Path $target 'telegram_bot_token.dpapi') -Raw).Trim() 
+          $decodedToken=([PSCredential]::new('local',$sec)).GetNetworkCredential().Password
+          if ($decodedToken -ne $fakeToken) { throw 'TOKEN_DPAPI_ROUNDTRIP_FAILED' }
+          Write-Output 'EXISTING_ACTIVE_BOT_REUSE_TEST_PASS_NO_GETUPDATES_NO_WEBHOOK_CHANGE'
       - name: Build standalone V07 Windows watcher NO LIVE ORDERS
         if: matrix.os == 'windows-latest'
         shell: pwsh
