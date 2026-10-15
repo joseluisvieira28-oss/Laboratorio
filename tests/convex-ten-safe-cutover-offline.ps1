@@ -1,7 +1,7 @@
 # Offline-only static assurance for scripts; never touches scheduled tasks or any secrets.
 $ErrorActionPreference='Stop'
 $root=Join-Path (Split-Path -Parent $PSScriptRoot) 'engine/convex_ten_governance'
-$names=@('ATUALIZAR_UMA_CANA_READONLY.ps1','ESTADO_10_CANAS_READONLY.ps1','RECUPERAR_UMA_CANA_READONLY.ps1')
+$names=@('ATUALIZAR_UMA_CANA_READONLY.ps1','ESTADO_10_CANAS_READONLY.ps1','RECUPERAR_UMA_CANA_READONLY.ps1','RECUPERAR_V07_ORPHAN_READY.ps1')
 foreach($name in $names) {
     $path=Join-Path $root $name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {throw "FILE_MISSING:$name"}
@@ -65,4 +65,11 @@ try {
     Remove-Item -LiteralPath $temp -Recurse -Force
 }
 Write-Output 'CONVEX10_UPGRADE_SCRIPTS_OFFLINE_PASS_NO_TASK_CHANGES'
+exit 0
+
+$recover=Get-Content -LiteralPath (Join-Path $root 'RECUPERAR_V07_ORPHAN_READY.ps1') -Raw
+foreach($token in @('CONFIRMO_RECUPERACAO_V07_SEM_TRADING','ORIGINAL_EXE_HASH_MISMATCH_NO_CHANGES','PROCESS_EXECUTABLE_PATH_UNVERIFIED_NO_CHANGES','OTHER_OBSERVER_NOT_RUNNING_ABORT','Get-CimInstance','Stop-Process -Id $pidValue -Force','V07_PROCESSES_STILL_PRESENT_NO_RESTART','Start-ScheduledTask -TaskName $taskName','V07_ORPHAN_RECOVERED_ORIGINAL_EXE_RUNNING')) {
+  if (-not $recover.Contains($token)) {throw "ORPHAN_RECOVERY_INVARIANT_MISSING:$token"}
+}
+Write-Output 'V07_ORPHAN_RECOVERY_STATIC_GATES_PASS'
 exit 0
