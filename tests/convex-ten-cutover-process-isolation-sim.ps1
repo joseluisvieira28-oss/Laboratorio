@@ -27,7 +27,7 @@ function Get-CimInstance {
     if($Filter -match '^ProcessId=([0-9]+)$'){
         $wantedId=[int]$Matches[1]
         if($script:recyclePidOnLookup -and $wantedId -eq 1201){
-            $script:simProcs[0].CreationDate=[datetime]'2026-10-15T12:59:59Z'
+            $script:simProcs[0]=[pscustomobject]@{ProcessId=1201;ExecutablePath=$expected;CreationDate=[datetime]'2026-10-15T12:59:59Z'}
         }
         return @($script:simProcs|Where-Object{$_.ProcessId -eq $wantedId})
     }
