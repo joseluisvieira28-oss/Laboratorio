@@ -49,10 +49,7 @@ SUFFIXES = {"V07": "_binance_5m.json", "V12": "_v12_5m.json"}
 def utc(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat()
 
-def file_hash(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-def parse_cache(path: Path, symbol: str) -> dict[int, tuple]:
+def parse_cache(path: Path, symbol: str) -> tuple[dict[int, tuple], str]:
     raw = path.read_bytes()
     if len(raw) > 4_000_000:
         raise ValueError("PUBLIC_CACHE_EXCESSIVE_BYTES")
@@ -73,7 +70,7 @@ def parse_cache(path: Path, symbol: str) -> dict[int, tuple]:
         bar = Bar(*row).validate()
         out[t] = (t, bar.open, bar.high, bar.low, bar.close, bar.volume)
         prior = t
-    return out
+    return out, hashlib.sha256(raw).hexdigest()
 
 def cache_paths(local: Path, version: str, symbol: str) -> list[Path]:
     root = local / "CryptoLab"
@@ -96,14 +93,14 @@ def reconstruct(local: Path, version: str, symbol: str) -> dict:
     mismatches = 0
     evidence = []
     for path in files:
-        source = parse_cache(path, symbol)
+        source, original_digest = parse_cache(path, symbol)
         disagreements = [t for t, row in source.items() if t in union and union[t] != row]
         mismatches += len(disagreements)
         # Never silently accept a changed historical candle, or overwrite with a newer cache.
         for t, row in source.items():
             union.setdefault(t, row)
         evidence.append({"kind": "active" if ROOTS[version] in str(path) else "cutover_backup",
-                         "sha256": file_hash(path), "bar_count": len(source)})
+                         "sha256": original_digest, "bar_count": len(source)})
     last_open = CLOSE_MS - MS5
     first_open = last_open - (LOOKBACK - 1) * MS5
     window = [union.get(t) for t in range(first_open, last_open + MS5, MS5)]
