@@ -14,7 +14,7 @@ $expectedApproval='CONFIRMO_10_CANAS_READONLY'
 $names=@{
     V07=@{ Task='CryptoLab-Three-CONVEX-V07-Telegram-ReadOnly'; Dir='ThreeConvexV07'; Target='V07_Telegram_MEXC_Watcher.exe'; Source='V07_AUDIT_PREVIEW.exe'; Status='V07_WATCHER_STATUS.json'; Runner='RUN_V07_TELEGRAM.ps1'; Pin='99d06384268d649b2224a10fa9d231ad8ce78fb6ced8aaee4389f12d86e12e84' }
     V11=@{ Task='CryptoLab-Three-CONVEX-V11-Experimental-ReadOnly'; Dir='ThreeConvexV11'; Target='V11_Experimental_Signals.exe'; Source='V11_AUDIT_PREVIEW.exe'; Status='V11_STATUS.json'; Runner='RUN_V11.ps1'; Pin='8143e21de4cefb59c896fbb706d59def525ff9d459cdb36e182bf0bdd33db3bc' }
-    V12=@{ Task='CryptoLab-CONVEX-V12-FinalFour-ReadOnly'; Dir='ThreeConvexV12'; Target='V12_FinalFour_Signals.exe'; Source='V12_FinalFour_Signals.exe'; Status='V12_STATUS.json'; Runner='RUN_V12.ps1'; Pin=$null }
+    V12=@{ Task='CryptoLab-CONVEX-V12-FinalFour-ReadOnly'; Dir='ThreeConvexV12'; Target='V12_FinalFour_Signals.exe'; Source='V12_FinalFour_Signals.exe'; Status='V12_STATUS.json'; Runner='RUN_V12.ps1'; Pin='0aa45a022de9c5e642316c757db72996c8bf126a3b6aed0247691852b6713bfe' }
 }
 $identity=$names[$Version]
 $package=(Resolve-Path -LiteralPath $PackageDir -ErrorAction Stop).Path
@@ -44,9 +44,10 @@ function Assert-SourcePackage {
         $hashPath=Join-Path $package 'SHA256_EXE.txt'
         if (-not (Test-Path -LiteralPath $hashPath -PathType Leaf)) {throw 'V12_MANIFEST_MISSING'}
         $expected=(Get-Content -LiteralPath $hashPath -Raw).Trim().ToLowerInvariant()
-        if ($expected -notmatch '\A[a-f0-9]{64}\z' -or $actual -ne $expected) {throw 'V12_EXE_HASH_MISMATCH'}
+        if ($expected -notmatch '\A[a-f0-9]{64}\z' -or $actual -ne $expected -or $actual -ne $identity.Pin) {throw 'V12_EXE_NOT_AUDITED_PR239'}
         $run=Join-Path $package 'RUN_V12.ps1'
         if (-not (Test-Path -LiteralPath $run -PathType Leaf)) {throw 'V12_RUNNER_MISSING'}
+        if (-not (Test-Path -LiteralPath (Join-Path $package 'AUDITAR_TELEGRAM_WINDOWS_READONLY.ps1') -PathType Leaf)) {throw 'V12_PR239_AUDIT_SIDECAR_MISSING'}
     }
     return $actual
 }
