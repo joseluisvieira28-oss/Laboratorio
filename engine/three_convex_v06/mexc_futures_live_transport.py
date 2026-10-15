@@ -29,6 +29,7 @@ GET_PATHS = {
     "/api/v1/private/order/list/open_orders",
     "/api/v1/private/stoporder/open_orders",
     "/api/v1/private/order/open_order_total_count",
+    "/api/v1/private/stoporder/list/orders",
 }
 POST_PATHS = frozenset((
     "/api/v1/private/order/create",
@@ -89,7 +90,12 @@ class FuturesV06Transport:
         if not path.startswith("/api/") or "?" in path or "#" in path:
             raise MEXCTransportHalt("INVALID_PATH")
         if method=="GET":
-            if path not in GET_PATHS:
+            is_order_by_id = (
+                path.startswith("/api/v1/private/order/get/")
+                and path.removeprefix("/api/v1/private/order/get/").isdigit()
+                and len(path.removeprefix("/api/v1/private/order/get/"))<=24
+            )
+            if path not in GET_PATHS and not is_order_by_id:
                 raise MEXCTransportHalt("GET_ENDPOINT_NOT_ALLOWLISTED")
             if ticket is not None:
                 raise MEXCTransportHalt("GET_MUST_NOT_REQUIRE_MUTATION_TICKET")
@@ -213,6 +219,43 @@ class FuturesV06Transport:
 
     def open_stops(self):
         return self._exchange("GET","/api/v1/private/stoporder/open_orders")
+
+    def get_order_by_id(self,order_id):
+        """True authenticated read-only order ID details after entry ACK."""
+        if not str(order_id).isdigit() or not 0<int(order_id)<10**24:
+            raise MEXCTransportHalt("ORDER_ID_INVALID")
+        data=self._exchange("GET","/api/v1/private/order/get/"+str(order_id))
+        if not isinstance(data,dict) or str(data.get("orderId"))!=str(order_id):
+            raise MEXCTransportHalt("ORDER_ID_READBACK_MISMATCH")
+        return data
+
+    def get_positions_by_symbol(self,symbol):
+        if symbol not in SYMBOLS:raise MEXCTransportHalt("POSITION_SYMBOL_BLOCKED")
+        rows=self._exchange("GET","/api/v1/private/position/open_positions",
+                            {"symbol":symbol})
+        if not isinstance(rows,list):
+            raise MEXCTransportHalt("POSITION_READBACK_SHAPE_BAD")
+        return rows
+
+    def get_unfinished_stops(self,symbol):
+        """Read-only TP/SL order list; forbid unproven pagination/custody."""
+        if symbol not in SYMBOLS:raise MEXCTransportHalt("STOP_SYMBOL_BLOCKED")
+        data=self._exchange("GET","/api/v1/private/stoporder/list/orders",{
+            "symbol":symbol,"is_finished":0,"page_num":1,"page_size":100,
+        })
+        if isinstance(data,list):
+            if len(data)>=100:raise MEXCTransportHalt("TP_SL_PAGINATION_UNKNOWN")
+            rows=data
+        elif isinstance(data,dict) and isinstance(data.get("resultList"),list):
+            pages=data.get("totalPage")
+            if pages is None or type(pages) is not int or pages!=1:
+                raise MEXCTransportHalt("TP_SL_MULTIPAGE_NOT_YET_SUPPORTED")
+            rows=data["resultList"]
+        else:
+            raise MEXCTransportHalt("TP_SL_LIST_RESPONSE_NOT_VERIFIED")
+        if any(not isinstance(x,dict) or x.get("symbol")!=symbol for x in rows):
+            raise MEXCTransportHalt("TP_SL_UNEXPECTED_SYMBOL_OR_ROW")
+        return rows
 
     def submit_long(self,symbol,contracts,external_oid,*,ticket):
         if symbol not in SYMBOLS or type(contracts) is not int or contracts!=1:
