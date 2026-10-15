@@ -1,0 +1,57 @@
+name: CONVEX independent observer fault audit
+on:
+  push:
+    branches: ['audit/convex-v07-v11-independent-2026-10-15']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fault-audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Frozen source and regression suites (offline transports only)
+        shell: bash
+        run: |
+          test "$(git hash-object engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt)" = '19c8b8e2363f253458db42111b6701f3a3ef1f4b'
+          for suite in three_convex_v05 three_convex_v06 three_convex_v07 three_convex_v11 convex_observer_audit; do
+            python -m unittest discover -s engine/$suite -p 'test_*.py' -v
+          done
+      - name: Isolated Windows preview builds and source manifest
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          python -m pip install --disable-pip-version-check pyinstaller==6.16.0
+          if ($LASTEXITCODE -ne 0) {throw 'DEPENDENCY_FAILED'}
+          New-Item -ItemType Directory -Force -Path audit_preview | Out-Null
+          foreach ($v in @('07','11')) {
+            $entry=if ($v -eq '07') {'watch.py'} else {'watcher.py'}
+            python -m PyInstaller --noconfirm --clean --onefile --name "V${v}_AUDIT_PREVIEW" --paths . --add-data 'engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt;engine/three_convex_v05/vendor' "engine/three_convex_v$v/$entry"
+            if ($LASTEXITCODE -ne 0) {throw 'BUILD_FAILED'}
+            & "dist/V${v}_AUDIT_PREVIEW.exe" --help
+            if ($LASTEXITCODE -ne 0) {throw 'EXE_SMOKE_FAILED'}
+            & "dist/V${v}_AUDIT_PREVIEW.exe" --self-test
+            if ($LASTEXITCODE -ne 0) {throw 'PACKAGED_OFFLINE_SELFTEST_FAILED'}
+            Copy-Item "dist/V${v}_AUDIT_PREVIEW.exe" audit_preview/
+          }
+          Copy-Item engine/convex_observer_audit/WINDOWS_READONLY_RECEIPT.ps1 audit_preview/
+          Copy-Item engine/convex_observer_audit/VERIFICAR_PACOTE.ps1 audit_preview/
+          Copy-Item engine/convex_observer_audit/LEIA_PRIMEIRO_PREVIEW.md audit_preview/
+          $manifest=[ordered]@{source_commit=(git rev-parse HEAD);purpose='ISOLATED AUDIT PREVIEW - NOT INSTALLED';files=@()}
+          Get-ChildItem audit_preview/* -File | ForEach-Object { $manifest.files+=@{name=$_.Name;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content audit_preview/BUILD_MANIFEST.json -Encoding utf8
+          & audit_preview/VERIFICAR_PACOTE.ps1
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'windows-latest'
+        with:
+          name: CONVEX_AUDIT_PREVIEW_NOT_INSTALLED
+          path: audit_preview/

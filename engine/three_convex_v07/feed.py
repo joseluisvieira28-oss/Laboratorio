@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import time
+import tempfile
 from urllib.parse import urlencode,urlparse
 from urllib.request import Request,urlopen
 
@@ -61,12 +62,18 @@ def clock_ms(*,public=get_public,clock=lambda:int(time.time()*1000)):
 def _save_json_atomic(path,object):
     path=Path(path)
     path.parent.mkdir(parents=True,exist_ok=True)
-    temp=path.with_suffix(".tmp")
-    with temp.open("x",encoding="utf-8") as f:
-        json.dump(object,f,sort_keys=True,separators=(",",":"))
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(temp,path)
+    # Unique same-directory temporary file: a crash orphan cannot poison recovery.
+    fd,name=tempfile.mkstemp(prefix=path.name+'.',suffix='.tmp',dir=path.parent)
+    temp=Path(name)
+    try:
+        with os.fdopen(fd,"w",encoding="utf-8") as f:
+            json.dump(object,f,sort_keys=True,separators=(",",":"))
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp,path)
+    finally:
+        temp.unlink(missing_ok=True)
+
 
 
 def _clean_cache(path,symbol,start,final):
