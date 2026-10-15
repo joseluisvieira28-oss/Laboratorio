@@ -33,3 +33,8 @@ Telegram bot cannot be connected without user creating a bot and sending `/start
 - The Telegram watcher communicates *signals and account readings*, **never claims real orders were placed**. Only a separate reviewed controller with actual authenticated exchange evidence could legitimately claim "POSITION FILLED / PROTECTED / EXIT CONFIRMED." No such status is implemented here.
 
 **VERDICT: V07_TELEGRAM_ALERT_BRIDGE_IMPLEMENTED_AND_147_TESTS_PASS; USER_TELEGRAM_CONNECTION_PENDING_LOCAL_SETUP; MEXC_AUTOLIVE_EXECUTION_NOT_COMPLETE; NO_LIVE_GO.** No exchange POST, merge main, Render mutation, existing task change or secret exfiltration.
+
+
+## Newly identified official MEXC possible protective-entry path (not executed)
+
+Current official [MEXC Futures Place Plan Order](https://www.mexc.co/api-docs/futures/account-and-trading-endpoints/place-plan-order) documents `POST /api/v1/private/planorder/place/v2`, including `stopLossPrice` and `lossTrend` on the **same conditional plan-order request**. This may reduce the gap between entry and exchange stop compared with a plain market entry then separate `POST /api/v1/private/stoporder/place`. BUT it is a *conditional plan order*, not proven equivalent to a first-bar market entry, and the documentation does not prove atomic position-stop attachment or correct fill quantity, speed, stop visibility and native trailing after a trigger. There is no authorized POST test, therefore it is a preregisterable engineering candidate **NOT LIVE_GO**. Require unchanged causal strategy timing, exact prospective execution costs and later broker stop readback. Do NOT silently substitute this for the original V5 market entry without recording the economic fork.
