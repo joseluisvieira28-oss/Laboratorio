@@ -1,5 +1,6 @@
 """Offline fixture proof for both 20:55 receipts and two cache reconstructions."""
 import json
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -39,14 +40,14 @@ class ForensicFixtures(unittest.TestCase):
                 self.cache(version, symbol, self.rows[:4], backup=True)
                 self.cache(version, symbol, self.rows[2:])
         v07db = self.local / "CryptoLab" / "ThreeConvexV07" / "data" / "v07_events.sqlite3"
-        with sqlite3.connect(v07db) as db:
+        with closing(sqlite3.connect(v07db)) as db, db:
             db.execute("CREATE TABLE outbox (id TEXT PRIMARY KEY, sent_at_ms INTEGER, telegram_message_id INTEGER, added_ms INTEGER, message TEXT)")
             ev = f.EVENTS["V07_SOL_5M"]
             db.execute("INSERT INTO outbox VALUES(?,?,?,?,?)",
                 (ev["row_id"], f.CLOSE_MS + 3000, 12345, f.CLOSE_MS + 2000,
                  "SOL_USDT SOL_CONVEX_NATIVE_5M:1792097700000"))
         v12db = self.local / "CryptoLab" / "ThreeConvexV12" / "data" / "V12_ONLY.sqlite3"
-        with sqlite3.connect(v12db) as db:
+        with closing(sqlite3.connect(v12db)) as db, db:
             db.execute("CREATE TABLE notices (id TEXT PRIMARY KEY, sent_ms INTEGER, close_ms INTEGER, expired_ms INTEGER, message TEXT)")
             ev = f.EVENTS["V12_BNB_5M"]
             db.execute("INSERT INTO notices VALUES(?,?,?,?,?)",
@@ -89,7 +90,7 @@ class ForensicFixtures(unittest.TestCase):
 
     def test_outbox_missing_not_proved(self):
         path = self.local / "CryptoLab" / "ThreeConvexV07" / "data" / "v07_events.sqlite3"
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute("DELETE FROM outbox")
         result = self.audit()["event_results"]["V07_SOL_5M"]
         self.assertFalse(result["sqlite"]["found"])
