@@ -18,12 +18,12 @@ O circuito completo por executar continua a exigir: fonte causal de sinais e par
 
 ## LIGAR TELEGRAM EM 3 PASSOS
 
-1. No Telegram, abre **@BotFather**, cria bot com `/newbot` e copia o token. Abre o **teu próprio bot** e envia `/start`. **NÃO coles o token neste chat, Github ou nos recibos.**
+1. **Reutiliza o bot que já tens a funcionar** (por exemplo o dos alertas OPTIONS V2.1). Não cries outro e **não desligues nem alteres o operador antigo**. Guarda o Chat ID numérico do mesmo destino a partir da configuração local do operador antigo; se existir em `%LOCALAPPDATA%\\CryptoEdgeRadar\\secrets\\telegram_chat_id.txt`, o script consegue lê-lo. Se já existe um token DPAPI local do V07 ou em `%LOCALAPPDATA%\\CryptoEdgeRadar\\secrets\\telegram_bot_token.dpapi`, pode reutilizá-lo; senão pede o token de forma oculta. **NÃO coles tokens ou chaves neste chat.**
 2. Descompacta **o único ZIP** e abre PowerShell nessa pasta. Executa:
 
    `powershell -NoProfile -ExecutionPolicy Bypass -File .\CONFIGURAR_TELEGRAM.ps1`
 
-   O token é pedido oculto e guardado encriptado (Windows DPAPI, só para esse utilizador). O script procura um chat privado único com `/start`, descobre automaticamente o chat ID e envia um teste verdadeiro no Telegram. Se o bot não for teu ou já houver vários utilizadores privados, a configuração bloqueia por segurança.
+   **Correção de compatibilidade com bots já ativos:** o script **NUNCA chama `getUpdates`, `setWebhook` ou `deleteWebhook`**. Procura Chat ID em configurações locais conhecidas ou pede-o no PowerShell (um número, privado ou grupo). Reutiliza o token DPAPI quando possível ou pede-o oculto. Envia um único `sendMessage` de teste ao destino indicado e só grava a configuração após resposta de entrega. **Não interfere com consumidores de updates nem webhooks do bot antigo.** Se não souberes o Chat ID, consulta a configuração do teu watcher OPTIONS existente; o token sozinho não identifica um chat privado de forma fiável.
 
 3. Instala apenas monitor V07, que reutiliza MEXC DPAPI existente:
 
@@ -37,7 +37,7 @@ Parar: `powershell -NoProfile -ExecutionPolicy Bypass -File .\PARAR_V07.ps1`
 
 Desinstalar: `powershell -NoProfile -ExecutionPolicy Bypass -File .\REMOVER_V07.ps1`
 
-## Segurança
+**Erro antigo**: `TELEGRAM_SETUP_BLOQUEADO: envia /start` era causado pela tentativa de descobrir o Chat ID via `getUpdates` no bot já em uso. Esta versão elimina esse caminho. Se surgirem `CHAT_ID_INVALIDO` ou `TELEGRAM_SENDMESSAGE_FALHOU`, o bloqueio é destino/token/permissão ou rede; o operador antigo fica intacto.\n\n## Segurança
 
 - Se Telegram não estiver disponível, a mensagem continua numa fila SQLite para envio posterior. Depois de uma falha entre confirmação Telegram e atualização da fila, poderá haver uma **mensagem duplicada**, nunca uma ordem duplicada.
 - Se a fonte Binance estiver indisponível, avisa quando possível e **não fabrica velas ou sinais**.
