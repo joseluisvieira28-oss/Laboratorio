@@ -85,17 +85,39 @@ class V12Tests(unittest.TestCase):
             q=Outbox(d)
             with self.assertRaises(Halt):q.enqueue({"lane":"EXTRA_11TH_LANE","category":"V12_HISTORICAL_ONLY_EXPERIMENTAL"})
             q.close()
-    def test_source_failure_is_atomic_for_new_signals(self):
+    def test_partial_source_outage_keeps_good_signals_and_pending(self):
         with tempfile.TemporaryDirectory() as d:
             q=Outbox(d)
+            q.enqueue(self.signal("BNB_CONVEX_15M_EXPERIMENTAL",300000))
+            sent=[]
             def f(asset,_,__):
                 if asset=="DOGE_USDT":raise FeedHalt("simulated DOGE downtime")
                 return []
-            with patch("engine.three_convex_v12.watcher.decide",return_value=[{
-                    **self.signal("BNB_CONVEX_NATIVE_5M_EXPERIMENTAL"),"category":"V12_HISTORICAL_ONLY_EXPERIMENTAL"}]):
-                with self.assertRaises(FeedHalt):
-                    cycle(q,lambda _:None,now_ms=302000,server_ms=302000,market_fetch=f)
+            def decide_mock(symbol,bars,now,activation):
+                if symbol=="SOL_USDT":
+                    return [self.signal("SOL_CONVEX_30M_EXPERIMENTAL",300000)]
+                return []
+            with patch("engine.three_convex_v12.watcher.decide",side_effect=decide_mock):
+                report=cycle(q,sent.append,now_ms=302000,server_ms=302000,market_fetch=f)
+            self.assertEqual(report["status"],"V12_DEGRADED_READONLY")
+            self.assertFalse(report["sources_ok"])
+            self.assertEqual(report["source_status"]["DOGE_USDT"],"BLOCKED:FeedHalt")
+            self.assertEqual(report["telegram_sent_this_cycle"],2)
             self.assertEqual(q.pending(),0)
+            self.assertEqual(len(sent),2)
+            q.close()
+    def test_slow_collection_rechecked_clock_expires_stale_signal(self):
+        with tempfile.TemporaryDirectory() as d:
+            q=Outbox(d)
+            sent=[]
+            with patch("engine.three_convex_v12.watcher.decide",return_value=[
+                self.signal("BNB_CONVEX_15M_EXPERIMENTAL",300000)
+            ]):
+                report=cycle(q,sent.append,now_ms=302000,server_ms=302000,
+                    market_fetch=lambda *a: [],fresh_clock=lambda:700000)
+            self.assertEqual(report["telegram_sent_this_cycle"],0)
+            self.assertGreater(report["stale_signals_suppressed_this_cycle"],0)
+            self.assertEqual(sent,[])
             q.close()
     def test_clock_offset_fails_closed(self):
         with tempfile.TemporaryDirectory() as d:
