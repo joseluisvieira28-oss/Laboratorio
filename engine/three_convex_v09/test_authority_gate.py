@@ -1,11 +1,13 @@
 import unittest
+import hashlib
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
 from engine.three_convex_v09.authority_gate import verify_detached_permit,canonical,sha,AuthorityHalt
 
-OID="CL8"+"b"*28
+SIGNAL_ID="SOL_CONVEX_NATIVE_5M:1000000"
+OID="CL8"+hashlib.sha256((SIGNAL_ID+"|LONG").encode()).hexdigest()[:28]
 ACCOUNT="a"*64
 
 def fixture():
@@ -14,6 +16,7 @@ def fixture():
            "externalOid":OID}
     permit={"version":1,"venue":"MEXC_FUTURES","scope":"ONE_ENTRY",
             "symbol":"SOL_USDT","lane":"SOL_CONVEX_NATIVE_5M",
+            "signal_id":SIGNAL_ID,
             "side":"LONG","position_mode":"HEDGE","margin_mode":"ISOLATED",
             "leverage":10,"contracts":1,"max_modeled_loss_usdt":"0.45",
             "signal_close_ms":1000000,"issued_ms":1001000,"expires_ms":1005000,
@@ -60,6 +63,18 @@ class RiskPermitTests(unittest.TestCase):
         p,o=fixture()
         with self.assertRaisesRegex(AuthorityHalt,"SIGNATURE_NOT_VERIFIED"):
             self.runit(p,o,sig=("f"*64).encode())
+    def test_signature_cannot_move_to_another_signal(self):
+        p,o=fixture()
+        p["signal_id"]="SOL_CONVEX_NATIVE_5M:1000001"
+        with self.assertRaisesRegex(AuthorityHalt,"SIGNAL_ID_NOT_BOUND"):
+            self.runit(p,o)
+    def test_signed_signal_cannot_be_reused_for_other_entry_oid(self):
+        p,o=fixture()
+        o["externalOid"]="CL8"+"c"*28
+        p["order_sha256"]=sha(o)
+        with self.assertRaisesRegex(AuthorityHalt,"ENTRY_EXTERNAL_OID_NOT_BOUND"):
+            self.runit(p,o)
+
     def test_wrong_lane_symbol_forbidden(self):
         p,o=fixture();p["symbol"]="BNB_USDT"
         with self.assertRaisesRegex(AuthorityHalt,"LANE_SYMBOL_MISMATCH"):
