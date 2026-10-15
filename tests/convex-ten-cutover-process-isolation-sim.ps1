@@ -19,6 +19,8 @@ $script:simProcs=@()
 $script:taskState='Running'
 $script:killed=@()
 $script:replaceOnStop=$false
+$script:childDiesWithParent=$false
+$script:recyclePidOnLookup=$false
 function Get-CimInstance {
     [CmdletBinding()]
     param([string]$ClassName,[string]$Filter)
@@ -43,7 +45,7 @@ function Stop-Process {
     [CmdletBinding()]
     param([int]$Id,[switch]$Force)
     $script:killed+= $Id
-    $script:simProcs=@($script:simProcs|Where-Object{$_.ProcessId -ne $Id})
+    $script:simProcs=@($script:simProcs|Where-Object{$_.ProcessId -ne $Id -and -not ($script:childDiesWithParent -and $Id -eq 1201 -and $_.ProcessId -eq 1202)})
 }
 function Start-Sleep {
     [CmdletBinding()]
@@ -53,6 +55,8 @@ function Reset-Simulation {
     $script:taskState='Running'
     $script:killed=@()
     $script:replaceOnStop=$false
+    $script:childDiesWithParent=$false
+    $script:recyclePidOnLookup=$false
     $script:simProcs=@(
         [pscustomobject]@{ProcessId=1201;ExecutablePath=$expected;CreationDate=[datetime]'2026-10-15T12:00:00Z'},
         [pscustomobject]@{ProcessId=1202;ExecutablePath=$expected;CreationDate=[datetime]'2026-10-15T12:00:05Z'}
@@ -78,9 +82,25 @@ $blocked=$false
 try { Stop-OnlyThisTask } catch { $blocked=$_.Exception.Message -match 'PROCESS_IDENTITY_CHANGED_ABORT_NO_KILL' }
 if(-not $blocked -or $script:killed.Count -ne 0) {throw 'SIM_PID_REPLACEMENT_NOT_FAIL_CLOSED'}
 Write-Output 'SIM_PID_SWAP_AFTER_TASK_STOP_FAIL_CLOSED_PASS'
+Reset-Simulation
+$script:childDiesWithParent=$true
+Stop-OnlyThisTask
+if($script:simProcs.Count -ne 0 -or ($script:killed -join ',') -ne '1201') {
+    throw 'SIM_CHILD_ALREADY_EXITED_WAS_NOT_HANDLED'
+}
+Write-Output 'SIM_PYINSTALLER_CHILD_DIES_WITH_PARENT_PASS'
+Reset-Simulation
+$script:recyclePidOnLookup=$true
+$blocked=$false
+try { Stop-OnlyThisTask } catch { $blocked=$_.Exception.Message -match 'PID_REUSED_ABORT_NO_KILL' }
+if(-not $blocked -or $script:killed.Count -ne 0) {throw 'SIM_LAST_MOMENT_PID_REUSE_NOT_FAIL_CLOSED'}
+Write-Output 'SIM_REUSED_PID_FINAL_RECHECK_FAIL_CLOSED_PASS'
 exit 0
 ) {
         $wantedId=[int]$Matches[1]
+        if ($script:recyclePidOnLookup -and $wantedId -eq 1201) {
+            $script:simProcs[0].CreationDate=[datetime]'2026-10-15T12:59:59Z'
+        }
         return @($script:simProcs|Where-Object{$_.ProcessId -eq $wantedId})
     }
     return $script:simProcs
