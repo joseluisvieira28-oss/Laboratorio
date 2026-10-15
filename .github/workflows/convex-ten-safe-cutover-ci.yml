@@ -1,0 +1,53 @@
+name: CONVEX 10 Canas Safe Cutover Windows Operator Scripts
+on:
+  push:
+    branches:
+      - 'ops/convex-ten-safe-cutover-v01-2026-10-15'
+    paths:
+      - 'engine/convex_ten_governance/**'
+      - '.github/workflows/convex-ten-safe-cutover-ci.yml'
+      - 'tests/convex-ten-safe-cutover-offline.ps1'
+      - 'tests/convex-ten-cutover-process-isolation-sim.ps1'
+  pull_request:
+    paths:
+      - 'engine/convex_ten_governance/**'
+      - '.github/workflows/convex-ten-safe-cutover-ci.yml'
+      - 'tests/convex-ten-safe-cutover-offline.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ps-scripts-offline:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse and static-gate all operational PowerShell files
+        shell: pwsh
+        run: |
+          ./tests/convex-ten-safe-cutover-offline.ps1
+          ./tests/convex-ten-cutover-process-isolation-sim.ps1
+  release-operator-scripts:
+    needs: ps-scripts-offline
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bundle SCRIPTS ONLY no executable, no secrets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path output -Force | Out-Null
+          Copy-Item engine/convex_ten_governance/ATUALIZAR_UMA_CANA_READONLY.ps1 output/
+          Copy-Item engine/convex_ten_governance/ESTADO_10_CANAS_READONLY.ps1 output/
+          Copy-Item engine/convex_ten_governance/RECUPERAR_UMA_CANA_READONLY.ps1 output/
+          Copy-Item engine/convex_ten_governance/RECUPERAR_V07_ORPHAN_READY.ps1 output/
+          Copy-Item engine/convex_ten_governance/CUTOVER_10_CANAS_LEIA_PRIMEIRO.md output/
+          Get-ChildItem output | Get-FileHash -Algorithm SHA256 | Select-Object @{Name='file';Expression={$_.Path | Split-Path -Leaf}},@{Name='sha256';Expression={$_.Hash.ToLowerInvariant()}} | ConvertTo-Json | Set-Content output/SCRIPTS_HASHES.json
+          Compress-Archive -Path output/* -DestinationPath CONVEX10_SAFE_CUTOVER_SCRIPTS_ONLY.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX10_SAFE_CUTOVER_SCRIPTS_ONLY_NOT_APPLIED
+          path: CONVEX10_SAFE_CUTOVER_SCRIPTS_ONLY.zip
+          retention-days: 14
