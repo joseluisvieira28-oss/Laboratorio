@@ -135,3 +135,35 @@ class BoundaryTests(unittest.TestCase):
                 group=bars[start:start+n]
                 expected.append(dict(t=start*MS5,open=group[0].open,high=max(x.high for x in group),low=min(x.low for x in group),close=group[-1].close,volume=sum(x.volume for x in group)))
             self.assertEqual(actual,expected)
+
+class ScienceAndFailureLimits(unittest.TestCase):
+    def test_positive_parent_signal_reaches_each_of_six_lane_adapters(self):
+        from engine.three_convex_v05.signals import Bar,closed_signal_decisions,parent_signal_function
+        from engine.three_convex_v11.experimental import experimental_signals
+        lanes=[('SOL_CONVEX_NATIVE_5M','SOL_USDT',1,False),('SOL_CONVEX_1H','SOL_USDT',12,False),('BNB_CONVEX_4H','BNB_USDT',48,False),('SOL_CONVEX_4H_EXPERIMENTAL','SOL_USDT',48,True),('BNB_CONVEX_30M_EXPERIMENTAL','BNB_USDT',6,True),('ETH_CONVEX_1H_EXPERIMENTAL','ETH_USDT',12,True)]
+        for lane,symbol,n,experimental in lanes:
+            tf=[];bars=[]
+            for i in range(260):
+                price=100+i*.2 if i<230 else (160 if i<259 else 150)
+                volume=1000 if i==259 else 10
+                tf.append(dict(t=i*n*MS5,open=price,high=price+1,low=price-1,close=price,volume=volume*n))
+                bars.extend(Bar((i*n+j)*MS5,price,price+1,price-1,price,volume) for j in range(n))
+            self.assertTrue(parent_signal_function()(tf)[0][-1],lane)
+            close=260*n*MS5
+            got=experimental_signals(symbol,bars,close+2000,0) if experimental else closed_signal_decisions(symbol,bars,close+2000)
+            self.assertIn(lane,{x['lane'] for x in got})
+            self.assertEqual(next(x['signal_close_ms'] for x in got if x['lane']==lane),close)
+
+    def test_lost_ack_commit_still_has_duplicate_risk_documented(self):
+        # Sending can succeed remotely while the process dies before local receipt.
+        # This reproduces a residual limit, not an exactly-once delivery claim.
+        with tempfile.TemporaryDirectory() as d:
+            q=Outbox(d);q.queue(SIG);sent=[]
+            def ack_then_die(msg):
+                sent.append(msg);raise SystemExit('simulated crash after remote acceptance')
+            with self.assertRaises(SystemExit):q.flush(ack_then_die,3602000)
+            q.db.close();q=Outbox(d)
+            try:
+                q.flush(lambda msg:sent.append(msg),3603000)
+                self.assertEqual(len(sent),2)
+            finally:q.db.close()
