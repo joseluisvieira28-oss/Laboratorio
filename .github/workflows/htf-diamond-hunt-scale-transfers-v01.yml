@@ -1,0 +1,113 @@
+name: HTF Diamond Hunt Scale Transfers V0.1
+
+on:
+  push:
+    branches:
+      - htf-diamond-hunt-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/SCALE_TRANSFER_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  scale-transfers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify pre-outcome campaign authority and scale rules
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('research/htf_diamond_hunt')
+          f=json.loads((p/'HTF_DIAMOND_HUNT_001_CAMPAIGN_FREEZE_V0.1.json').read_text())
+          b=json.loads((p/'HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json').read_text())
+          assert f['status']=='FROZEN_PRE_OUTCOME'
+          assert f['execution_order']==['DH-01','DH-04','DH-07','DH-02','DH-03','DH-05','DH-06']
+          c={x['cell_id']:x for x in f['cells']}
+          assert c['DH-02']['rule']['donchian_lookback_complete_bars']==80
+          assert c['DH-02']['rule']['atr_length']==56 and c['DH-02']['rule']['max_hold_bars']==160
+          assert c['DH-03']['rule']['donchian_lookback_complete_bars']==40
+          assert c['DH-03']['rule']['atr_length']==28 and c['DH-03']['rule']['max_hold_bars']==80
+          assert c['DH-05']['rule']['fast_ema']==80 and c['DH-05']['rule']['slow_ema']==200 and c['DH-05']['rule']['max_hold_bars']==80
+          assert c['DH-06']['rule']['fast_ema']==40 and c['DH-06']['rule']['slow_ema']==100 and c['DH-06']['rule']['max_hold_bars']==40
+          assert b['artifact_id']==10434938955
+          assert b['source_fingerprint']=='08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78'
+          print('SCALE_AUTHORITY_GATE_PASS')
+          PY
+
+      - name: Compile scale-transfer runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_scale_transfers_v01.py
+
+      - name: Synthetic execution semantics self-test before source access
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          from research.htf_diamond_hunt import htf_diamond_hunt_scale_transfers_v01 as m
+          # Complete 6H bucket = 24 x 15m, exact OHLC aggregation.
+          xs=[]
+          for i in range(24):
+              t=i*m.FIFTEEN_MIN_MS
+              xs.append(m.Bar(t,100+i,102+i,99+i,101+i,1.0,t+m.FIFTEEN_MIN_MS-1))
+          out,inc=m.aggregate(xs,21_600_000)
+          assert len(out)==1 and inc==0 and out[0].open==100 and out[0].close==124 and out[0].high==125 and out[0].low==99
+          # Parent execution semantics: stop wins same-bar stop/target ambiguity.
+          s=m.Signal('TEST','BTCUSDT',-21_600_000,0,100.0,90.0,130.0,0.10,'x')
+          seg=[m.Bar(0,100.0,135.0,85.0,100.0,1.0,21_600_000-1),m.Bar(21_600_000,100,101,99,100,1,43_200_000-1)]
+          o=m.simulate(s,seg,10,0.20)
+          assert o.exit_reason=='STOP_AMBIGUOUS_SAME_BAR' and o.exit_price==90.0 and o.net_r < 0
+          print('SYNTHETIC_SELF_TEST_PASS')
+          PY
+
+      - name: Download exact frozen independent source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35068227095
+
+      - name: Reverify source bytes before scale-transfer outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('research/local_data/htf_diamond_hunt_source_v01')
+          bind=json.loads(Path('research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json').read_text())
+          rec=json.loads((root/'HTF_DIAMOND_HUNT_001_SOURCE_GATE_V0.1.json').read_text())
+          assert rec['status']=='SOURCE_DATA_PASS'
+          assert rec['source_fingerprint']==bind['source_fingerprint']
+          assert rec['outcome_evaluation_performed'] is False
+          for y in (2023,2024,2025,2026): assert rec[f'access_{y}_performed'] is False
+          for sym,x in bind['canonical_15m'].items():
+              p=root/'canonical_15m'/f'{sym}_15m.csv'
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==x['sha256']
+          print('SOURCE_BYTE_REBIND_PASS')
+          PY
+
+      - name: Run DH-02 DH-03 DH-05 DH-06 frozen scale transfers
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_scale_transfers_v01.py research/local_data/htf_diamond_hunt_source_v01
+
+      - name: Upload scale-transfer evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_SCALE_TRANSFERS_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_scale_transfers_v01/
+          if-no-files-found: error
+          retention-days: 90

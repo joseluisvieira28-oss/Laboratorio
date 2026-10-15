@@ -1,0 +1,54 @@
+name: HTF Donchian Shadow 2026 Source Gate V0.1
+
+on:
+  pull_request:
+    branches: [ htf-diamond-hunt-v0.1 ]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DONCHIAN_SHADOW_001_2026_DATA_ACCESS_AUTHORIZATION_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/HTF_DONCHIAN_SHADOW_001_2026_BLOCK_FREEZE_V0.1.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_2026_source_gate_v01.py'
+      - '.github/workflows/htf-donchian-shadow-2026-source-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile source gate
+        run: python -m py_compile Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_2026_source_gate_v01.py
+      - name: Run protected 2026 source gate only
+        run: python Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/htf_donchian_shadow_2026_source_gate_v01.py
+      - name: Assert outcome blindness and firewall
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_donchian_shadow_2026_source_v01/HTF_DONCHIAN_SHADOW_001_2026_SOURCE_GATE_V0.1.json')
+          x=json.loads(p.read_text())
+          assert x['status']=='SOURCE_DATA_PASS'
+          assert x['signal_calculation_performed'] is False
+          assert x['return_calculation_performed'] is False
+          assert x['outcome_evaluation_performed'] is False
+          assert x['access_2025_performed'] is False
+          assert x['access_2026_performed'] is True
+          assert x['access_partial_september_2026_performed'] is False
+          assert x['live_trading'] is False
+          assert x['exchange_mutation'] is False
+          assert x['orders_created'] is False
+          print('2026_SOURCE_GATE_FIREWALL_PASS')
+          PY
+      - name: Upload exact source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DONCHIAN_SHADOW_001_2026_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_donchian_shadow_2026_source_v01
+          if-no-files-found: error
+          retention-days: 30
