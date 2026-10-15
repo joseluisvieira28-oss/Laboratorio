@@ -65,7 +65,6 @@ try {
     Remove-Item -LiteralPath $temp -Recurse -Force
 }
 Write-Output 'CONVEX10_UPGRADE_SCRIPTS_OFFLINE_PASS_NO_TASK_CHANGES'
-exit 0
 
 $recover=Get-Content -LiteralPath (Join-Path $root 'RECUPERAR_V07_ORPHAN_READY.ps1') -Raw
 foreach($token in @('CONFIRMO_RECUPERACAO_V07_SEM_TRADING','ORIGINAL_EXE_HASH_MISMATCH_NO_CHANGES','PROCESS_EXECUTABLE_PATH_UNVERIFIED_NO_CHANGES','OTHER_OBSERVER_NOT_RUNNING_ABORT','Get-CimInstance','Stop-Process -Id $pidValue -Force','V07_PROCESSES_STILL_PRESENT_NO_RESTART','Start-ScheduledTask -TaskName $taskName','V07_ORPHAN_RECOVERED_ORIGINAL_EXE_RUNNING')) {
