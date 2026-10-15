@@ -1,0 +1,102 @@
+{
+  "schema_version": "0.1",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0F_EXPLORER_BLOCKS_RAW_BOUNDED_REQUESTER_PAYS_SCHEMA_PROBE",
+  "status": "FROZEN_PRE_EXECUTION_NOT_AUTHORIZED",
+  "freeze_date": "2026-09-18",
+  "scientific_design_changed": false,
+  "parent_primary_remains_closed": true,
+  "parent_classification": "REPLICATION_INCONCLUSIVE",
+  "parent_edge_status": "UNPROVEN",
+  "activation_basis": {
+    "explorer_api_p0": "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE",
+    "public_schema_p0d": "FAIL_PUBLIC_SCHEMA_IDENTITY_UNRESOLVED",
+    "replica_cmds_p0e": "TECHNICAL_BLOCKED_TARGET_DATE_NOT_FOUND"
+  },
+  "source_rationale": "Raw S3 explorer_blocks objects are a materially different storage representation from the already-tested Explorer blockDetails JSON surface. P0F is a source-schema audit only, not a retry of outcomes and not a rescue of the parent replication.",
+  "authorization_gate": {
+    "requester_pays_charges_authorized": false,
+    "aws_credentials_authorized": false,
+    "execution_authorized": false,
+    "required_runtime_confirmation": "I_EXPLICITLY_AUTHORIZE_CVFB_P0F_EXPLORER_BLOCKS_REQUESTER_PAYS",
+    "rule": "No S3 request may occur without a separate immutable P0F authorization amendment and the exact runtime confirmation."
+  },
+  "official_source": {
+    "bucket": "hl-mainnet-node-data",
+    "prefix_family": "explorer_blocks",
+    "authority": "Hyperliquid official historical node data"
+  },
+  "frozen_target": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "center_height": 280538302,
+    "scan_height_start": 280538152,
+    "scan_height_end": 280538452,
+    "scan_block_count": 301,
+    "assets": [
+      "BTC",
+      "ETH"
+    ]
+  },
+  "deterministic_object_hypothesis": {
+    "basis": "Pre-execution observed archive hierarchy groups explorer_blocks into 100,000,000 / 1,000,000 / 100-height buckets with .rmp.lz4 objects.",
+    "top_100m": 200000000,
+    "mid_1m": 280000000,
+    "chunk_anchors": [
+      280538100,
+      280538200,
+      280538300,
+      280538400
+    ],
+    "exact_keys": [
+      "explorer_blocks/200000000/280000000/280538100.rmp.lz4",
+      "explorer_blocks/200000000/280000000/280538200.rmp.lz4",
+      "explorer_blocks/200000000/280000000/280538300.rmp.lz4",
+      "explorer_blocks/200000000/280000000/280538400.rmp.lz4"
+    ],
+    "adaptation_after_source_access_forbidden": true
+  },
+  "cost_and_completeness_caps": {
+    "max_list_requests": 0,
+    "max_head_requests": 4,
+    "max_get_requests": 4,
+    "max_single_object_bytes": 12582912,
+    "max_total_compressed_object_bytes": 33554432,
+    "planning_cost_ceiling_usd": 0.05,
+    "rule": "HEAD all four exact frozen keys before any GET. If any key is missing or caps would be exceeded, fail closed before body download."
+  },
+  "frozen_decoder": "LZ4 frame -> MessagePack stream",
+  "schema_extraction_policy": {
+    "emit_raw_object_bodies": false,
+    "emit_market_numeric_values": false,
+    "emit_oracle_numeric_values": false,
+    "emit_key_paths": true,
+    "emit_action_type_variant_kind_labels": true,
+    "emit_object_sha256": true,
+    "emit_object_byte_counts": true,
+    "candidate_token": "oracle",
+    "hip3_guard": "HIP-3 deployer setOracle alone is insufficient evidence for native BTC/ETH validator-oracle provenance."
+  },
+  "decision_rule": {
+    "PASS_NATIVE_ORACLE_SCHEMA_CANDIDATE": "All four frozen raw objects exist, fit caps, decode under the frozen decoder, and expose at least one non-HIP-3 oracle-related key path or action/type/variant/kind label. This only permits a separately frozen P1 reconstruction audit.",
+    "FAIL_NO_NATIVE_ORACLE_SCHEMA_VISIBLE": "All four frozen raw objects exist and decode within caps but expose no non-HIP-3 oracle-related schema candidate.",
+    "TECHNICAL_BLOCKED_SOURCE_COVERAGE": "At least one frozen exact key is absent.",
+    "TECHNICAL_BLOCKED_COST_OR_DECODER": "Byte caps or the frozen decoder prevent complete source-schema adjudication.",
+    "BLOCKED_NO_AUTHORIZATION": "Separate P0F requester-pays authorization is absent."
+  },
+  "forbidden_outputs": [
+    "oracle numeric values",
+    "mark/mid/price numeric values",
+    "funding cashflow",
+    "basis PnL",
+    "full-mechanism return",
+    "orientation comparison",
+    "asset ranking",
+    "2026 market data"
+  ],
+  "economic_outcomes_authorized": false,
+  "primary_replication_reopened": false,
+  "2026_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "merge_to_main_authorized": false
+}

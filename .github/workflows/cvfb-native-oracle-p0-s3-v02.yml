@@ -1,0 +1,20 @@
+name: cvfb-native-oracle-p0-s3-v02-adjudicated
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adjudicated:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Final access-gate guard
+        run: |
+          echo 'S3 V0.2 unsigned source-access adjudication is FINAL.'
+          echo 'Canonical run: 35238455742.'
+          echo 'explorer_blocks=HTTP403; replica_cmds=HTTP403.'
+          echo 'Decision: BLOCKED_REQUESTER_PAYS_NO_AUTHORIZED_CREDENTIALS.'
+          echo 'No credentials, requester-pays billing, object bytes, economic outcomes, or 2026 data were opened.'
+          exit 1

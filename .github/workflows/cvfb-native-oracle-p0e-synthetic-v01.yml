@@ -1,0 +1,33 @@
+name: cvfb-native-oracle-p0e-synthetic-v01
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-no-s3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen P0E parser/runtime dependencies
+        run: python -m pip install --disable-pip-version-check -r research/cross_venue_funding_basis/requirements_p0e_v01.txt
+      - name: Compile source-only P0E code
+        run: |
+          python -m py_compile research/cross_venue_funding_basis/cvfb_native_oracle_p0e_replica_cmds_v01.py
+          python -m py_compile research/cross_venue_funding_basis/cvfb_native_oracle_p0e_synthetic_v01.py
+      - name: Execute synthetic decoder and authorization suite only
+        env:
+          AWS_ACCESS_KEY_ID: ''
+          AWS_SECRET_ACCESS_KEY: ''
+          AWS_SESSION_TOKEN: ''
+          CVFB_P0E_REQUESTER_PAYS_AUTHORIZED: ''
+        run: python research/cross_venue_funding_basis/cvfb_native_oracle_p0e_synthetic_v01.py
+      - name: Assert no authorization amendment is present
+        run: |
+          test ! -e research/cross_venue_funding_basis/CVFB_NATIVE_ORACLE_PROVENANCE_P0E_REQUESTER_PAYS_AUTHORIZATION_V0.1.json
+          echo 'P0E_NO_AUTHORIZATION_AMENDMENT_PASS'

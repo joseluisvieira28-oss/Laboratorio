@@ -1,0 +1,44 @@
+{
+  "schema_version": "0.1B",
+  "recovery_id": "CVFB_NATIVE_ORACLE_PROVENANCE_RECOVERY_V0.5",
+  "stage": "P0_SOURCE_SCHEMA_PROBE",
+  "status": "FROZEN_BEFORE_V0.1B_RERUN",
+  "supersedes_execution_only": "V0.1A_RESPONSE_ACCEPTANCE",
+  "scientific_design_changed": false,
+  "reason": "V0.1A passed compile and frozen-contract guards but accepted any JSON object returned with HTTP 200. A response without valid blockDetails.blockTime then failed outside the retry loop. V0.1B changes only semantic response validation/retry behavior.",
+  "unchanged_scientific_contract": {
+    "target_utc": "2024-09-01T00:00:00Z",
+    "target_epoch_ms": 1725148800000,
+    "height_bracket": [100000000, 600000000],
+    "scan_radius_blocks_each_side": 150,
+    "scan_block_count": 301,
+    "assets": ["BTC", "ETH"],
+    "boundary_selection": "first block whose blockTime is >= target, with previous block strictly before target",
+    "schema_candidate_gate": "oracle-related JSON key path OR oracle-related action/type label",
+    "market_numeric_values_emitted": false,
+    "economic_outcomes_authorized": false
+  },
+  "transport_only_changes": {
+    "valid_success_shape": "top-level JSON object with type=blockDetails and nested blockDetails object containing integer-convertible blockTime",
+    "invalid_http200_json_policy": "treat as transport-semantic failure; retry the same requested height under unchanged backoff; never substitute another height",
+    "http_429_policy": "respect Retry-After when present; otherwise sleep at least 65 seconds; retry same height",
+    "scan_shards": 12,
+    "scan_partition": "same deterministic contiguous partition of the frozen 301 heights",
+    "aggregation": "fail closed unless all 301 unique frozen heights are present and contiguous"
+  },
+  "forbidden": [
+    "change target timestamp",
+    "change frozen height bracket",
+    "change +/-150 scan radius",
+    "drop or substitute blocks",
+    "adaptive scan radius",
+    "emit oracle/mark/price numeric values",
+    "compute funding cashflow or PnL",
+    "use 2026 market data",
+    "third-party price substitution",
+    "reopen primary replication",
+    "paper/live trading",
+    "merge to main"
+  ],
+  "decision_rule_unchanged": true
+}
