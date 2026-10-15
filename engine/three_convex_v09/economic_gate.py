@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 from math import sqrt
 from datetime import datetime,timezone
 
-START_ISO="2026-10-15T00:00:00+00:00"
+START_ISO="2026-10-16T00:00:00+00:00"
 LANES=("SOL_CONVEX_NATIVE_5M","SOL_CONVEX_1H","BNB_CONVEX_4H")
 
 class EconomicHalt(ValueError):pass
