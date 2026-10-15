@@ -1,0 +1,95 @@
+{
+  "lab_id": "CROSS-ASSET-VOL-STRESS-001",
+  "mve_id": "CAVS-VXSETTLE-W1-001",
+  "status": "DISCOVERY_AUTHORIZED_SOURCE_BOUND",
+  "source_gate": {
+    "classification": "SOURCE_DATA_PASS",
+    "run_id": 35060493625,
+    "artifact_id": 10431384102,
+    "artifact_zip_sha256": "a02dccae0c3bc866754ed64268e559630ddd3ebdf47f7cc65d0be00eca7d38b5",
+    "drive_archive_id": "14mx9DDgrQy2lI8xa1bvwfo-Jv2JuhKeE",
+    "canonical_count": 366,
+    "canonical_sha256": "48c16e171c06f61378ac216d75d76a22491b417ae904936c3538a34dfb6ab1be",
+    "manifest_sha256": "ab6bf197d8945b1ad6590ad9a526f3a34b88573fce0b61abb5a85c339a8fbecc",
+    "raw_sha256_by_year": {
+      "2018": "c24dc379ac95493e1cd001ad71835127cecd7451eff50f9c8533e281438fb753",
+      "2019": "da61c06b4f3e0b0ae87eeb698963e903aad152b57d0e7c833219c7129ace564e",
+      "2020": "e8da1bddeca9fbe80f7d08fed23e010d8358cbb6a10d5d1ee13941d6aba63a5f",
+      "2021": "37263e615b9a3dc30146ca571b67af5d58103d36d04c1741aec85a06e96547da",
+      "2022": "2d8a9675e806e80e670f4a9ed777cba2c5339f6d7d6778d0d32740e2a0361998",
+      "2023": "4f397581859e7f63a9c275aa574c0be5456ce6789f0532b0b34a105eaf1ad649",
+      "2024": "5d58ab11071d19ca7c3d621a7067fa8e51bdeec148e4cd12e65fec0b95d3d720"
+    }
+  },
+  "timing_authority": {
+    "github_commit": "ceb89961a265abeba15facb624e5e4d20e574a25",
+    "drive_document_id": "1meGjmpzmJAhXXAiM0a8PAnUvPPogKBWjNUDJ1e3a120",
+    "entry_rule": "provider_expire_date_plus_2_calendar_days_00_00_utc_btc_daily_open",
+    "exit_rule": "entry_plus_7_calendar_days_00_00_utc_btc_daily_open",
+    "reason": "uniform anti-lookahead buffer after official Cboe 2018-12-05 settlement-delay exception identified before BTC outcomes"
+  },
+  "signal": {
+    "delta_vx_gt_0": "SHORT_BTC",
+    "delta_vx_lt_0": "LONG_BTC",
+    "delta_vx_eq_0": "NO_TRADE",
+    "thresholds": false,
+    "filters": false,
+    "monthly_vs_weekly_selection": false
+  },
+  "market_data": {
+    "provider": "Binance Data Vision",
+    "market": "spot",
+    "symbol": "BTCUSDT",
+    "interval": "1d",
+    "months": "2018-01_through_2024-12_only",
+    "provider_checksum_required": true,
+    "access_2025": false,
+    "access_2026": false
+  },
+  "return_math": {
+    "gross_bps": "direction * (exit_open / entry_open - 1.0) * 10000.0",
+    "direction_long": 1,
+    "direction_short": -1,
+    "net10_bps": "gross_bps - 10.0",
+    "net20_bps": "gross_bps - 20.0",
+    "profit_factor_net10": "sum_positive_net10 / abs(sum_negative_net10)",
+    "win_rate_net10": "fraction_net10_gt_0"
+  },
+  "position_policy": {
+    "one_position_at_a_time": true,
+    "entry_equal_prior_exit": "allowed_exit_first_then_new_entry",
+    "entry_before_prior_exit": "suppress_new_signal",
+    "missing_entry_or_exit_bar": "drop_fail_closed",
+    "entry_or_exit_outside_2018_2024": "drop_fail_closed"
+  },
+  "costs_bps_roundtrip": {
+    "primary_net10": 10.0,
+    "stress_net20": 20.0
+  },
+  "bootstrap": {
+    "repetitions": 5000,
+    "seed": 230911,
+    "block_length_resolved_trades": 4,
+    "confidence": 0.95
+  },
+  "promotion_gates": {
+    "n_resolved_gte": 300,
+    "mean_net10_gt": 0.0,
+    "profit_factor_net10_gt": 1.0,
+    "bootstrap_95_lower_mean_net10_gt": 0.0,
+    "nonnegative_calendar_years_2018_2024_gte": 5,
+    "nonnegative_calendar_years_2021_2024_gte": 3,
+    "source_binding_pass": true,
+    "protected_period_firewalls_pass": true
+  },
+  "classification_rule_if_n_lt_300": "INSUFFICIENT_SAMPLE",
+  "discovery_authorized": true,
+  "oos_2025_authorized": false,
+  "access_2026_authorized": false,
+  "live_trading_authorized": false,
+  "exchange_mutation_authorized": false,
+  "main_merge_authorized": false,
+  "deployment_authorized": false,
+  "post_outcome_tuning_authorized": false,
+  "rescue_authorized": false
+}
