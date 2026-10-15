@@ -1,0 +1,64 @@
+name: CONVEX V07 Telegram and MEXC watcher — No Orders
+on:
+  pull_request:
+    paths:
+      - 'engine/three_convex_v07/**'
+      - '.github/workflows/three-convex-v07-telegram.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v07-cross-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: V05 immutable V5 parent Git object
+        shell: bash
+        run: |
+          actual="$(git hash-object engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt)"
+          echo "PINNED_V5_PARENT_GIT_BLOB=$actual"
+          test "$actual" = "19c8b8e2363f253458db42111b6701f3a3ef1f4b"
+      - name: V07 Telegram, account and public feed mocked unit tests
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v07 -p 'test_*.py' -v
+      - name: V06 broker protocol and authorization regression suite
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v06 -p 'test_*.py' -v
+      - name: V05 pinned parent, risk and stop baseline regression suite
+        shell: bash
+        run: python -m unittest discover -s engine/three_convex_v05 -p 'test_*.py' -v
+      - name: Build standalone V07 Windows watcher NO LIVE ORDERS
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pyinstaller==6.16.0
+          if ($LASTEXITCODE -ne 0) { throw "PYINSTALLER_INSTALL_FAILED" }
+          python -m PyInstaller --clean --noconfirm --onefile --name V07_Telegram_MEXC_Watcher --paths . --add-data "engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt;engine/three_convex_v05/vendor" engine/three_convex_v07/watch.py
+          if ($LASTEXITCODE -ne 0) { throw "WINDOWS_BUILD_FAILED" }
+          & ./dist/V07_Telegram_MEXC_Watcher.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "EXE_HELP_FAILED" }
+          # Must fail closed on missing local encrypted credentials, no HTTP.
+          & ./dist/V07_Telegram_MEXC_Watcher.exe --data-dir ./v07_test_missing_secrets --once
+          if ($LASTEXITCODE -eq 0) { throw "UNSAFE_EXE_ACCEPTED_MISSING_SECRETS" }
+          New-Item -ItemType Directory -Force -Path v07_release | Out-Null
+          Copy-Item dist/V07_Telegram_MEXC_Watcher.exe v07_release/
+          Copy-Item engine/three_convex_v07/windows/*.ps1 v07_release/
+          Copy-Item engine/three_convex_v07/README_PORTUGUES.md v07_release/LEIA_PRIMEIRO_V07.md
+          $hash=(Get-FileHash v07_release/V07_Telegram_MEXC_Watcher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content v07_release/SHA256_EXE.txt ("SHA256_EXE="+$hash) -Encoding ascii
+          Write-Output "V07_READONLY_TELEGRAM_WATCHER_ZIP_FLAT_READY"
+      - name: Publish one-layer Windows V07
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CryptoLab_V07_Telegram_MEXC_Windows_NO_LIVE_GO
+          path: v07_release/
+          if-no-files-found: error
