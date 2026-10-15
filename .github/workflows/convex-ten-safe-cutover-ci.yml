@@ -7,6 +7,7 @@ on:
       - 'engine/convex_ten_governance/**'
       - '.github/workflows/convex-ten-safe-cutover-ci.yml'
       - 'tests/convex-ten-safe-cutover-offline.ps1'
+      - 'tests/convex-ten-cutover-process-isolation-sim.ps1'
   pull_request:
     paths:
       - 'engine/convex_ten_governance/**'
@@ -28,6 +29,7 @@ jobs:
         shell: pwsh
         run: |
           ./tests/convex-ten-safe-cutover-offline.ps1
+          ./tests/convex-ten-cutover-process-isolation-sim.ps1
   release-operator-scripts:
     needs: ps-scripts-offline
     runs-on: windows-latest
