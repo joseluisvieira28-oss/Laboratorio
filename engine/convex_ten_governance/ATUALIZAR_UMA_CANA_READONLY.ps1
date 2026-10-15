@@ -142,11 +142,11 @@ try {
     $backupReady=$true
     # Replace exactly the executable; the existing DPAPI loader remains untouched.
     Copy-Item -LiteralPath $source -Destination $target -Force -ErrorAction Stop
+    $binarySwapped=$true
     if ($Version -eq 'V12') {
         # New V12 runner file is bundled and pinned to same release directory.
         Copy-Item -LiteralPath (Join-Path $package 'RUN_V12.ps1') -Destination $runner -Force -ErrorAction Stop
     }
-    $binarySwapped=$true
     if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pkgHash) {throw 'INSTALLED_HASH_MISMATCH'}
     $started=[datetime]::UtcNow
     Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
