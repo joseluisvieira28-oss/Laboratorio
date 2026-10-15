@@ -1,0 +1,52 @@
+name: CONVEX V11 Experimental Signal Unit Tests
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'feature/convex-v11-experimental-three-lanes-2026-10-15'
+  pull_request:
+    paths:
+      - 'engine/three_convex_v11/**'
+      - '.github/workflows/convex-v11-experimental-tests.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify frozen parent and run isolated V11 tests
+        shell: bash
+        run: |
+          test "$(git hash-object engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt)" = "19c8b8e2363f253458db42111b6701f3a3ef1f4b"
+          python -m unittest discover -s engine/three_convex_v11 -p 'test_*.py' -v
+  windows-package:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build isolated read-only executable
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pyinstaller==6.16.0
+          python -m PyInstaller --noconfirm --clean --onefile --name V11_Experimental_Signals --paths . --add-data 'engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt;engine/three_convex_v05/vendor' engine/three_convex_v11/watcher.py
+          & dist/V11_Experimental_Signals.exe --help
+          if ($LASTEXITCODE -ne 0) { throw 'PACKAGED_EXE_SMOKE_FAILED' }
+          (Get-FileHash dist/V11_Experimental_Signals.exe -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content dist/SHA256_EXE.txt
+          Copy-Item engine/three_convex_v11/windows/*.ps1 dist/
+          Compress-Archive -Path dist/V11_Experimental_Signals.exe,dist/SHA256_EXE.txt,dist/*.ps1 -DestinationPath CONVEX_V11_EXPERIMENTAL_WINDOWS.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX_V11_EXPERIMENTAL_WINDOWS_PREVIEW_NOT_INSTALLED
+          path: CONVEX_V11_EXPERIMENTAL_WINDOWS.zip
+          retention-days: 14
