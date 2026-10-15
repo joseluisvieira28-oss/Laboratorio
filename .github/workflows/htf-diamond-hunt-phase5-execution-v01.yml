@@ -1,0 +1,70 @@
+name: HTF Diamond Hunt Phase5 Exact-Rule Holdout V0.1
+
+on:
+  push:
+    branches: [htf-diamond-hunt-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/PHASE5_EXECUTION_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  phase5-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Phase5 frozen authorities before artifact download or outcomes
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=Path('research/htf_diamond_hunt')
+          f=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE5_FORWARD_HOLDOUT_FREEZE_V0.1.json').read_text())
+          b=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE5_SOURCE_BINDING_V0.1.json').read_text())
+          c=json.loads((r/'HTF_DIAMOND_HUNT_001_PHASE5_IMPLEMENTATION_CLARIFICATION_01.json').read_text())
+          assert f['status']=='FROZEN_BEFORE_PHASE5_SOURCE_ACCESS_OR_OUTCOMES'
+          assert [x['cell_id'] for x in f['cells']]==['DH-02-HO1','DH-03-HO1']
+          assert f['dataset']['allowed_source_years']==[2023,2024]
+          assert f['dataset']['forbidden_source_years']==[2025,2026]
+          assert f['execution_and_funding']=='IDENTICAL_TO_PHASE4'
+          assert f['governance']['no_post_outcome_tuning'] is True
+          assert b['status']=='FROZEN_EXACT_PHASE5_SOURCE_BEFORE_ANY_HOLDOUT_OUTCOME'
+          assert b['source_run_id']==35076213767
+          assert b['artifact_id']==10438795414
+          assert b['artifact_digest']=='sha256:d84cc2f9117519568fa1a8d276217550da82ddffffc2df37c195a95787dda752'
+          assert b['source_fingerprint']=='d1a95d51d99eba0bd5f66e91d75ddcd175f7a84d954ba28a44c2dcd39ef4c5cb'
+          assert b['outcome_evaluation_performed'] is False
+          assert b['access_2025_performed'] is False and b['access_2026_performed'] is False
+          assert c['status']=='FROZEN_BEFORE_PHASE5_OUTCOMES'
+          assert c['governance']['outcomes_inspected_before_this_clarification'] is False
+          print('PHASE5_AUTHORITY_GATE_PASS')
+          PY
+      - name: Compile frozen Phase5 execution runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_phase5_execution_v01.py
+      - name: Download exact frozen Phase5 source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase5_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35076213767
+      - name: Run exact-rule forward holdout with Phase4 minute-path and funding semantics
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        env:
+          PYTHONPATH: ${{ github.workspace }}/Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_phase5_execution_v01.py research/local_data/htf_diamond_hunt_phase5_source_v01
+      - name: Upload Phase5 holdout evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_EXECUTION_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase5_execution_v01/
+          if-no-files-found: error
+          retention-days: 90

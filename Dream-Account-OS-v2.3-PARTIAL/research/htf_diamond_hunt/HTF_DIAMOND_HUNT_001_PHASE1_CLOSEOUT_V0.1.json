@@ -1,0 +1,52 @@
+{
+  "campaign_id": "HTF-DIAMOND-HUNT-001",
+  "phase": "PHASE_1_FROZEN_SEVEN_CELL_CAMPAIGN",
+  "status": "PHASE1_COMPLETE_HAS_SURVIVOR_NOT_VALIDATED_EDGE",
+  "closeout_date": "2026-09-16",
+  "source": {
+    "provider": "Binance public data",
+    "market": "Spot",
+    "years": [2021, 2022],
+    "artifact_id": 10434938955,
+    "artifact_digest": "sha256:39fa00e9c3e022b6135f5efdeef0868c1dfb25a80e31331625ace79156212c62",
+    "source_fingerprint": "08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78",
+    "protected_years_accessed": []
+  },
+  "replication_artifact": {
+    "run_id": 35069818179,
+    "artifact_id": 10436045370,
+    "artifact_digest": "sha256:a1e0fdf04f261eb1798a8cebf1cc5cdecf519380a22d33fca78bc3a7fe7c02d1"
+  },
+  "scale_transfer_artifact": {
+    "run_id": 35072257533,
+    "artifact_id": 10436821793,
+    "artifact_digest": "sha256:b4d3b940277193c1669282b2ecb33036d8ce5f302d887cd3b005004c7a5c2e36"
+  },
+  "cells": {
+    "DH-01": {"strategy": "Donchian 1D exact independent replication", "classification": "INSUFFICIENT_SAMPLE", "resolved_trades": 73, "base_expectancy_r": 0.36926859029135417, "base_profit_factor": 1.5860131976362795, "stress_expectancy_r": 0.35479317794267207, "bootstrap_95": [-0.11956095960917358, 0.875891870816257]},
+    "DH-02": {"strategy": "Donchian 6H clock-time scale transfer", "classification": "SURVIVES", "resolved_trades": 114, "base_expectancy_r": 0.3949673036174697, "base_profit_factor": 1.6167982549642677, "base_win_rate": 0.35964912280701755, "stress_expectancy_r": 0.37435921018039153, "stress_profit_factor": 1.5846157528844471, "bootstrap_95": [0.04296613631425037, 0.7457176605585701], "failed_conditions": []},
+    "DH-03": {"strategy": "Donchian 12H clock-time scale transfer", "classification": "INSUFFICIENT_SAMPLE", "resolved_trades": 86, "base_expectancy_r": 0.33840052314323177, "base_profit_factor": 1.519686517684249, "stress_expectancy_r": 0.32323364435946716, "bootstrap_95": [-0.046766624347914225, 0.7287070155042743]},
+    "DH-04": {"strategy": "EMA Pullback 1D exact independent replication", "classification": "INSUFFICIENT_SAMPLE", "resolved_trades": 11, "base_expectancy_r": -0.46876036330043763, "base_profit_factor": 0.4270706670772429},
+    "DH-05": {"strategy": "EMA Pullback 6H clock-time scale transfer", "classification": "INSUFFICIENT_SAMPLE", "resolved_trades": 25, "base_expectancy_r": -0.45837565670349195, "base_profit_factor": 0.4270304291206351, "stress_expectancy_r": -0.482834606988597},
+    "DH-06": {"strategy": "EMA Pullback 12H clock-time scale transfer", "classification": "INSUFFICIENT_SAMPLE", "resolved_trades": 23, "base_expectancy_r": -0.38649823813103573, "base_profit_factor": 0.5061411401658987, "stress_expectancy_r": -0.4037879823992419},
+    "DH-07": {"strategy": "PBR 4H exact independent replication", "classification": "INSUFFICIENT_SAMPLE", "resolved_trades": 74, "base_expectancy_r": -0.41178464411350973, "base_profit_factor": 0.5085151021871013, "stress_expectancy_r": -0.4373000374492952, "bootstrap_95": [-0.6904979029830358, -0.09884434750998339]}
+  },
+  "scientific_interpretation": {
+    "survivor_cells": ["DH-02"],
+    "donchian_family_observation": "DH-01, DH-02 and DH-03 all produced positive point expectancy on the independent 2021-2022 Binance Spot corpus; only DH-02 met every frozen sample/economic/statistical/stress gate. DH-03 remained below the frozen 100 resolved-trade floor and its bootstrap interval crossed zero. No winner timeframe is selected post-outcome.",
+    "ema_family_observation": "DH-04, DH-05 and DH-06 were negative on point economics and/or very low sample; no promotion.",
+    "pbr_observation": "DH-07 was economically negative with a fully negative bootstrap interval despite insufficient sample; no promotion.",
+    "survivor_is_validated_edge": false,
+    "diamond_claim_authorized": false,
+    "live_trading_authorized": false
+  },
+  "governance": {
+    "no_2023_2026_access": true,
+    "no_post_outcome_tuning": true,
+    "no_asset_selection": true,
+    "no_timeframe_winner_selection": true,
+    "no_merge_to_main": true,
+    "no_live_trading": true,
+    "next_step_requires_new_prospective_validation_authority": true
+  }
+}

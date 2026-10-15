@@ -1,0 +1,47 @@
+name: HTF Diamond Hunt Phase5 Source Gate V0.1
+
+on:
+  push:
+    branches: [htf-diamond-hunt-v0.1]
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/PHASE5_SOURCE_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  phase5-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Phase5 freeze before network
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          f=json.loads(Path('research/htf_diamond_hunt/HTF_DIAMOND_HUNT_001_PHASE5_FORWARD_HOLDOUT_FREEZE_V0.1.json').read_text())
+          assert f['status']=='FROZEN_BEFORE_PHASE5_SOURCE_ACCESS_OR_OUTCOMES'
+          assert f['dataset']['allowed_source_years']==[2023,2024]
+          assert f['dataset']['forbidden_source_years']==[2025,2026]
+          assert f['primary_candidate']=='DH-02-HO1'
+          assert f['governance']['no_post_outcome_tuning'] is True
+          print('PHASE5_FREEZE_GATE_PASS')
+          PY
+      - name: Compile source gate
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_phase5_source_gate_v01.py
+      - name: Run price plus funding source gate only
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_phase5_source_gate_v01.py
+      - name: Upload Phase5 source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_PHASE5_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_phase5_source_v01/
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,71 @@
+name: HTF Diamond Hunt Scale Transfers V0.1
+
+on:
+  push:
+    branches:
+      - htf-diamond-hunt-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/htf_diamond_hunt/SCALE_TRANSFER_RUN_TRIGGER_V0.1.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  scale-transfers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout frozen campaign
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify frozen campaign authority before source artifact
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=Path('research/htf_diamond_hunt')
+          f=json.loads((r/'HTF_DIAMOND_HUNT_001_CAMPAIGN_FREEZE_V0.1.json').read_text())
+          b=json.loads((r/'HTF_DIAMOND_HUNT_001_SOURCE_BINDING_V0.1.json').read_text())
+          assert f['status']=='FROZEN_PRE_OUTCOME'
+          assert f['execution_order']==['DH-01','DH-04','DH-07','DH-02','DH-03','DH-05','DH-06']
+          assert b['artifact_id']==10434938955
+          assert b['artifact_digest']=='sha256:39fa00e9c3e022b6135f5efdeef0868c1dfb25a80e31331625ace79156212c62'
+          assert b['source_fingerprint']=='08402ecb8931e42a0766370f55e46adc3de02474ce3a6128f4b2cdd89bb4ac78'
+          for cid in ('DH-02','DH-03','DH-05','DH-06'):
+              assert any(x['cell_id']==cid for x in f['cells'])
+          assert f['governance']['no_post_outcome_tuning'] is True
+          print('SCALE_AUTHORITY_GATE_PASS')
+          PY
+
+      - name: Compile frozen scale-transfer runner
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python -m py_compile research/htf_diamond_hunt/htf_diamond_hunt_scale_transfers_v01.py
+
+      - name: Download exact frozen independent source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_SOURCE_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_source_v01
+          github-token: ${{ github.token }}
+          run-id: 35068227095
+
+      - name: Run frozen DH-02 DH-03 DH-05 DH-06 scale transfers
+        working-directory: Dream-Account-OS-v2.3-PARTIAL
+        run: python research/htf_diamond_hunt/htf_diamond_hunt_scale_transfers_v01.py research/local_data/htf_diamond_hunt_source_v01
+
+      - name: Upload scale-transfer evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HTF_DIAMOND_HUNT_001_SCALE_TRANSFERS_V01
+          path: Dream-Account-OS-v2.3-PARTIAL/research/local_data/htf_diamond_hunt_scale_transfers_v01/
+          if-no-files-found: error
+          retention-days: 90
