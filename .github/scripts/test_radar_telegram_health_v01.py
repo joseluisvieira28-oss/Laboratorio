@@ -50,6 +50,28 @@ class FakeResponse:
 
 
 class TelegramHealthTests(unittest.TestCase):
+    def test_invalid_transport_is_one_alarm_not_component_failures(self):
+        r = classify_snapshot(None, now=NOW, fetch_error="INVALID_JSON")
+        self.assertEqual(r["reason_codes"], ["PUBLIC_RADAR_UNREACHABLE_INVALID_JSON"])
+        self.assertTrue(r["notify"])
+
+    def test_starting_is_never_healthy_or_missing_timestamp_cascade(self):
+        r = classify_snapshot({"health": "STARTING", "mode": "PUBLIC_SHADOW_ONLY"}, now=NOW)
+        self.assertEqual(r["reason_codes"], ["PUBLIC_SHADOW_STARTING"])
+        self.assertTrue(r["notify"])
+
+    def test_starting_does_not_hide_explicit_safety_failure(self):
+        s = valid_state(); s["health"] = "STARTING"; s["orders_created"] = True
+        self.assertIn("SHADOW_SAFETY_FLAGS_UNVERIFIED", classify_snapshot(s, now=NOW)["reason_codes"])
+
+    def test_pending_archive_never_silent(self):
+        s = valid_state(); s["ced1d_render_shadow"]["status"] = "WAITING_SOURCE_ARCHIVE"
+        self.assertIn("CED1D_SOURCE_ARCHIVE_PENDING", classify_snapshot(s, now=NOW)["reason_codes"])
+
+    def test_empty_present_gap_object_is_unverified(self):
+        s = valid_state(); s["runtime_gap_history"] = {}
+        self.assertIn("CONTINUITY_REVIEW_UNVERIFIED", classify_snapshot(s, now=NOW)["reason_codes"])
+
     def test_valid_snapshot_silent(self):
         r = classify_snapshot(valid_state(), now=NOW)
         self.assertEqual(r["status"], "OK")

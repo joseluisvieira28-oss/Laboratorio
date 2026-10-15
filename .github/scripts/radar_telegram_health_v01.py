@@ -28,8 +28,22 @@ def classify_snapshot(snapshot: object, *, now: datetime, fetch_error: str | Non
     if fetch_error is not None:
         reasons.append("PUBLIC_RADAR_UNREACHABLE_" + fetch_error)
     if not isinstance(snapshot, dict):
-        snapshot = {}
-        reasons.append("NO_VALID_JSON_STATE")
+        # Unavailable transport is one incident, not six proven component faults.
+        # Keep an alarm; identity, freshness and continuity remain unverified.
+        return _report(reasons or ["NO_VALID_JSON_STATE"], now=now)
+    if snapshot.get("health") == "STARTING":
+        reasons.append("PUBLIC_SHADOW_STARTING")
+        identity = snapshot.get("runtime_identity")
+        if isinstance(identity, dict) and identity.get("service_id") not in (
+            None, "srv-dalqkpu1egvs73fhiehg"):
+            reasons.append("CANONICAL_RUNTIME_IDENTITY_UNVERIFIED")
+        if snapshot.get("mode") != "PUBLIC_SHADOW_ONLY":
+            reasons.append("PUBLIC_SHADOW_MODE_UNVERIFIED")
+        if any(snapshot.get(k) is not None and snapshot.get(k) is not False for k in (
+                "orders_created", "authenticated_exchange_api_used",
+                "exchange_mutation_performed", "live_capital_enabled")):
+            reasons.append("SHADOW_SAFETY_FLAGS_UNVERIFIED")
+        return _report(reasons, now=now)
     if snapshot.get("mode") != "PUBLIC_SHADOW_ONLY":
         reasons.append("PUBLIC_SHADOW_MODE_UNVERIFIED")
     if snapshot.get("health") != "OK":
@@ -49,12 +63,17 @@ def classify_snapshot(snapshot: object, *, now: datetime, fetch_error: str | Non
     if not isinstance(ced, dict) or ced.get("status") in {"FAIL_CLOSED", "SOURCE_BLOCKED", "ERROR", None}:
         reasons.append("CED1D_COLLECTOR_FAIL_CLOSED_OR_UNVERIFIED")
 
+    if isinstance(ced, dict) and ced.get("status") == "WAITING_SOURCE_ARCHIVE":
+        reasons.append("CED1D_SOURCE_ARCHIVE_PENDING")
+
     gaps = snapshot.get("runtime_gap_history") or {}
     if isinstance(gaps, dict):
-        if gaps.get("continuity_review_status") in {
-            "HISTORICAL_GAPS_REVIEW_REQUIRED", "UNVERIFIED"
-        }:
+        if gaps.get("continuity_review_status") == "HISTORICAL_GAPS_REVIEW_REQUIRED":
             reasons.append("CONTINUITY_REVIEW_OUTSTANDING")
+        elif gaps.get("continuity_review_status") not in {
+            "NO_PERSISTED_GAPS", "COMPLETE_EVIDENCE_RECONCILIATION"
+        }:
+            reasons.append("CONTINUITY_REVIEW_UNVERIFIED")
     else:
         reasons.append("CONTINUITY_REVIEW_UNVERIFIED")
     # Legacy live state has no lifetime gap counter. An isolated bucket's
@@ -67,6 +86,10 @@ def classify_snapshot(snapshot: object, *, now: datetime, fetch_error: str | Non
     if any(snapshot.get(k) is not False for k in flags):
         reasons.append("SHADOW_SAFETY_FLAGS_UNVERIFIED")
 
+    return _report(reasons, now=now)
+
+
+def _report(reasons: list[str], *, now: datetime) -> dict:
     # Notification categories are deliberately high-level: never forward
     # unknown payloads, credentials, prices, forecasts or execution instructions.
     reasons = sorted(set(reasons))
