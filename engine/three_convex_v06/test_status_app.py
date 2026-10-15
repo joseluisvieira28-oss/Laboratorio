@@ -1,6 +1,8 @@
 """Offline fixture tests of authenticated account interpretation. No network."""
 import unittest
+import time
 from copy import deepcopy
+from engine.three_convex_v06.test_market_gate import spec, ticker
 
 from engine.three_convex_v06.status_app import (
     inspect, fee_summary, usdt_balance, strict_order_pages, ReadonlyGate,
@@ -32,6 +34,14 @@ class FakeClient:
     def position_mode(self): return self.mode
     def account_assets(self): return self.assets
     def account_fees(self,symbol): return self.fees
+    def contract_metadata(self,symbol):
+        return spec(symbol, "0.1" if symbol=="SOL_USDT" else "0.01")
+    def public_ticker(self,symbol):
+        q=ticker(symbol, "100" if symbol=="SOL_USDT" else "740",
+                 "99.99" if symbol=="SOL_USDT" else "739.99")
+        if symbol=="BNB_USDT":
+            q["fairPrice"]="741"
+        return q
     def _exchange(self,method,path,params):
         self.read_paths.append((method,path,params))
         return self.extra_pages[params["page_num"]]
@@ -40,7 +50,7 @@ class FakeClient:
 class TestAuthInterpretation(unittest.TestCase):
     def test_actual_fields_parsed_without_secrets(self):
         res=inspect(FakeClient())
-        self.assertEqual(res["status"],"AUTHENTICATED_ACCOUNT_VALUES_READ_NO_LIVE_GO")
+        self.assertEqual(res["status"],"AUTHENTICATED_ACCOUNT_AND_PUBLIC_MARKET_READS_NO_LIVE_GO")
         self.assertEqual(res["usdt_equity"],"101.25")
         self.assertEqual(res["usdt_available"],"101.2")
         self.assertEqual(res["position_mode"],"HEDGE")
@@ -48,6 +58,8 @@ class TestAuthInterpretation(unittest.TestCase):
         self.assertEqual(res["fees_by_symbol"]["SOL_USDT"]["api_fee_model_taker_bps"],"8.0000")
         self.assertTrue(res["fees_by_symbol"]["BNB_USDT"]["ten_x_eligible_from_reported_api_fee_bounds"])
         self.assertFalse(res["broker_order_execution_path_armed"])
+        self.assertTrue(res["both_public_one_lot_risk_budgets_pass"])
+        self.assertTrue(res["exchange_contract_tick_lot_verified"])
 
     def test_real_fee_above_floor_kept(self):
         d=deepcopy(FEE)
