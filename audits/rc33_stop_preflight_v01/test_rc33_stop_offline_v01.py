@@ -72,6 +72,20 @@ class SyntheticStopContractTests(unittest.TestCase):
         self.assertEqual(model(snapshot_age_seconds=5.1).code, "BROKER_SNAPSHOT_STALE")
         self.assertEqual(model(snapshot_age_seconds=-0.1).code, "BROKER_SNAPSHOT_STALE")
 
+    def test_nonfinite_prices_or_snapshot_age_are_never_accepted(self):
+        self.assertFalse(model(expected_stop_price=float("nan")).mock_readback_accepted)
+        self.assertEqual(model(snapshot_age_seconds=float("nan")).code, "BROKER_SNAPSHOT_STALE")
+
+    def test_stop_above_position_volume_blocks(self):
+        st = {"positionId": 123, "symbol": "ETH_USDT",
+              "isFinished": 0, "vol": 3, "stopLossPrice": 96}
+        self.assertEqual(model(stops=[st]).code, "STOP_VOLUME_EXCEEDS_POSITION")
+
+    def test_negative_take_profit_field_blocks(self):
+        st = {"positionId": 123, "symbol": "ETH_USDT",
+              "isFinished": 0, "vol": 2, "stopLossPrice": 96, "takeProfitPrice": -1}
+        self.assertEqual(model(stops=[st]).code, "UNEXPECTED_TAKE_PROFIT")
+
     def test_pending_stop_write_cannot_be_auto_accepted(self):
         self.assertEqual(model(pending_mutation=True).code,
                          "UNKNOWN_BROKER_OUTCOME_NO_BLIND_RETRY")
