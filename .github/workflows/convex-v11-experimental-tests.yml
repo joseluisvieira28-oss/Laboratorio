@@ -1,0 +1,26 @@
+name: CONVEX V11 Experimental Signal Unit Tests
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'engine/three_convex_v11/**'
+      - '.github/workflows/convex-v11-experimental-tests.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify frozen parent and run experimental tests (no HTTP)
+        shell: bash
+        run: |
+          test "$(git hash-object engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt)" = "19c8b8e2363f253458db42111b6701f3a3ef1f4b"
+          python -m unittest discover -s engine/three_convex_v11 -p 'test_*.py' -v
