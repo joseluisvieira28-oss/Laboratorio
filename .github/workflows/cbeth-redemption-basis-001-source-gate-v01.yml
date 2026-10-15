@@ -1,0 +1,28 @@
+name: CBETH-REDEMPTION-BASIS-001 source gate V0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source_gate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cbeth-redemption-basis-001-source-gate-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Run frozen source gate only
+        run: node research/cbeth_redemption_basis_001/cbeth_source_probe_v01.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbeth-redemption-basis-source-gate-v01
+          path: artifacts/CBETH_REDEMPTION_BASIS_SOURCE_GATE_RECEIPT_V0.1.json
+          if-no-files-found: error
