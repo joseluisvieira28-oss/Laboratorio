@@ -28,6 +28,17 @@ foreach($token in @(
     if ($token -eq 'matches') {continue}
     if (-not $up.Contains($token)) {throw "INVARIANT_MISSING:$token"}
 }
+# Failure-mode regressions: stop exit-timeout must not strand V07 silently,
+# incomplete binary copy must enter rollback, and no twin EXEs on restart.
+if (-not $up.Contains('CHILD_EXE_STILL_PRESENT_NO_RESTART_TO_AVOID_TWIN_OBSERVERS')) {
+    throw 'MISSING_FAIL_CLOSED_TWIN_PROCESS_GUARD'
+}
+if (-not ($up -match '(?s)\$taskWasStopped=\$true\s+Stop-OnlyThisTask')) {
+    throw 'STOP_TRACKING_MUST_BE_SET_BEFORE_POSSIBLE_WAIT_EXIT_FAILURE'
+}
+if (-not ($up -match '(?s)\$binarySwapped=\$true\s+Copy-Item -LiteralPath \$source')) {
+    throw 'PARTIAL_BINARY_COPY_MUST_TRIGGER_ROLLBACK'
+}
 if ($up -match 'Invoke-RestMethod|Invoke-WebRequest|api\.telegram\.org|api\.mexc\.com|/order/submit') {
     throw 'UPDATER_MUST_NOT_MAKE_EXTERNAL_REQUESTS'
 }
