@@ -45,7 +45,7 @@ def verify_detached_permit(*,public_key_bytes,permit,signature_bytes,
     """
     if not isinstance(permit,dict) or not isinstance(proposed_order,dict):
         raise AuthorityHalt("MALFORMED_PERMIT_OR_ORDER")
-    required={"version","venue","scope","symbol","lane","side",
+    required={"version","venue","scope","symbol","lane","signal_id","side",
               "position_mode","margin_mode","leverage","contracts",
               "max_modeled_loss_usdt","signal_close_ms","issued_ms",
               "expires_ms","nonce","account_snapshot_hash","order_sha256"}
@@ -56,6 +56,9 @@ def verify_detached_permit(*,public_key_bytes,permit,signature_bytes,
         raise AuthorityHalt("UNAUTHORIZED_VENUE_OR_SIDE")
     if permit["lane"] not in ("SOL_CONVEX_NATIVE_5M","SOL_CONVEX_1H","BNB_CONVEX_4H"):
         raise AuthorityHalt("UNKNOWN_SIGNAL_LANE")
+    signal_id=permit["signal_id"]
+    if not isinstance(signal_id,str) or signal_id!=permit["lane"]+":"+str(permit["signal_close_ms"]):
+        raise AuthorityHalt("SIGNAL_ID_NOT_BOUND_TO_FROZEN_CLOSE")
     if (permit["symbol"]=="BNB_USDT")!=(permit["lane"]=="BNB_CONVEX_4H"):
         raise AuthorityHalt("LANE_SYMBOL_MISMATCH")
     if permit["position_mode"]!="HEDGE" or permit["margin_mode"]!="ISOLATED":
@@ -74,6 +77,9 @@ def verify_detached_permit(*,public_key_bytes,permit,signature_bytes,
         not re.fullmatch("[0-9a-f]{64}",account_snapshot_hash or "") or
         permit["account_snapshot_hash"]!=account_snapshot_hash):
         raise AuthorityHalt("BROKER_ACCOUNT_RECEIPT_NOT_BOUND")
+    expected_oid="CL8"+hashlib.sha256((signal_id+"|LONG").encode()).hexdigest()[:28]
+    if proposed_order.get("externalOid")!=expected_oid:
+        raise AuthorityHalt("ENTRY_EXTERNAL_OID_NOT_BOUND_TO_SIGNAL")
     if permit["order_sha256"]!=sha(proposed_order):
         raise AuthorityHalt("ORDER_PAYLOAD_TAMPERED")
     if proposed_order!={
