@@ -1,0 +1,28 @@
+name: TV Sensor Anomaly Sentinel V0.1 audit
+on:
+  push:
+    branches: [tv-sensor-anomaly-sentinel-v0.1]
+  pull_request:
+    paths:
+      - "tradingview_sensor_sentinel/**"
+      - ".github/workflows/tv-sensor-anomaly-sentinel-audit.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m unittest tradingview_sensor_sentinel/test_sentinel.py
+      - name: Fail-closed boundary
+        shell: python
+        run: |
+          from pathlib import Path
+          src=Path("tradingview_sensor_sentinel/sentinel.py").read_text().lower()
+          for forbidden in ["requests","httpx","ccxt","create_order","place_order","pnl","future_return"]:
+              assert forbidden not in src, forbidden
+          for required in ["payload_sha256_mismatch","conflicting_duplicate_key","value_area_poc_invariant","tv_delta_reconciliation","missing_5m_slots"]:
+              assert required.lower() in src, required
+          print("PASS: sentinel is integrity-only and fail-closed")

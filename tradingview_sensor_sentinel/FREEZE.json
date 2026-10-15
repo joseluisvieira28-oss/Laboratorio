@@ -1,0 +1,32 @@
+{
+  "sentinel_id": "TV-SENSOR-ANOMALY-SENTINEL-V0.1",
+  "parent_lab": "TV-FOOTPRINT-CALIBRATION-001",
+  "sensor_version": "MM-V1",
+  "symbol": "BINANCE:BTCUSDT",
+  "timeframe": "5",
+  "states": ["PASS", "DEGRADED", "FAIL_CLOSED"],
+  "hard_failures": [
+    "schema fingerprint mismatch",
+    "identity mismatch",
+    "payload SHA256 mismatch",
+    "conflicting duplicate evidence key",
+    "5-minute timestamp/alignment violation",
+    "pre-forward receipt",
+    "buy+sell != total volume",
+    "buy-sell != delta",
+    "delta/total != delta_pct",
+    "VAL <= POC <= VAH violation",
+    "imbalance count exceeds footprint rows",
+    "LTF path efficiency outside [0,1]",
+    "non-finite required measurement",
+    "trading authority not NONE"
+  ],
+  "degraded_conditions": [
+    "missing 5-minute slot",
+    "ltf_intrabars != 5",
+    "receipt latency > 300 seconds"
+  ],
+  "policy": "NEVER_REPAIR_OR_IMPUTE_SENSOR_DATA",
+  "calibration_authority": "NONE",
+  "trading_authority": "NONE"
+}
