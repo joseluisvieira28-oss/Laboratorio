@@ -17,9 +17,8 @@ class ExperimentalSignalsTests(unittest.TestCase):
     def test_reject_wrong_symbol(self):
         with self.assertRaises(Halt):
             experimental_signals("XRP_USDT",[],100,0)
-    def test_reject_missing_warmup(self):
-        with self.assertRaises(Halt):
-            experimental_signals("SOL_USDT",self.bars(5,MS5*6),MS5*6+1500,0)
+    def test_missing_warmup_emits_no_signal(self):
+        self.assertEqual(experimental_signals("SOL_USDT",self.bars(5,MS5*6),MS5*6+1500,0),[])
     def test_reject_incomplete_candle(self):
         bars=self.bars(48*260,48*260*MS5)
         with self.assertRaises(Halt):
