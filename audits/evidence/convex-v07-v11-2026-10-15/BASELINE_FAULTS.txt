@@ -1,0 +1,59 @@
+test_cache_orphan_tmp_does_not_permanently_block_writer (test_faults.Faults.test_cache_orphan_tmp_does_not_permanently_block_writer) ... ERROR
+test_network_failure_does_not_save_partial_cache_and_recovers (test_faults.Faults.test_network_failure_does_not_save_partial_cache_and_recovers) ... ok
+test_signal_after_eligibility_window_not_replayed (test_faults.Faults.test_signal_after_eligibility_window_not_replayed) ... ok
+test_v07_both_sol_observations_survive_collision (test_faults.Faults.test_v07_both_sol_observations_survive_collision) ... FAIL
+test_v11_clock_drift_does_not_collect (test_faults.Faults.test_v11_clock_drift_does_not_collect) ... ok
+test_v11_old_pending_is_marked_late (test_faults.Faults.test_v11_old_pending_is_marked_late) ... FAIL
+test_v11_pending_drains_even_if_public_source_fails (test_faults.Faults.test_v11_pending_drains_even_if_public_source_fails) ... FAIL
+test_v11_two_connections_cannot_send_same_notice_concurrently (test_faults.Faults.test_v11_two_connections_cannot_send_same_notice_concurrently) ... FAIL
+
+======================================================================
+ERROR: test_cache_orphan_tmp_does_not_permanently_block_writer (test_faults.Faults.test_cache_orphan_tmp_does_not_permanently_block_writer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/f321e12b7220/lab/engine/convex_observer_audit/test_faults.py", line 30, in test_cache_orphan_tmp_does_not_permanently_block_writer
+    _save_json_atomic(p,{'complete':True})
+  File "/workspace/scratch/f321e12b7220/lab/engine/three_convex_v07/feed.py", line 65, in _save_json_atomic
+    with temp.open("x",encoding="utf-8") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileExistsError: [Errno 17] File exists: '/tmp/tmpd_kft0ek/cache.tmp'
+
+======================================================================
+FAIL: test_v07_both_sol_observations_survive_collision (test_faults.Faults.test_v07_both_sol_observations_survive_collision)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/f321e12b7220/lab/engine/convex_observer_audit/test_faults.py", line 24, in test_v07_both_sol_observations_survive_collision
+    self.assertEqual(sum('SINAL DETETADO' in m for m in bot.messages),2)
+AssertionError: 0 != 2
+
+======================================================================
+FAIL: test_v11_old_pending_is_marked_late (test_faults.Faults.test_v11_old_pending_is_marked_late)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/f321e12b7220/lab/engine/convex_observer_audit/test_faults.py", line 48, in test_v11_old_pending_is_marked_late
+    self.assertIn('ATRASADO',sent[0])
+AssertionError: 'ATRASADO' not found in '🔬🎣 CONVEX V5 | SINAL EXPERIMENTAL (NÃO É ORDEM)\nEstratégia: ETH_CONVEX_1H_EXPERIMENTAL\nMercado: ETH_USDT | LONG potencial\nVela fechada: 1970-01-01 01:00:00 UTC\nSignal ID: ETH_CONVEX_1H_EXPERIMENTAL:3600000\nHISTÓRICO APENAS | OOS e rentabilidade não comprovados\nMEXC: nenhuma ordem enviada ou preenchimento confirmado'
+
+======================================================================
+FAIL: test_v11_pending_drains_even_if_public_source_fails (test_faults.Faults.test_v11_pending_drains_even_if_public_source_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/f321e12b7220/lab/engine/convex_observer_audit/test_faults.py", line 39, in test_v11_pending_drains_even_if_public_source_fails
+    self.assertEqual(len(sent),1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_v11_two_connections_cannot_send_same_notice_concurrently (test_faults.Faults.test_v11_two_connections_cannot_send_same_notice_concurrently)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/f321e12b7220/lab/engine/convex_observer_audit/test_faults.py", line 69, in test_v11_two_connections_cannot_send_same_notice_concurrently
+    self.assertEqual(len(sent),1)
+AssertionError: 2 != 1
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.082s
+
+FAILED (failures=4, errors=1)

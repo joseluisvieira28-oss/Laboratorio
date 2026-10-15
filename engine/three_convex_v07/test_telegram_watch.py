@@ -165,7 +165,7 @@ class TestDurableAlerts(TestCase):
             self.assertTrue(any("PROTEÇÃO NÃO COMPROVADA" in x for x in bot.messages))
             q.close()
 
-    def test_both_sol_lanes_same_close_blocked(self):
+    def test_both_sol_lanes_same_close_notified(self):
         with TemporaryDirectory() as td:
             q=DurableQueue(td);bot=NoNetworkBot()
             sol=[fake_signal("SOL_CONVEX_NATIVE_5M"),
@@ -174,8 +174,7 @@ class TestDurableAlerts(TestCase):
                  patch("engine.three_convex_v07.watch.fresh_signals",side_effect=[sol,[]]):
                 cycle(q,bot,account_client=Account(),public_clock=lambda:1_000_000,
                       feed=lambda *a:[],now_ms=1_000_000)
-            self.assertTrue(any("TWO_SOL_LONG_LANES_COLLIDE" in x for x in bot.messages))
-            self.assertFalse(any("SINAL DETETADO" in x for x in bot.messages))
+            self.assertEqual(sum("SINAL DETETADO" in x for x in bot.messages),2)
             q.close()
 
     def test_bnb_signal_is_observation_only(self):

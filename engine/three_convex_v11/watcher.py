@@ -13,6 +13,8 @@ from engine.three_convex_v07.telegram import TelegramBot,TelegramHalt
 from engine.three_convex_v11.public_feed import fetch_experimental
 from engine.three_convex_v11.experimental import experimental_signals,experimental_message
 
+from engine.three_convex_v07.observer_io import drain, add_receipt_column, instance_lock
+
 SYMBOLS=("SOL_USDT","BNB_USDT","ETH_USDT")
 
 class Outbox:
@@ -24,6 +26,7 @@ class Outbox:
         self.db.execute("CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
         self.db.execute("CREATE TABLE IF NOT EXISTS notices(id TEXT PRIMARY KEY,message TEXT NOT NULL,sent_ms INTEGER)")
         self.db.commit()
+        add_receipt_column(self.db,"notices")
     def activation(self,now):
         with self.db:
             self.db.execute("INSERT OR IGNORE INTO kv(key,value) VALUES('activation_ms',?)",(str(now),))
@@ -33,17 +36,15 @@ class Outbox:
         with self.db:
             self.db.execute("INSERT OR IGNORE INTO notices(id,message) VALUES(?,?)",(s["signal_id"],message))
     def flush(self,send,now):
-        rows=self.db.execute("SELECT id,message FROM notices WHERE sent_ms IS NULL ORDER BY id LIMIT 10").fetchall()
-        for key,msg in rows:
-            send(msg)
-            with self.db:self.db.execute("UPDATE notices SET sent_ms=? WHERE id=? AND sent_ms IS NULL",(now,key))
-        return len(rows)
+        return drain(self.db,"notices","sent_ms",send,now,10,"id")
     def pending(self):
         return self.db.execute("SELECT count(*) FROM notices WHERE sent_ms IS NULL").fetchone()[0]
 
 def cycle(box,send,*,now_ms,server_ms,fetch=fetch_experimental):
     if type(now_ms) is not int or type(server_ms) is not int or abs(server_ms-now_ms)>5000:
         raise FeedHalt("SOURCE_CLOCK_MISMATCH")
+    # Previously queued observations are independent of current source availability.
+    sent=box.flush(send,now_ms)
     activation=box.activation(now_ms)
     findings=[]
     # Complete all three asset histories before queueing any signals.
@@ -52,7 +53,7 @@ def cycle(box,send,*,now_ms,server_ms,fetch=fetch_experimental):
         findings.extend(experimental_signals(symbol,bars,server_ms,activation))
     # Multiple SOL timeframes share the same physical symbol: observation only.
     for signal in findings:box.queue(signal)
-    sent=box.flush(send,now_ms)
+    sent+=box.flush(send,now_ms)
     return {"status":"V11_EXPERIMENTAL_READONLY","checked_at_utc":datetime.fromtimestamp(now_ms/1000,timezone.utc).isoformat(),
             "sources_ok":True,"lanes":3,"signal_events":len(findings),"telegram_sent_this_cycle":sent,
             "telegram_pending":box.pending(),"mexc_private_access":False,"orders_enabled":False}
@@ -63,6 +64,10 @@ def main(argv=None):
     parser.add_argument("--once",action="store_true")
     args=parser.parse_args(argv)
     bot=TelegramBot(os.environ.get("TELEGRAM_BOT_TOKEN",""),os.environ.get("TELEGRAM_CHAT_ID",""))
+    with instance_lock(args.data_dir):
+        return run_loop(args,bot)
+
+def run_loop(args,bot):
     box=Outbox(args.data_dir)
     while True:
         now=int(time.time()*1000)
