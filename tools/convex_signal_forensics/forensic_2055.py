@@ -7,6 +7,7 @@ not proof of external Binance archive parity or trading profitability.
 """
 from __future__ import annotations
 import argparse
+from contextlib import closing
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -127,7 +128,7 @@ def outbox_receipt(local: Path, version: str, event: dict) -> dict:
     # mode=ro: no SQL writes, no SQLite schema changes, no checkpoint.
     uri = "file:" + quote(str(dbpath.resolve()).replace("\\", "/"), safe="/:") + "?mode=ro"
     try:
-        with sqlite3.connect(uri, uri=True, timeout=2) as db:
+        with closing(sqlite3.connect(uri, uri=True, timeout=2)) as db:
             if version == "V07":
                 row = db.execute(
                     "SELECT id, sent_at_ms, telegram_message_id, added_ms, message FROM outbox WHERE id=?",
