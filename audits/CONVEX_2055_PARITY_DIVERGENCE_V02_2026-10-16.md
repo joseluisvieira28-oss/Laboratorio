@@ -59,3 +59,30 @@ O facto de duas janelas locais SOL gerarem o mesmo flag V5 é prova de **robuste
 O novo CLI V03 imprime **apenas** as três horas UTC exatas de candle divergente, magnitude relativa dos deltas close/volume, e a pontuação e flags booleanas do V5 em ambas as fontes. Estes diagnósticos não mudam estratégia, vela de sinal, trade entry, stop, nem TP, e não abrem o holdout 2026. Sem execução no Windows ainda, não declarar causa resolvida.
 
 **GO científico limitado: BNB local replay+parity; SOL sinal verdadeiro nas duas janelas mas paridade integral BLOQUEADA; trading/economic GO = NÃO.**
+
+
+## Receipt V03 real recebido e conclusão técnica consolidada — 16/10/2026
+
+Protocolo do operador: `CONVEX_2055_TWO_SIGNALS_OFFLINE_READONLY_V03`, fechado às 20:55 UTC de 15 outubro. Este documento não contém preços nem credenciais.
+
+**SOL V07 vs V12:** em 12.576 candles 5m comparados, exatos **3 candles divergentes** (3/12.576 ~= 0,02386%). Opens UTC: **14:45, 17:15 e 19:50** no dia 15/10/2026. Em cada divergência diferem **close e volume**, mas **open/high/low iguais**; o candle do sinal 20:50–20:55 é idêntico. Máxima diferença relativa em close **0,95794616 bps** (~0,00957946%); máxima diferença relativa em volume **0,0352892%**. Há 3 divergências nas últimas 200 velas, 1 nas últimas 20. Ambas as janelas reconstruídas não têm conflitos internos com snapshots do próprio monitor.
+
+**Reprodução exacta das decisões nos dois históricos SOL:** em V07 e V12 a função V5 devolveu flag TRUE, score 3/4, regime=true, rsi_flag=false, z_flag=true, bb_flag=true, vol_flag=true. Logo **não há desacordo na direção potencial desse sinal específico**, apesar de os dados em todo o histórico não serem idênticos. O resultado formal do verificador continua `NOT_YET_PROVEN_CHECK_REPLAY_OR_RECEIPT` por exigir paridade integral: respeitar a diferença entre `DECISION_REPRODUCED_ON_BOTH_SOURCES` e `FULL_SOURCE_PARITY_PASS`.
+
+**BNB V12 vs V07:** 0/12.576 diferenças, último candle idêntico, flag TRUE e score 4/4 (regime/rsi/z/bb/vol todos true) em ambos os cálculos. Receipt V12 fila enviado, ausência estrutural de Telegram numeric message ID; recebe somente `LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY`.
+
+**Causa raiz do SOL — investigada por inspeção estática, mas NÃO identificada:**
+- V07 `engine/three_convex_v07/feed.py::fetch_complete` e V12 `engine/three_convex_v12/public_feed.py::fetch` usam o mesmo caminho público `/fapi/v1/klines`, host `fapi.binance.com`, timeframe 5m, `Bar(float(...))`, lookback 12.576, e testes equivalentes para candles completos e contínuos.
+- V12 **reutiliza** diretamente `get_public` e `_clean_cache` da V07. Varia o namespace do cache (`_binance_5m.json` e `_v12_5m.json`) e o horário de aquisição/cache; não encontrámos transformação programática distinta de close/volume no código analisado.
+- É **possível** terem sido guardadas versões históricas diferentes de respostas REST entre os dois observadores; contudo não há manifest com HTTP response digest, `first_seen_utc` por candle e captura imutável da resposta original para distinguir revisão do fornecedor, race de recolha, ou corrupção inesperada. **Não atribuir culpa a Binance, adulteração ou bug específico sem esse recibo**.
+- Manter ambas as fontes intocadas para fins forenses. Só novas provas de proveniência em data futura permitem fechar o source gate global; não reescrever as 3 velas depois de observar o outcome.
+
+**Nota científica:** `z_flag` e `bb_flag` testam essencialmente a mesma desigualdade algébrica `close < SMA20 - 2*stdev20`. Score 3/4 no SOL não significa três votos independentes; não reclassificar sinais nem alterar thresholds sem novo protocolo pré-congelado.
+
+**Veredito fechado desta auditoria específica:**
+1. SOL — **SIGNAL_LOCAL_CAUSAL_REPLAY_PASSED_BOTH_OBSERVERS / FULL_CANDLE_SOURCE_PARITY_FAIL / ROOT_CAUSE_UNRESOLVED**.
+2. BNB — **SIGNAL_LOCAL_CAUSAL_REPLAY_PASSED_BOTH_OBSERVERS / FULL_LOCAL_SOURCE_PARITY_PASS / EXTERNAL_PUBLISHER_AUTHENTICITY_UNPROVEN**.
+3. Telegram — SOL sent e numeric message_id=222 persistido; BNB sent persistido, numeric message_id não é guardado em V12.
+4. **Economia/trading — NO-GO:** nem source ACK nem score prova preenchimento de ordens, stops garantidos ou retornos líquidos após custos.
+
+Sem necessidade operacional de lançar V04 ou parar as 10 canas para esta diferença. Próximo passo científico apropriado: registar, em *novas observações futuras*, proveniência ponto-no-tempo por resposta HTTP e comparar localmente sem alterar o algoritmo ou retrocorrigir histórico.
