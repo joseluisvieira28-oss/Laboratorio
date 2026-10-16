@@ -119,6 +119,37 @@ class ForensicFixtures(unittest.TestCase):
         self.assertEqual(event["cross_observer_diagnostic"]["last_mismatch_open_utc"],
                          "2026-10-15T20:50:00+00:00")
 
+
+    def test_v03_candle_differences_identify_utc_and_magnitude_without_ohlc(self):
+        old_rows = [list(x) for x in self.rows[:4]]
+        recent_rows = [list(x) for x in self.rows[2:]]
+        # Divergences in exactly three candle opens, including close and volume.
+        for idx in (0, 1, 2):
+            old_rows[idx][4] = 100.5 + 0.01 * (idx + 1)
+            old_rows[idx][5] = 10.0 + 0.1 * (idx + 1)
+        recent_rows[0] = list(old_rows[2])
+        self.cache("V12", "SOL_USDT", old_rows, backup=True)
+        self.cache("V12", "SOL_USDT", recent_rows)
+        result = self.audit()["event_results"]["V07_SOL_5M"]
+        diff = result["cross_observer_diagnostic"]
+        self.assertEqual(diff["mismatched_candles"], 3)
+        self.assertEqual(diff["field_mismatch_counts"]["close"], 3)
+        self.assertEqual(diff["field_mismatch_counts"]["volume"], 3)
+        self.assertEqual(len(diff["mismatched_open_times_utc_first_12"]), 3)
+        self.assertFalse(diff["mismatched_times_truncated"])
+        self.assertGreater(diff["max_close_relative_difference_bps"], 0)
+        self.assertGreater(diff["max_volume_relative_difference_pct"], 0)
+        self.assertTrue(diff["prices_disclosed"] is False)
+        self.assertEqual(result["pinned_v5_signal_features"]["score"], 1)
+        self.assertEqual(result["independent_other_observer"]["pinned_v5_signal_features"]["score"], 1)
+
+    def test_v03_no_differences_reports_zero_metrics(self):
+        event = self.audit()["event_results"]["V12_BNB_5M"]
+        diff = event["cross_observer_diagnostic"]
+        self.assertEqual(diff["mismatched_open_times_utc_first_12"], [])
+        self.assertEqual(diff["max_close_relative_difference_bps"], 0)
+        self.assertEqual(diff["max_volume_relative_difference_pct"], 0)
+
     def test_outbox_missing_not_proved(self):
         path = self.local / "CryptoLab" / "ThreeConvexV07" / "data" / "v07_events.sqlite3"
         with closing(sqlite3.connect(path)) as db, db:
