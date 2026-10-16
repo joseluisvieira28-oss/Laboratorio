@@ -1,7 +1,7 @@
 """Offline, read-only forensic examination of two operator-observed 2026-10-15 CONVEX alerts.
 
 No network, broker, Telegram, credentials, order methods, or data mutation.
-Outputs only sanitized booleans, counts, SHA256 and one Telegram message ID.
+Outputs only sanitized booleans, counts, SHA256, UTC timestamps and one Telegram message ID.
 The pinned V5 engine is replayed against independent V07/V12 LOCAL candle caches:
 not proof of external Binance archive parity or trading profitability.
 """
@@ -118,6 +118,57 @@ def reconstruct(local: Path, version: str, symbol: str) -> dict:
         "_window": window if complete and not mismatches else None,
     }
 
+def cross_observer_diff(a: list | None, b: list | None) -> dict:
+    """Zero-price disclosure diagnosis of discrepancies between complete local 5m windows."""
+    if a is None or b is None or len(a) != len(b):
+        return {"comparable": False, "reason": "INCOMPLETE_OR_CONFLICTED_LOCAL_WINDOW"}
+    diff_rows = []
+    fields = {key: 0 for key in ("open", "high", "low", "close", "volume")}
+    recent20 = recent200 = 0
+    first = last = None
+    for idx, (left, right) in enumerate(zip(a, b)):
+        # Two canonical windows must be timestamp-aligned exactly.
+        if left[0] != right[0]:
+            return {"comparable": False, "reason": "CANDLE_TIMESTAMPS_NOT_ALIGNED"}
+        if left != right:
+            if first is None:
+                first = left[0]
+            last = left[0]
+            diff_rows.append(idx)
+            if idx >= len(a) - 20:
+                recent20 += 1
+            if idx >= len(a) - 200:
+                recent200 += 1
+            for j, field in enumerate(fields, 1):
+                if left[j] != right[j]:
+                    fields[field] += 1
+    return {
+        "comparable": True,
+        "total_rows_compared": len(a),
+        "mismatched_candles": len(diff_rows),
+        "first_mismatch_open_utc": utc(first) if first is not None else None,
+        "last_mismatch_open_utc": utc(last) if last is not None else None,
+        "recent_last_20_candles_mismatched": recent20,
+        "recent_last_200_candles_mismatched": recent200,
+        "signal_candle_2050_exact_match": a[-1] == b[-1],
+        "field_mismatch_counts": fields,
+        "prices_disclosed": False,
+    }
+
+
+def v5_flag(window: list | None) -> tuple[bool | None, str | None]:
+    if window is None:
+        return None, None
+    try:
+        bars = [Bar(*row) for row in window]
+        fn = parent_signal_function()
+        values = aggregate_complete(bars, 1)
+        decisions, _details = fn(values)
+        return bool(decisions[-1]), None
+    except (Halt, ValueError, TypeError, OSError, IndexError) as exc:
+        return None, type(exc).__name__
+
+
 def outbox_receipt(local: Path, version: str, event: dict) -> dict:
     dbpath = local / "CryptoLab" / ROOTS[version] / "data" / event["sqlite"]
     if not dbpath.is_file():
@@ -170,17 +221,9 @@ def check_one(local: Path, name: str, event: dict, all_caches: dict) -> dict:
     independent = all_caches[(other, symbol)]
     parity = (data["window_sha256"] == independent["window_sha256"]
               if data["_window"] is not None and independent["_window"] is not None else None)
-    flags = None
-    engine_error = None
-    if data["_window"] is not None and data["overlap_conflicts"] == 0:
-        try:
-            bars = [Bar(*row) for row in data["_window"]]
-            fn = parent_signal_function()
-            values = aggregate_complete(bars, 1)
-            decisions, detail = fn(values)
-            flags = bool(decisions[-1])
-        except (Halt, ValueError, TypeError, OSError, IndexError) as exc:
-            engine_error = type(exc).__name__
+    comparison = cross_observer_diff(data["_window"], independent["_window"])
+    flags, engine_error = v5_flag(data["_window"])
+    independent_flags, independent_error = v5_flag(independent["_window"])
     receipt = outbox_receipt(local, actual, event)
     return {
         "signal_id": event["row_id"][7:] if actual == "V07" else event["row_id"],
@@ -191,7 +234,10 @@ def check_one(local: Path, name: str, event: dict, all_caches: dict) -> dict:
             "full_source_parity_at_exact_close": parity,
             "window_sha256": independent["window_sha256"],
             "internal_cache_conflicts": independent["overlap_conflicts"],
+            "pinned_v5_replay_five_minute_signal": independent_flags,
+            "pinned_v5_replay_error": independent_error,
         },
+        "cross_observer_diagnostic": comparison,
         "pinned_v5_replay_five_minute_signal": flags,
         "pinned_v5_replay_error": engine_error,
         "sqlite": receipt,
@@ -218,7 +264,7 @@ def assess(local: Path) -> dict:
                     "_window": None, "reconstruction_error": type(exc).__name__
                 }
     return {
-        "protocol": "CONVEX_2055_TWO_SIGNALS_OFFLINE_READONLY_V01",
+        "protocol": "CONVEX_2055_TWO_SIGNALS_OFFLINE_READONLY_V02",
         "forensic_timestamp_utc": EXPECTED_UTC,
         "market_api_access": False,
         "telegram_api_access": False,
