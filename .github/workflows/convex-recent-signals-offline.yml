@@ -1,0 +1,64 @@
+name: CONVEX Ten Signal Receipts — Offline Read-only
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - audit/convex-ten-signals-entry-sl-tp-readonly-2026-10-16
+    paths:
+      - "tools/convex_signal_forensics/recent_signals.py"
+      - "tools/convex_signal_forensics/test_recent_signals.py"
+      - "tools/convex_signal_forensics/RECENT_SIGNALS_README.md"
+      - ".github/workflows/convex-recent-signals-offline.yml"
+jobs:
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Recent signals synthetic-only read test
+        run: python -m unittest -v tools.convex_signal_forensics.test_recent_signals
+      - name: Builtin offline self test
+        run: python -m tools.convex_signal_forensics.recent_signals --self-test
+  package:
+    runs-on: windows-latest
+    needs: tests
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned packager
+        run: python -m pip install pyinstaller==6.16.0
+      - name: Build one-file local-only audit
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --onefile --name CONVEX_RECENT_SIGNAL_RECEIPTS --paths . tools/convex_signal_forensics/recent_signals.py
+          if ($LASTEXITCODE -ne 0) { throw "PYINSTALLER_BUILD_FAILED" }
+      - name: Execute actual packaged EXE self test
+        shell: pwsh
+        run: |
+          .\dist\CONVEX_RECENT_SIGNAL_RECEIPTS.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw "PACKAGED_SELF_TEST_FAILED" }
+      - name: Prepare hash and instructions
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          Copy-Item dist\CONVEX_RECENT_SIGNAL_RECEIPTS.exe artifact\
+          Copy-Item tools\convex_signal_forensics\RECENT_SIGNALS_README.md artifact\
+          (Get-FileHash artifact\CONVEX_RECENT_SIGNAL_RECEIPTS.exe -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content artifact\SHA256_EXE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX_10_RECENT_SIGNAL_RECEIPTS_READONLY_NOT_INSTALLED
+          path: artifact/
+          retention-days: 14
+          if-no-files-found: error
