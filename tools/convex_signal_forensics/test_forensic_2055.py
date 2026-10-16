@@ -88,6 +88,37 @@ class ForensicFixtures(unittest.TestCase):
         self.assertLess(event["source_window"]["rows_available_in_target_window"], 6)
         self.assertNotEqual(event["verdict"], "LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY")
 
+    def test_cross_observer_sol_one_candle_disagreement_is_not_hidden(self):
+        # Change both V12 snapshots consistently. There is no internal overlap
+        # conflict, but V12 SOL and V07 SOL now disagree on one historic close.
+        old_rows = [list(x) for x in self.rows[:4]]
+        new_rows = [list(x) for x in self.rows[2:]]
+        old_rows[2][4] = 100.25
+        new_rows[0][4] = 100.25
+        self.cache("V12", "SOL_USDT", old_rows, backup=True)
+        self.cache("V12", "SOL_USDT", new_rows)
+        event = self.audit()["event_results"]["V07_SOL_5M"]
+        delta = event["cross_observer_diagnostic"]
+        self.assertTrue(delta["comparable"])
+        self.assertEqual(delta["mismatched_candles"], 1)
+        self.assertEqual(delta["field_mismatch_counts"]["close"], 1)
+        self.assertEqual(delta["field_mismatch_counts"]["open"], 0)
+        self.assertEqual(delta["first_mismatch_open_utc"], f.utc(self.rows[2][0]))
+        self.assertTrue(delta["signal_candle_2050_exact_match"])
+        self.assertFalse(event["independent_other_observer"]["full_source_parity_at_exact_close"])
+        self.assertTrue(event["independent_other_observer"]["pinned_v5_replay_five_minute_signal"])
+        self.assertEqual(event["verdict"], "NOT_YET_PROVEN_CHECK_REPLAY_OR_RECEIPT")
+
+    def test_cross_observer_sol_signal_candle_disagreement_marked(self):
+        active_rows = [list(x) for x in self.rows[2:]]
+        active_rows[-1][5] = 12.0
+        self.cache("V12", "SOL_USDT", active_rows)
+        event = self.audit()["event_results"]["V07_SOL_5M"]
+        self.assertFalse(event["cross_observer_diagnostic"]["signal_candle_2050_exact_match"])
+        self.assertEqual(event["cross_observer_diagnostic"]["field_mismatch_counts"]["volume"], 1)
+        self.assertEqual(event["cross_observer_diagnostic"]["last_mismatch_open_utc"],
+                         "2026-10-15T20:50:00+00:00")
+
     def test_outbox_missing_not_proved(self):
         path = self.local / "CryptoLab" / "ThreeConvexV07" / "data" / "v07_events.sqlite3"
         with closing(sqlite3.connect(path)) as db, db:
