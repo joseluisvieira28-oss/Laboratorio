@@ -10,6 +10,10 @@
 - Nenhuma duplicação por (lane,close_ms) presente neste extrato. potential_same_symbol_same_close_overlaps=[] não garante que não há exposição física sobreposta em fechos diferentes.
 - Em 20:55 UTC e em 23:05, 23:10, 23:15, 23:20 UTC, os dois ativos tiveram sinal no mesmo fecho; isso não prova independência de edge (SOL/BNB podem ser altamente correlacionados).
 
+## Proveniência de versão da V12 — cuidado com o cutover
+
+O evento BNB 5m das **20:15 UTC de 15/10** foi registado antes de o operador instalar/confirmar a V12 corrigida às **20:52 UTC**. O recibo de 20:47 UTC mostrava ainda SHA antigo V12 `7a8f0516...`; às 20:52:42 mostrava SHA novo `0aa45a02...`. Logo, o sinal das 20:15 pertence à **V12 antiga**, não se deve atribuir ao código PR #239 só porque a mesma SQLite foi preservada após o cutover. Os outros **seis** BNB da lista têm fecho após 20:52; a sua atribuição à V12 nova é coerente com os hashes instalados, sem atestado independente de cada processo em T0. As oito linhas SOL ocorreram após o cutover V07 V2, comprovado pelo operador a ~20:45 UTC.
+
 ## Agrupamento estritamente descritivo por velas consecutivas no mesmo símbolo
 
 SOL: 20:55–21:00 UTC (2 alertas); 23:05–23:25 (5); 01:30 (1). **3 sequências**.
