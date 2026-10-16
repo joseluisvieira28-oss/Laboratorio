@@ -118,55 +118,80 @@ def reconstruct(local: Path, version: str, symbol: str) -> dict:
         "_window": window if complete and not mismatches else None,
     }
 
+
 def cross_observer_diff(a: list | None, b: list | None) -> dict:
-    """Zero-price disclosure diagnosis of discrepancies between complete local 5m windows."""
+    """Compare two full local windows; never disclose OHLC or outcome prices."""
     if a is None or b is None or len(a) != len(b):
         return {"comparable": False, "reason": "INCOMPLETE_OR_CONFLICTED_LOCAL_WINDOW"}
-    diff_rows = []
     fields = {key: 0 for key in ("open", "high", "low", "close", "volume")}
-    recent20 = recent200 = 0
     first = last = None
-    for idx, (left, right) in enumerate(zip(a, b)):
-        # Two canonical windows must be timestamp-aligned exactly.
+    count = last20 = last200 = 0
+    mismatch_times = []
+    close_relative_bps_max = 0.0
+    volume_relative_pct_max = 0.0
+    for i, (left, right) in enumerate(zip(a, b)):
         if left[0] != right[0]:
             return {"comparable": False, "reason": "CANDLE_TIMESTAMPS_NOT_ALIGNED"}
-        if left != right:
-            if first is None:
-                first = left[0]
-            last = left[0]
-            diff_rows.append(idx)
-            if idx >= len(a) - 20:
-                recent20 += 1
-            if idx >= len(a) - 200:
-                recent200 += 1
-            for j, field in enumerate(fields, 1):
-                if left[j] != right[j]:
-                    fields[field] += 1
+        if left == right:
+            continue
+        count += 1
+        if first is None:
+            first = left[0]
+        last = left[0]
+        # A bounded set of timestamps is enough for the forensic follow-up.
+        if len(mismatch_times) < 12:
+            mismatch_times.append(utc(left[0]))
+        if i >= len(a) - 20:
+            last20 += 1
+        if i >= len(a) - 200:
+            last200 += 1
+        for j, field in enumerate(fields, 1):
+            if left[j] != right[j]:
+                fields[field] += 1
+        if left[4] != right[4]:
+            denom = max(abs(left[4]), abs(right[4]), 1e-12)
+            close_relative_bps_max = max(
+                close_relative_bps_max, 10000 * abs(left[4] - right[4]) / denom)
+        if left[5] != right[5]:
+            denom = max(abs(left[5]), abs(right[5]), 1e-12)
+            volume_relative_pct_max = max(
+                volume_relative_pct_max, 100 * abs(left[5] - right[5]) / denom)
     return {
         "comparable": True,
         "total_rows_compared": len(a),
-        "mismatched_candles": len(diff_rows),
+        "mismatched_candles": count,
+        "mismatched_open_times_utc_first_12": mismatch_times,
+        "mismatched_times_truncated": count > len(mismatch_times),
         "first_mismatch_open_utc": utc(first) if first is not None else None,
         "last_mismatch_open_utc": utc(last) if last is not None else None,
-        "recent_last_20_candles_mismatched": recent20,
-        "recent_last_200_candles_mismatched": recent200,
+        "recent_last_20_candles_mismatched": last20,
+        "recent_last_200_candles_mismatched": last200,
         "signal_candle_2050_exact_match": a[-1] == b[-1],
         "field_mismatch_counts": fields,
+        "max_close_relative_difference_bps": round(close_relative_bps_max, 8),
+        "max_volume_relative_difference_pct": round(volume_relative_pct_max, 8),
         "prices_disclosed": False,
     }
 
 
-def v5_flag(window: list | None) -> tuple[bool | None, str | None]:
+def v5_decision(window: list | None) -> tuple[bool | None, str | None, dict | None]:
+    """Replay the unchanged pinned parent V5 and report only decision features."""
     if window is None:
-        return None, None
+        return None, None, None
     try:
         bars = [Bar(*row) for row in window]
         fn = parent_signal_function()
         values = aggregate_complete(bars, 1)
-        decisions, _details = fn(values)
-        return bool(decisions[-1]), None
+        decisions, details = fn(values)
+        features = details[-1] if details and isinstance(details[-1], dict) else {}
+        allow = ("score", "regime", "rsi_flag", "z_flag", "bb_flag", "vol_flag")
+        safe_features = {
+            k: features.get(k) if isinstance(features.get(k), (bool, int)) else None
+            for k in allow
+        }
+        return bool(decisions[-1]), None, safe_features
     except (Halt, ValueError, TypeError, OSError, IndexError) as exc:
-        return None, type(exc).__name__
+        return None, type(exc).__name__, None
 
 
 def outbox_receipt(local: Path, version: str, event: dict) -> dict:
@@ -222,8 +247,8 @@ def check_one(local: Path, name: str, event: dict, all_caches: dict) -> dict:
     parity = (data["window_sha256"] == independent["window_sha256"]
               if data["_window"] is not None and independent["_window"] is not None else None)
     comparison = cross_observer_diff(data["_window"], independent["_window"])
-    flags, engine_error = v5_flag(data["_window"])
-    independent_flags, independent_error = v5_flag(independent["_window"])
+    flags, engine_error, primary_features = v5_decision(data["_window"])
+    independent_flags, independent_error, other_features = v5_decision(independent["_window"])
     receipt = outbox_receipt(local, actual, event)
     return {
         "signal_id": event["row_id"][7:] if actual == "V07" else event["row_id"],
@@ -236,10 +261,12 @@ def check_one(local: Path, name: str, event: dict, all_caches: dict) -> dict:
             "internal_cache_conflicts": independent["overlap_conflicts"],
             "pinned_v5_replay_five_minute_signal": independent_flags,
             "pinned_v5_replay_error": independent_error,
+            "pinned_v5_signal_features": other_features,
         },
         "cross_observer_diagnostic": comparison,
         "pinned_v5_replay_five_minute_signal": flags,
         "pinned_v5_replay_error": engine_error,
+        "pinned_v5_signal_features": primary_features,
         "sqlite": receipt,
         "verdict": (
             "LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY"
@@ -264,7 +291,7 @@ def assess(local: Path) -> dict:
                     "_window": None, "reconstruction_error": type(exc).__name__
                 }
     return {
-        "protocol": "CONVEX_2055_TWO_SIGNALS_OFFLINE_READONLY_V02",
+        "protocol": "CONVEX_2055_TWO_SIGNALS_OFFLINE_READONLY_V03",
         "forensic_timestamp_utc": EXPECTED_UTC,
         "market_api_access": False,
         "telegram_api_access": False,
