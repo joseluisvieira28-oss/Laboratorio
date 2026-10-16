@@ -1,0 +1,68 @@
+{
+  "document_type": "MRCR_H02_CALENDAR_BINDING_V02_CLOSEOUT",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
+  "evidence_date": "2026-09-26",
+  "status": "PASS_SYNTHETIC_CANONICAL_PRETARGET_PATH",
+  "rationale": "V0.1 all-events-simultaneously-confirmed rule creates a prospective-observation deadlock because Federal Reserve 2027 meeting dates are confirmed sequentially at the immediately preceding meeting. V0.2 separates complete official annual-plan binding from exact per-event T0 activation.",
+  "scientific_ruleset_changed": false,
+  "frozen_science_preserved": {
+    "ruleset_sha256": "28b01887b73298bae5ffa695599c49af5c40355392ae64255abe06d9f0d6849e",
+    "event_families": [
+      "US_CPI",
+      "US_EMPLOYMENT_SITUATION",
+      "FOMC_STATEMENT"
+    ],
+    "calendar_year": 2027,
+    "t0_definition": "official scheduled release timestamp from BLS/Federal Reserve authority",
+    "decision_clock_seconds": 180,
+    "future_horizon_seconds": 900
+  },
+  "v02_components": [
+    "H02_CALENDAR_BINDING_V02_GOVERNANCE_CORRECTION.md",
+    "h02_calendar_binding_v02.py",
+    "official_2027_calendar_live_probe.py",
+    "protocol_builder_v02.py",
+    "final_binding_preflight_v02.py",
+    "event_capture_runtime_guard_v02.py"
+  ],
+  "annual_plan_gate": {
+    "US_CPI_required": 12,
+    "US_EMPLOYMENT_SITUATION_required": 12,
+    "FOMC_STATEMENT_required": 8,
+    "FOMC_OFFICIAL_TENTATIVE_allowed_in_plan": true,
+    "inferred_dates_allowed": false,
+    "target_observation_authorized": false
+  },
+  "event_activation_gate": {
+    "exact_official_T0_required": true,
+    "official_confirmation_before_T0_required": true,
+    "annual_plan_date_match_required": true,
+    "activation_receipt_hash_required": true,
+    "target_observation_self_authorization": false,
+    "outcomes_authorized": false
+  },
+  "synthetic_validation": {
+    "validated_head_sha": "1dce5072fbcfad4c6dd3c9a5a27d23599088a3c7",
+    "ci_run_id": 36265362506,
+    "conclusion": "SUCCESS",
+    "completed_steps": 44,
+    "end_to_end_preflight": true,
+    "target_authority_binding_rehearsed": true,
+    "per_event_activation_rehearsed": true,
+    "mutated_activation_hash_fail_closed": true,
+    "changed_fomc_date_fail_closed": true,
+    "wrong_annual_plan_binding_fail_closed": true
+  },
+  "v01_status": "SUPERSEDED_GOVERNANCE_DEADLOCK_PRESERVED_AS_HISTORICAL",
+  "current_external_state": {
+    "BLS_CPI_2027": "INCOMPLETE",
+    "BLS_EMPLOYMENT_2027": "INCOMPLETE",
+    "FOMC_2027_ANNUAL_PLAN": "AVAILABLE_OFFICIAL_TENTATIVE",
+    "annual_plan_trigger_ready": false
+  },
+  "target_observation_authorized": false,
+  "outcomes_authorized": false,
+  "live_trading_authorized": false,
+  "promotion_credit": "NONE"
+}

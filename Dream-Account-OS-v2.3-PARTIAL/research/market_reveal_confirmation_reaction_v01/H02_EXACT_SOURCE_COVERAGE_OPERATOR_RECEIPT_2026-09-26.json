@@ -1,0 +1,99 @@
+{
+  "document_type": "MRCR_H02_EXACT_SOURCE_COVERAGE_OPERATOR_RECEIPT_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
+  "evidence_date": "2026-09-26",
+  "probe": "MRCR_H02_EXACT_SOURCE_COVERAGE_V01",
+  "status": "PASS",
+  "scope": {
+    "binance_spot": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "coinbase_advanced_spot": [
+      "BTC-USD",
+      "ETH-USD"
+    ],
+    "channels": {
+      "binance": [
+        "aggTrade",
+        "depth@100ms"
+      ],
+      "coinbase": [
+        "market_trades",
+        "level2"
+      ]
+    }
+  },
+  "binance": [
+    {
+      "symbol": "BTCUSDT",
+      "transport": "PASS",
+      "aggtrade_messages": 25,
+      "aggtrade_schema_pass": true,
+      "depth_messages": 107,
+      "depth_schema_pass": true,
+      "error_class": null,
+      "http_status": null,
+      "status": "PASS"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "transport": "PASS",
+      "aggtrade_messages": 5,
+      "aggtrade_schema_pass": true,
+      "depth_messages": 106,
+      "depth_schema_pass": true,
+      "error_class": null,
+      "http_status": null,
+      "status": "PASS"
+    }
+  ],
+  "coinbase": [
+    {
+      "product": "BTC-USD",
+      "transport": "PASS",
+      "subscription_messages": 2,
+      "market_trade_messages": 30,
+      "market_trade_schema_pass": true,
+      "level2_messages": 172,
+      "level2_schema_pass": true,
+      "l2_snapshot_seen": true,
+      "l2_update_seen": true,
+      "sequence_adjudicated": false,
+      "error_class": null,
+      "close_code": null,
+      "http_status": null,
+      "status": "PASS"
+    },
+    {
+      "product": "ETH-USD",
+      "transport": "PASS",
+      "subscription_messages": 2,
+      "market_trade_messages": 8,
+      "market_trade_schema_pass": true,
+      "level2_messages": 166,
+      "level2_schema_pass": true,
+      "l2_snapshot_seen": true,
+      "l2_update_seen": true,
+      "sequence_adjudicated": false,
+      "error_class": null,
+      "close_code": null,
+      "http_status": null,
+      "status": "PASS"
+    }
+  ],
+  "boundaries": {
+    "economic_values_printed": false,
+    "raw_payloads_persisted": false,
+    "authentication_used": false,
+    "account_endpoints_used": false,
+    "signals_computed": false,
+    "outcomes_computed": false,
+    "orders_enabled": false,
+    "coinbase_sequence_adjudicated": false,
+    "scientific_use": "SOURCE_COVERAGE_ONLY",
+    "promotion_credit": "NONE",
+    "target_observation_authorized": false
+  }
+}

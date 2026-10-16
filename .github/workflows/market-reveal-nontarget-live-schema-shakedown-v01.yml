@@ -1,0 +1,26 @@
+name: MRCR V0.1 Non-Target Live Schema Shakedown
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install websocket transport only
+        run: |
+          python -m pip install --disable-pip-version-check --no-input websockets==15.0.1
+      - name: Run redacted source-only probe
+        run: |
+          python "Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/live_schema_probe.py"

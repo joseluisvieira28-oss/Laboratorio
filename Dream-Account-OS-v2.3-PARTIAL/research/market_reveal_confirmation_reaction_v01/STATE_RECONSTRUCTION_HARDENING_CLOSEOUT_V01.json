@@ -1,0 +1,67 @@
+{
+  "document_type": "MRCR_STATE_RECONSTRUCTION_HARDENING_CLOSEOUT_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "date": "2026-09-24",
+  "classification": "IMPLEMENTATION_PASS_PRE_TARGET",
+  "validated_head_before_closeout": "32fd854258dcac0240f8970e3193591917b7735d",
+  "validated_ci_run": 36036406385,
+  "validated_ci_conclusion": "success",
+  "implemented": {
+    "venue_native_local_order_book": true,
+    "absolute_level_updates": true,
+    "zero_quantity_level_removal": true,
+    "sequence_gap_fail_closed": true,
+    "stale_duplicate_explicit_handling": true,
+    "crossed_book_atomic_rejection": true,
+    "bbo_mid_spread": true,
+    "parameterized_depth_top_n": true,
+    "parameterized_depth_bps_band": true,
+    "default_depth_parameter_authorized": false,
+    "aggressive_flow_aggregation": true,
+    "decision_time_state_reconstruction": true,
+    "bounded_book_replay": true,
+    "future_trade_rejection": true,
+    "future_book_batch_rejection": true,
+    "coinbase_snapshot_envelope_time_fix": true,
+    "coinbase_incremental_engine_time_preserved": true,
+    "portable_coinbase_l2_alternate_host_probe": true,
+    "portable_probe_file_persistence": false,
+    "portable_probe_authentication": false
+  },
+  "coinbase_timestamp_semantics": {
+    "snapshot": "MESSAGE_ENVELOPE_TIMESTAMP",
+    "incremental_update": "PER_LEVEL_MATCHING_ENGINE_EVENT_TIME",
+    "reason": "documented level2 snapshot example carries epoch-zero per-level event_time"
+  },
+  "depth_policy": {
+    "top_n_supported": true,
+    "bps_band_supported": true,
+    "default_top_n": null,
+    "default_bps_band": null,
+    "rule": "exact depth definition must be frozen before target observation"
+  },
+  "alternate_host_probe": {
+    "status": "READY_NOT_EXECUTED_ON_ALTERNATE_HOST",
+    "windows_launcher": "Run_Coinbase_L2_Source_Probe.cmd",
+    "python_probe": "coinbase_level2_local_probe.py",
+    "minimum_pass": [
+      "public transport connected",
+      "subscription acknowledgement observed",
+      "level2 snapshot observed",
+      "required level2 schema observed"
+    ]
+  },
+  "scientific_boundary": {
+    "h02_authorized": false,
+    "target_observation_authorized": false,
+    "acceptance_rejection_classifier_defined": false,
+    "future_return_horizon_defined": false,
+    "pnl_enabled": false,
+    "trading_logic_enabled": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "render_deployment": false,
+    "main_merge": false
+  },
+  "final_state": "MEASUREMENT_AND_RECONSTRUCTION_MACHINE_HARDENED__ALTERNATE_HOST_PROBE_READY__TARGET_OUTCOMES_LOCKED"
+}
