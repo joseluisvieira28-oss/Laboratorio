@@ -24,3 +24,38 @@
 - **NENHUMA AUTORIZAÇÃO PARA REAL MONEY, SL/TP, 10×, ordens, merge main ou post-outcome tuning** a partir desta evidência.
 
 Próximo receipt: executar somente V02 no Windows, verificar SHA256 e partilhar JSON sanitizado. Se as diferenças envolverem a vela do próprio sinal, investigar prioridade máxima; se forem antigas, quantificar dependência da RSI e avaliar o replay de ambas versões.
+## Receipt V02 concreto recebido do operador — 16/10/2026
+
+O operador executou o verificador read-only V02 no Windows e entregou este resumo, **sem publicar OHLC**:
+
+| Medida | SOL V07 vs V12 | BNB V12 vs V07 |
+|---|---:|---:|
+| Candles comparados | 12.576 | 12.576 |
+| Candles diferentes | **3** | **0** |
+| Opens/highs/lows diferentes | 0/0/0 | 0 |
+| Closes diferentes | 3 | 0 |
+| Volumes diferentes | 3 | 0 |
+| Primeira divergência SOL | 2026-10-15 14:45 UTC | — |
+| Última divergência SOL | 2026-10-15 19:50 UTC | — |
+| Divergências últimas 20 barras | 1 | 0 |
+| Divergências últimas 200 barras | 3 | 0 |
+| Vela do sinal (open 20:50 UTC) | idêntica | idêntica |
+| Flag pinned V5 ao close 20:55 | true / true | true / true |
+| Paridade completa V07-V12 | **false** | **true** |
+
+O facto de duas janelas locais SOL gerarem o mesmo flag V5 é prova de **robustez da decisão específica perante as diferenças verificadas**, mas não de autenticação externa do preço, nem demonstra que as diferenças de close/volume não alterariam outros sinais ou o estado de uma posição. A divergência de uma barra nos últimos 20 candles pode afetar SMA20, BB20 e volume SMA20 do signal close; o Wilder RSI também depende do histórico anterior. A janela de 12.576 barras contém os mesmos timestamps, mas isso por si não identifica quais candles foram originalmente publicados por Binance.
+
+### Hipóteses de causa — todas NÃO TESTADAS
+
+1. Dados públicos revistos/alterados entre instantes em que as duas aplicações criaram os caches.
+2. Snapshots lidos em momentos diferentes, algum snapshot com volume e close ainda atualizados apesar do timestamp de candle fechado.
+3. Serialização/precisão numérica diferente ou transformação na fonte.
+4. Cache histórico recuperado por fontes REST iguais mas com valores alterados no backend do fornecedor.
+
+**NÃO afirmar manipulação ou adulteração intencional**; os dados não justificam essa inferência.
+
+### Nova verificação V03
+
+O novo CLI V03 imprime **apenas** as três horas UTC exatas de candle divergente, magnitude relativa dos deltas close/volume, e a pontuação e flags booleanas do V5 em ambas as fontes. Estes diagnósticos não mudam estratégia, vela de sinal, trade entry, stop, nem TP, e não abrem o holdout 2026. Sem execução no Windows ainda, não declarar causa resolvida.
+
+**GO científico limitado: BNB local replay+parity; SOL sinal verdadeiro nas duas janelas mas paridade integral BLOQUEADA; trading/economic GO = NÃO.**
