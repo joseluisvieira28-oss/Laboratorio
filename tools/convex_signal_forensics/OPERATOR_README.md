@@ -5,28 +5,31 @@
 - BNB_CONVEX_NATIVE_5M_EXPERIMENTAL:1792097700000 (V12)
 - UTC close: 2026-10-15T20:55:00Z
 
-The standalone CONVEX_SIGNAL_2055_FORENSIC_V02.exe reads only the installed V07/V12 **public-market cache JSON** files, existing **pre-upgrade backup** caches and two SQLite outbox rows. NO network, Telegram sends, orders, broker auth, or DPAPI access. Do not copy or upload SQLite files, secrets or credential stores. The report is JSON (SHA256, booleans, message_id, timestamps; no prices, raw message bodies, account balances or tokens).
+The standalone CONVEX_SIGNAL_2055_FORENSIC_V03.exe reads only the installed V07/V12 **public-market cache JSON** files, existing **pre-upgrade backup** caches and two SQLite outbox rows. NO network, Telegram sends, orders, broker auth, or DPAPI access. Do not copy or upload SQLite files, secrets or credential stores. The report is JSON (SHA256, booleans, message_id, timestamps; no prices, raw message bodies, account balances or tokens).
 
 ## Operator instructions
 
 1. Download the **verified Windows artifact** from this branch CI and extract in a new Downloads folder. Do NOT run EXEs from unverified sites or bypass enterprise restrictions without IT approval.
 2. From PowerShell in the EXE folder, run:
-    Get-FileHash .\CONVEX_SIGNAL_2055_FORENSIC_V02.exe -Algorithm SHA256
+    Get-FileHash .\CONVEX_SIGNAL_2055_FORENSIC_V03.exe -Algorithm SHA256
     Compare to SHA256_EXE.txt in that artifact (integrity, **not** a publisher signature).
-    .\CONVEX_SIGNAL_2055_FORENSIC_V02.exe --self-test
-    .\CONVEX_SIGNAL_2055_FORENSIC_V02.exe
+    .\CONVEX_SIGNAL_2055_FORENSIC_V03.exe --self-test
+    .\CONVEX_SIGNAL_2055_FORENSIC_V03.exe
 3. Paste the sanitized **JSON output only**, not database or raw cache files. The tool does not send data itself.
 4. Leave V07/V11/V12 Windows scheduled tasks running. NEVER stop/restart them, change main, or reset SQLite/outbox for this audit.
 
 If the unsigned EXE is blocked, stop; no global ExecutionPolicy changes are requested. On a system with Python 3.11 and a local checkout, alternative: python -m tools.convex_signal_forensics.forensic_2055.
 
-## V02 SOL-source disagreement diagnostic
+## V03 SOL-source disagreement diagnostic
 
 The first audit found that V07 SOL and V12 SOL both reconstruct a complete 12,576-candle 5m window with **zero internal cache conflicts**, yet the two sources have different window hashes. Do NOT interpret V07's true V5 flag as independently source-parity-proven.
 
-V02 adds a `cross_observer_diagnostic` for SOL and BNB:
+V03 extends `cross_observer_diagnostic` for SOL and BNB:
 
 - `mismatched_candles`: number of differing 5m rows between the observer windows, not number of Telegram messages.
+- `mismatched_open_times_utc_first_12`: UTC candle-open timestamps of the first twelve discrepancies; does not reveal prices. `mismatched_times_truncated` flags larger lists.
+- `max_close_relative_difference_bps` and `max_volume_relative_difference_pct`: maximum relative differences without revealing original values; they may still reflect floating-point formatting/retrieval differences and do not attribute cause.
+- `pinned_v5_signal_features` on BOTH observers: original parent score and regime/rsi/z/bollinger/volume boolean votes at the signal candle, without OHLC prices. A true signal on both sources does NOT certify source equality.
 - `first_mismatch_open_utc` / `last_mismatch_open_utc`: when divergences occur; these timestamps are bar *opens*, not signal closes.
 - `field_mismatch_counts`: open/high/low/close/volume differences by count, **never** reveals market prices.
 - `signal_candle_2050_exact_match`: whether the particular 20:50 candle closing at 20:55 is identical.
