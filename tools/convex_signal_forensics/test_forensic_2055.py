@@ -1,0 +1,169 @@
+"""Offline fixture proof for both 20:55 receipts and two cache reconstructions."""
+import json
+from contextlib import closing
+from pathlib import Path
+import sqlite3
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from tools.convex_signal_forensics import forensic_2055 as f
+
+class ForensicFixtures(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.local = Path(self.tmp.name)
+        self.rows = []
+        first = f.CLOSE_MS - 6 * f.MS5
+        for i in range(6):
+            t = first + i * f.MS5
+            self.rows.append([t, 100.0, 101.0, 99.0, 100.5, 10.0])
+        self.build_fixture()
+
+    def cache(self, version, symbol, rows, backup=False):
+        base = self.local / "CryptoLab"
+        if backup:
+            d = base / "CONVEX10_BACKUPS" / version / "test-backup"
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "UPGRADE_RECEIPT.json").write_text('{"test":true}')
+        else:
+            d = base / f.ROOTS[version]
+        dest = d / "data" / "market_cache" / (symbol + f.SUFFIXES[version])
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps({"symbol": symbol, "source": "BINANCE_USDM_5M_PUBLIC", "bars": rows}))
+        return dest
+
+    def build_fixture(self):
+        for version in ("V07", "V12"):
+            for symbol in ("SOL_USDT", "BNB_USDT"):
+                self.cache(version, symbol, self.rows[:4], backup=True)
+                self.cache(version, symbol, self.rows[2:])
+        v07db = self.local / "CryptoLab" / "ThreeConvexV07" / "data" / "v07_events.sqlite3"
+        with closing(sqlite3.connect(v07db)) as db, db:
+            db.execute("CREATE TABLE outbox (id TEXT PRIMARY KEY, sent_at_ms INTEGER, telegram_message_id INTEGER, added_ms INTEGER, message TEXT)")
+            ev = f.EVENTS["V07_SOL_5M"]
+            db.execute("INSERT INTO outbox VALUES(?,?,?,?,?)",
+                (ev["row_id"], f.CLOSE_MS + 3000, 12345, f.CLOSE_MS + 2000,
+                 "SOL_USDT SOL_CONVEX_NATIVE_5M:1792097700000"))
+        v12db = self.local / "CryptoLab" / "ThreeConvexV12" / "data" / "V12_ONLY.sqlite3"
+        with closing(sqlite3.connect(v12db)) as db, db:
+            db.execute("CREATE TABLE notices (id TEXT PRIMARY KEY, sent_ms INTEGER, close_ms INTEGER, expired_ms INTEGER, message TEXT)")
+            ev = f.EVENTS["V12_BNB_5M"]
+            db.execute("INSERT INTO notices VALUES(?,?,?,?,?)",
+                (ev["row_id"], f.CLOSE_MS + 3000, f.CLOSE_MS, None,
+                 "BNB_USDT BNB_CONVEX_NATIVE_5M_EXPERIMENTAL:1792097700000"))
+
+    @staticmethod
+    def fn(_):
+        return ([False] * (len(_) - 1) + [True], [{"score": 1}] * len(_))
+
+    def audit(self):
+        with patch.object(f, "LOOKBACK", 6), patch.object(f, "parent_signal_function", return_value=self.fn):
+            return f.assess(self.local)
+
+    def test_both_events_pass_offline_fixture(self):
+        result = self.audit()
+        a = result["event_results"]
+        self.assertEqual(a["V07_SOL_5M"]["verdict"], "LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY")
+        self.assertEqual(a["V12_BNB_5M"]["verdict"], "LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY")
+        self.assertEqual(a["V07_SOL_5M"]["sqlite"]["telegram_message_id"], 12345)
+        self.assertTrue(a["V12_BNB_5M"]["sqlite"]["telegram_message_id_not_persisted_by_v12"])
+        self.assertTrue(all(e["independent_other_observer"]["full_source_parity_at_exact_close"]
+                            for e in a.values()))
+
+    def test_conflicting_backup_blocks_replay(self):
+        altered = [list(x) for x in self.rows[:4]]
+        altered[2][4] = 100.25
+        self.cache("V07", "SOL_USDT", altered, backup=True)
+        event = self.audit()["event_results"]["V07_SOL_5M"]
+        self.assertIsNone(event["pinned_v5_replay_five_minute_signal"])
+        self.assertGreater(event["source_window"]["overlap_conflicts"], 0)
+        self.assertNotEqual(event["verdict"], "LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY")
+
+    def test_missing_old_cache_not_proved(self):
+        old = self.local / "CryptoLab" / "CONVEX10_BACKUPS" / "V07" / "test-backup" / "data" / "market_cache" / "SOL_USDT_binance_5m.json"
+        old.unlink()
+        event = self.audit()["event_results"]["V07_SOL_5M"]
+        self.assertLess(event["source_window"]["rows_available_in_target_window"], 6)
+        self.assertNotEqual(event["verdict"], "LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY")
+
+    def test_cross_observer_sol_one_candle_disagreement_is_not_hidden(self):
+        # Change both V12 snapshots consistently. There is no internal overlap
+        # conflict, but V12 SOL and V07 SOL now disagree on one historic close.
+        old_rows = [list(x) for x in self.rows[:4]]
+        new_rows = [list(x) for x in self.rows[2:]]
+        old_rows[2][4] = 100.25
+        new_rows[0][4] = 100.25
+        self.cache("V12", "SOL_USDT", old_rows, backup=True)
+        self.cache("V12", "SOL_USDT", new_rows)
+        event = self.audit()["event_results"]["V07_SOL_5M"]
+        delta = event["cross_observer_diagnostic"]
+        self.assertTrue(delta["comparable"])
+        self.assertEqual(delta["mismatched_candles"], 1)
+        self.assertEqual(delta["field_mismatch_counts"]["close"], 1)
+        self.assertEqual(delta["field_mismatch_counts"]["open"], 0)
+        self.assertEqual(delta["first_mismatch_open_utc"], f.utc(self.rows[2][0]))
+        self.assertTrue(delta["signal_candle_2050_exact_match"])
+        self.assertFalse(event["independent_other_observer"]["full_source_parity_at_exact_close"])
+        self.assertTrue(event["independent_other_observer"]["pinned_v5_replay_five_minute_signal"])
+        self.assertEqual(event["verdict"], "NOT_YET_PROVEN_CHECK_REPLAY_OR_RECEIPT")
+
+    def test_cross_observer_sol_signal_candle_disagreement_marked(self):
+        active_rows = [list(x) for x in self.rows[2:]]
+        active_rows[-1][5] = 12.0
+        self.cache("V12", "SOL_USDT", active_rows)
+        event = self.audit()["event_results"]["V07_SOL_5M"]
+        self.assertFalse(event["cross_observer_diagnostic"]["signal_candle_2050_exact_match"])
+        self.assertEqual(event["cross_observer_diagnostic"]["field_mismatch_counts"]["volume"], 1)
+        self.assertEqual(event["cross_observer_diagnostic"]["last_mismatch_open_utc"],
+                         "2026-10-15T20:50:00+00:00")
+
+
+    def test_v03_candle_differences_identify_utc_and_magnitude_without_ohlc(self):
+        old_rows = [list(x) for x in self.rows[:4]]
+        recent_rows = [list(x) for x in self.rows[2:]]
+        # Divergences in exactly three candle opens, including close and volume.
+        for idx in (0, 1, 2):
+            old_rows[idx][4] = 100.5 + 0.01 * (idx + 1)
+            old_rows[idx][5] = 10.0 + 0.1 * (idx + 1)
+        recent_rows[0] = list(old_rows[2])
+        self.cache("V12", "SOL_USDT", old_rows, backup=True)
+        self.cache("V12", "SOL_USDT", recent_rows)
+        result = self.audit()["event_results"]["V07_SOL_5M"]
+        diff = result["cross_observer_diagnostic"]
+        self.assertEqual(diff["mismatched_candles"], 3)
+        self.assertEqual(diff["field_mismatch_counts"]["close"], 3)
+        self.assertEqual(diff["field_mismatch_counts"]["volume"], 3)
+        self.assertEqual(len(diff["mismatched_open_times_utc_first_12"]), 3)
+        self.assertFalse(diff["mismatched_times_truncated"])
+        self.assertGreater(diff["max_close_relative_difference_bps"], 0)
+        self.assertGreater(diff["max_volume_relative_difference_pct"], 0)
+        self.assertTrue(diff["prices_disclosed"] is False)
+        self.assertEqual(result["pinned_v5_signal_features"]["score"], 1)
+        self.assertEqual(result["independent_other_observer"]["pinned_v5_signal_features"]["score"], 1)
+
+    def test_v03_no_differences_reports_zero_metrics(self):
+        event = self.audit()["event_results"]["V12_BNB_5M"]
+        diff = event["cross_observer_diagnostic"]
+        self.assertEqual(diff["mismatched_open_times_utc_first_12"], [])
+        self.assertEqual(diff["max_close_relative_difference_bps"], 0)
+        self.assertEqual(diff["max_volume_relative_difference_pct"], 0)
+
+    def test_outbox_missing_not_proved(self):
+        path = self.local / "CryptoLab" / "ThreeConvexV07" / "data" / "v07_events.sqlite3"
+        with closing(sqlite3.connect(path)) as db, db:
+            db.execute("DELETE FROM outbox")
+        result = self.audit()["event_results"]["V07_SOL_5M"]
+        self.assertFalse(result["sqlite"]["found"])
+        self.assertNotEqual(result["verdict"], "LOCAL_CAUSAL_REPLAY_PASS_NOT_EXTERNAL_MARKET_PARITY")
+
+    def test_bad_cache_identity_rejected(self):
+        target = self.cache("V12", "BNB_USDT", self.rows[2:])
+        target.write_text(json.dumps({"symbol": "ETH_USDT", "source": "BINANCE_USDM_5M_PUBLIC",
+                                     "bars": self.rows[2:]}))
+        result = self.audit()["event_results"]["V12_BNB_5M"]
+        self.assertFalse(result["source_window"]["exact_window_reconstructed"])
+
+if __name__ == "__main__":
+    unittest.main()
