@@ -1,0 +1,24 @@
+name: licp001-hyperliquid-oi-source-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/licp001_hl_oi_probe_v01.py'
+      - '.github/workflows/licp001-hyperliquid-oi-source-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python research/liquidation_cascade/licp001_hl_oi_probe_v01.py
+      - if: always()
+        run: cat research/liquidation_cascade/receipts/licp001_hl_oi_probe_v01.json || true

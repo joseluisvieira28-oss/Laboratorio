@@ -1,0 +1,23 @@
+name: licp001-execution-math-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/licp001_execution_math_v01.py'
+      - 'research/liquidation_cascade/test_licp001_execution_math_v01.py'
+      - '.github/workflows/licp001-execution-math-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest research.liquidation_cascade.test_licp001_execution_math_v01 -v

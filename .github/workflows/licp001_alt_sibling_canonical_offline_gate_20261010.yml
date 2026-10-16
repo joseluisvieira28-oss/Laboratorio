@@ -1,0 +1,86 @@
+name: LICP V03 Canonical ALT Sibling Offline Integrity Gate 20261010
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - .github/workflows/licp001_alt_sibling_canonical_offline_gate_20261010.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  canonical_pre_collector_safe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify V03 scientific freeze and corrected primary-safe ledger syntax
+        run: |
+          test "$GITHUB_REF_NAME" = "liquidation-cascade-propagation-v0.1"
+          test -s research/liquidation_cascade/LICP_001_ALT_SIBLING_IDENTITY_TECHNICAL_CORRECTION_2026_10_10.md
+          test -s research/liquidation_cascade/LICP_001_FORWARD_ECONOMIC_VERDICT_FREEZE_V0_1.md
+          python -m py_compile research/liquidation_cascade/licp001_forward_durable_ledger_v01.py
+          python -m py_compile research/liquidation_cascade/licp001_forward_verdict_v01.py
+          python -m py_compile research/liquidation_cascade/test_licp_alt_sibling_identity_v01.py
+          python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py --self-test
+          python research/liquidation_cascade/test_licp_alt_sibling_identity_v01.py
+      - name: Restore canonical last green and last blocked ORIGINAL forward archive only
+        run: |
+          mkdir -p raw/green raw/latest checked
+          gh run download 37930397916 --repo "$GITHUB_REPOSITORY" -n licp001-forward-durable-v03-37930397916-1 -D raw/green
+          gh run download 37937441095 --repo "$GITHUB_REPOSITORY" -n licp001-forward-durable-v03-37937441095-1 -D raw/latest
+          for n in green latest; do test -d "raw/$n/durable_ledger/receipts"; done
+      - name: Rebuild archived science WITHOUT COLLECTING NEW PRICE OUTCOMES
+        run: |
+          for n in green latest; do
+            python research/liquidation_cascade/licp001_forward_durable_ledger_v01.py \
+              --root "raw/$n/durable_ledger/receipts" --outdir "checked/$n"
+            python research/liquidation_cascade/licp001_forward_verdict_v01.py \
+              "checked/$n/receipts" --out "checked/$n/frozen_verdict.json"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          x=Path("checked")
+          g=json.loads((x/"green"/"frozen_verdict.json").read_text())
+          l=json.loads((x/"latest"/"frozen_verdict.json").read_text())
+          a=json.loads((x/"green"/"ledger_summary.json").read_text())
+          b=json.loads((x/"latest"/"ledger_summary.json").read_text())
+          assert g["independent_episodes"]==10 and len(g["distinct_utc_dates_first20"])==2
+          assert l["independent_episodes"]==12 and l["state"]=="FORWARD_INSUFFICIENT"
+          assert g["state"]=="FORWARD_INSUFFICIENT"
+          assert a["status"]==b["status"]=="LEDGER_OK"
+          assert not a["conflicts"] and not b["conflicts"]
+          (x/"CANONICAL_CORRECTION_PROOF.json").write_text(json.dumps({
+            "status":"CANONICAL_ALT_SIBLING_LEDGER_RESTORE_PASS",
+            "baseline_primary":g["independent_episodes"],
+            "recovered_primary":l["independent_episodes"],
+            "baseline_dates":g["distinct_utc_dates_first20"],
+            "latest_dates":l["distinct_utc_dates_first20"],
+            "official_frozen_verdict_state":l["state"],
+            "no_new_market_observation":True,
+            "source_config_sci_unchanged":True,
+            "live_go":False},indent=2,sort_keys=True)+"\n")
+          print("LICP_CANONICAL_LEDGER_REPAIR_PASS",l["independent_episodes"],l["state"],l["distinct_utc_dates_first20"])
+          PY
+      - name: Preserve authoritative offline ledger metadata and scientific status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licp001-canonical-alt-sibling-offline-verdict-v01
+          path: |
+            checked/CANONICAL_CORRECTION_PROOF.json
+            checked/green/ledger_summary.json
+            checked/green/frozen_verdict.json
+            checked/latest/ledger_summary.json
+            checked/latest/frozen_verdict.json
+          if-no-files-found: warn

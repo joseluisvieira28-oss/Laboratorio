@@ -1,0 +1,78 @@
+name: licp001-calibration-block-v01
+# launch: durable block v0.1
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - '.github/workflows/licp001-calibration-block-v01.yml'
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: 'Outcome-blind collection seconds (max 20700)'
+        required: false
+        default: '20700'
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Validate bounded duration
+        env:
+          CAPTURE_SECONDS: ${{ inputs.seconds }}
+        run: |
+          python - <<'PY'
+          import os
+          s=int(os.environ.get("CAPTURE_SECONDS") or "20700")
+          assert 60 <= s <= 20700, s
+          PY
+      - name: Collect outcome-blind liquidation block
+        env:
+          CAPTURE_SECONDS: ${{ inputs.seconds }}
+        run: |
+          mkdir -p /tmp/licp001-block
+          if [ -z "$CAPTURE_SECONDS" ]; then CAPTURE_SECONDS=20700; fi
+          python research/liquidation_cascade/licp001_forward_collector_v01.py             --seconds "$CAPTURE_SECONDS"             --outdir /tmp/licp001-block
+      - name: Verify outcome blindness and integrity
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib, hashlib
+          d=pathlib.Path("/tmp/licp001-block")
+          h=d/"health.json"
+          if not h.exists(): raise SystemExit("MISSING_HEALTH_RECEIPT")
+          r=json.loads(h.read_text())
+          assert r.get("outcome_blind") is True
+          events=d/"liquidations.jsonl"
+          if events.exists():
+              digest=hashlib.sha256(events.read_bytes()).hexdigest()
+              assert digest==r["event_log_sha256"], (digest,r["event_log_sha256"])
+              txt=events.read_text().lower()
+              for forbidden in ("forward_return","pnl","mfe","mae","entry_bid","exit_ask"):
+                  assert forbidden not in txt, forbidden
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - name: Build feature-only block summary
+        if: always()
+        run: |
+          if test -s /tmp/licp001-block/liquidations.jsonl; then
+            python research/liquidation_cascade/licp001_calibrate_v01.py               /tmp/licp001-block/liquidations.jsonl               --out /tmp/licp001-block/calibration.json
+          fi
+      - name: Upload immutable calibration block
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licp001-calibration-block-${{ github.run_id }}
+          path: /tmp/licp001-block/
+          if-no-files-found: error
+          retention-days: 30

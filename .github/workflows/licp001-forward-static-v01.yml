@@ -1,0 +1,31 @@
+name: licp001-forward-static-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/licp001_forward_observation_v01.py'
+      - 'research/liquidation_cascade/licp001_execution_math_v01.py'
+      - 'research/liquidation_cascade/licp001_trigger_engine_v01.py'
+      - '.github/workflows/licp001-forward-static-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Compile complete forward stack
+        run: |
+          python -m py_compile research/liquidation_cascade/licp001_forward_observation_v01.py
+          python -m py_compile research/liquidation_cascade/licp001_trigger_engine_v01.py
+          python -m py_compile research/liquidation_cascade/licp001_execution_math_v01.py
+      - name: Import forward module without running observer
+        run: python -c "import research.liquidation_cascade.licp001_forward_observation_v01 as m; assert callable(m.main_async)"

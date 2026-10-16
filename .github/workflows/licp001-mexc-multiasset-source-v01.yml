@@ -1,0 +1,28 @@
+name: licp001-mexc-multiasset-source-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/LICP_001_MEXC_MULTI_ASSET_SOURCE_FREEZE_V0_1.md'
+      - 'research/liquidation_cascade/licp001_mexc_multiasset_probe_v01.py'
+      - '.github/workflows/licp001-mexc-multiasset-source-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - run: python research/liquidation_cascade/licp001_mexc_multiasset_probe_v01.py
+      - if: always()
+        run: cat research/liquidation_cascade/receipts/licp001_mexc_multiasset_v01.json || true
