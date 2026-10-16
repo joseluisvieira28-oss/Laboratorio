@@ -40,24 +40,24 @@ jobs:
       - name: Bundle offline verifier and pinned parent V5 source
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --onefile --name CONVEX_SIGNAL_2055_FORENSIC_V02 --paths . --add-data "engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt;engine/three_convex_v05/vendor" tools/convex_signal_forensics/forensic_2055.py
+          pyinstaller --noconfirm --clean --onefile --name CONVEX_SIGNAL_2055_FORENSIC_V03 --paths . --add-data "engine/three_convex_v05/vendor/V5_PARENT_PINNED_SOURCE.py.txt;engine/three_convex_v05/vendor" tools/convex_signal_forensics/forensic_2055.py
       - name: Run packaged verifier self-test OFFLINE
         shell: pwsh
         run: |
-          .\dist\CONVEX_SIGNAL_2055_FORENSIC_V02.exe --self-test
+          .\dist\CONVEX_SIGNAL_2055_FORENSIC_V03.exe --self-test
           if ($LASTEXITCODE -ne 0) { throw "PACKAGED_SELF_TEST_FAILED" }
       - name: Stage hashes and operator readme
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path audit_release | Out-Null
-          Copy-Item dist\CONVEX_SIGNAL_2055_FORENSIC_V02.exe audit_release\
+          Copy-Item dist\CONVEX_SIGNAL_2055_FORENSIC_V03.exe audit_release\
           Copy-Item tools\convex_signal_forensics\OPERATOR_README.md audit_release\
-          $hash = (Get-FileHash audit_release\CONVEX_SIGNAL_2055_FORENSIC_V02.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $hash = (Get-FileHash audit_release\CONVEX_SIGNAL_2055_FORENSIC_V03.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           $hash | Set-Content audit_release\SHA256_EXE.txt
           Write-Output ("OFFLINE_FORENSIC_EXE_SHA256=" + $hash)
       - uses: actions/upload-artifact@v4
         with:
-          name: CONVEX_2055_FORENSIC_V02_SOL_PARITY_WINDOWS_NOT_INSTALLED
+          name: CONVEX_2055_FORENSIC_V03_SOL_CAUSE_WINDOWS_NOT_INSTALLED
           path: audit_release/
           if-no-files-found: error
           retention-days: 14
