@@ -1,0 +1,30 @@
+name: CONVEX Cross-Venue Offline Gate (research only)
+
+on:
+  push:
+    branches:
+      - research/convex-crossvenue-cost-gate-2026-10-17
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-no-network-regressions:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic cost + fail-closed evidence gates (no network)
+        run: python -m unittest discover -s research/convex_crossvenue_v01 -p "test_venue_fee_gate.py" -v
+      - name: Readonly public reference scenario output
+        run: python research/convex_crossvenue_v01/venue_fee_gate.py
