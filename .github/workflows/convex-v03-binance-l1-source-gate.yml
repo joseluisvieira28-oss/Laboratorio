@@ -1,0 +1,55 @@
+name: CONVEX V03 Historical Binance L1 Causal Entry Audit
+on:
+  push:
+    branches:
+      - research/convex-binance-l1-executable-entry-gate-2026-10-17
+    paths:
+      - .github/workflows/convex-v03-binance-l1-source-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline-science-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prove no-lookahead, no stale quote substitution, depth and strict time gates
+        run: python -m unittest discover -s research/convex_binance_l1_v03 -p 'test_*.py' -v
+  bounded-exact-four-earliest-source-observations:
+    needs: offline-science-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Recover ONLY original fixed source run SOL1H BNB4H ledgers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-v03-source/SOL /tmp/convex-v03-source/BNB
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-SOLUSDT-RESEARCH --dir /tmp/convex-v03-source/SOL
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-BNBUSDT-RESEARCH --dir /tmp/convex-v03-source/BNB
+      - name: Test earliest chronological BASE entries only against official Binance daily L1 archives
+        run: |
+          python -m research.convex_binance_l1_v03.bookticker_gate \
+            --source-dir /tmp/convex-v03-source \
+            --output-dir research/convex_binance_l1_v03/receipts
+      - name: Preserve both missing evidence and accepted quotes in immutable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V03-FROZEN-HISTORICAL-BINANCE-L1-SOURCE-ONLY
+          path: research/convex_binance_l1_v03/receipts/**
+          if-no-files-found: warn
+          retention-days: 30
