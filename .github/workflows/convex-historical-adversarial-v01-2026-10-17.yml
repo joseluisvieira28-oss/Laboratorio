@@ -1,0 +1,56 @@
+name: CONVEX Historical Adversarial Artifact-Only V01
+
+on:
+  push:
+    branches:
+      - audit/convex-historical-adversarial-v01-2026-10-17
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  synthetic-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic-only ledger integrity and overlapping exposure tests
+        run: python -m unittest discover -s research/convex_historical_adversarial_v01 -p "test_*.py" -v
+
+  original-artifact-readonly:
+    needs: synthetic-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download original Binance 2023-25 source artifacts (no market replay)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-original/common /tmp/convex-original/native
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-SOLUSDT-RESEARCH --dir /tmp/convex-original/common/SOL
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-BNBUSDT-RESEARCH --dir /tmp/convex-original/common/BNB
+          gh run download 38435206427 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-NATIVE-5M-2023-25-SOLUSDT --dir /tmp/convex-original/native/SOL
+      - name: Audit all original SOL1h BNB4h SOL5m BASE and STRESS ledgers
+        run: |
+          python -m research.convex_historical_adversarial_v01.ledger_attack --common-source /tmp/convex-original/common --native-source /tmp/convex-original/native --output-dir research/convex_historical_adversarial_v01/receipts
+      - name: Preserve independent artifact-only readout, no tuning
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-HISTORICAL-ADVERSARIAL-V01-ORIGINAL-LEDERG
+          path: research/convex_historical_adversarial_v01/receipts/**
+          retention-days: 30
+          if-no-files-found: warn
