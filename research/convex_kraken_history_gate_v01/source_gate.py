@@ -39,6 +39,16 @@ def classify(symbol, kind, day, *, status, raw=b"", error=""):
             base["error"]="EMPTY_TIMESTAMPS"
             return base
         nums=[int(v) for v in stamps]
+        if any(isinstance(v, bool) or not isinstance(v,int) for v in stamps):
+            raise ValueError("NONINTEGER_TIMESTAMP")
+        units={"milliseconds" if 10**12<=v<10**13 else "seconds" if 10**9<=v<10**10 else "invalid"
+               for v in nums}
+        if len(units)!=1 or "invalid" in units:
+            raise ValueError("INVALID_OR_MIXED_EPOCH_UNIT")
+        if "milliseconds" in units:
+            if any(v%1000 for v in nums):
+                raise ValueError("SUBSECOND_EPOCH_NOT_ALLOWED_IN_1D_SOURCE")
+            nums=[v//1000 for v in nums]
         if not all(start<=v<start+5*SECONDS for v in nums):
             raise ValueError("RETURNED_TIMESTAMP_OUTSIDE_FROZEN_WINDOW")
         if nums!=sorted(nums) or len(nums)!=len(set(nums)):
