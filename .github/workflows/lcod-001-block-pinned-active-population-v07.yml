@@ -1,0 +1,95 @@
+name: LCOD-001 block-pinned active population V0.7
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_BLOCK_PINNED_ACTIVE_POPULATION_V06A_REMEDIATION.md'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_active_population_prepare_v07.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_active_population_chunk_v07.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_active_population_aggregate_v07.mjs'
+      - '.github/workflows/lcod-001-block-pinned-active-population-v07.yml'
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.prep.outputs.matrix }}
+      block: ${{ steps.prep.outputs.block }}
+      block_hash: ${{ steps.prep.outputs.block_hash }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - id: prep
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_active_population_prepare_v07.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-active-pop-prepare-v07
+          path: artifacts/lcod_active_population_prepare_v07.json
+          if-no-files-found: error
+
+  classify:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save @subsquid/evm-stream@0.1.5 ethers
+      - name: Stream and classify at common finalized block
+        env:
+          CHUNK_ID: ${{ matrix.id }}
+          FROM_BLOCK: ${{ matrix.from }}
+          TO_BLOCK: ${{ matrix.to }}
+          FINAL_BLOCK: ${{ needs.prepare.outputs.block }}
+          FINAL_HASH: ${{ needs.prepare.outputs.block_hash }}
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_active_population_chunk_v07.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-active-pop-chunk-${{ matrix.id }}-v07
+          path: artifacts/lcod_active_population_chunk_*_v07.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: [prepare,classify]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lcod-active-pop-*-v07
+          path: artifacts/all
+          merge-multiple: true
+      - run: node research/liquidation_convexity_oracle_distance_001/lcod_active_population_aggregate_v07.mjs
+      - name: Persist aggregate
+        if: always()
+        run: |
+          if [ -f artifacts/lcod_block_pinned_active_population_v07.json ]; then
+            cp artifacts/lcod_block_pinned_active_population_v07.json research/liquidation_convexity_oracle_distance_001/LCOD_BLOCK_PINNED_ACTIVE_POPULATION_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/liquidation_convexity_oracle_distance_001/LCOD_BLOCK_PINNED_ACTIVE_POPULATION_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "LCOD-001: record block-pinned active population V0.7 [skip ci]"
+              git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-active-pop-aggregate-v07
+          path: artifacts/lcod_block_pinned_active_population_v07.json
+          if-no-files-found: error

@@ -1,0 +1,33 @@
+name: LCOD-001 operational health validation V0.1
+
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_operational_health_v01.py'
+      - '.github/workflows/lcod-001-operational-health-validation-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - name: Validate current operational health
+        env:
+          RECOVERY_SHOULD_RUN: "false"
+          RECOVERY_FORWARD_RESULT: "skipped"
+          RECOVERY_GATE_REASON: "validation"
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_operational_health_v01.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-operational-health-validation-v01
+          path: artifacts/lcod_operational_health_v01.json
+          if-no-files-found: error
