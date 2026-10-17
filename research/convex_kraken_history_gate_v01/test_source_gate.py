@@ -32,5 +32,22 @@ class SourceGateSynthetic(unittest.TestCase):
         self.assertEqual(v["status"],"SOURCE_BLOCKED_OR_EMPTY")
 
 
+
+    def test_epoch_millis_normalizes_only_whole_seconds(self):
+        v=classify("PF_SOLUSD","spreads","2023-01-03",status=200,
+            raw=json.dumps({"result":{"timestamp":[unix_utc("2023-01-03")*1000]}}).encode())
+        self.assertEqual(v["status"],"SOURCE_DATE_COVERAGE_CANDIDATE")
+
+    def test_epoch_mixed_units_rejected(self):
+        u=unix_utc("2023-01-03")
+        v=classify("PF_SOLUSD","spreads","2023-01-03",status=200,
+            raw=json.dumps({"result":{"timestamp":[u,u*1000]}}).encode())
+        self.assertEqual(v["status"],"SOURCE_BLOCKED_OR_EMPTY")
+
+    def test_noninteger_string_rejected(self):
+        v=classify("PF_SOLUSD","spreads","2023-01-03",status=200,
+            raw=json.dumps({"result":{"timestamp":[str(unix_utc("2023-01-03"))]}}).encode())
+        self.assertEqual(v["status"],"SOURCE_BLOCKED_OR_EMPTY")
+
 if __name__=="__main__":
     unittest.main()
