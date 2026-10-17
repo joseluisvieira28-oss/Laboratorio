@@ -174,7 +174,7 @@ def overlap_report(lanes):
     max_active = 0
     for t, delta, name in edges:
         active += delta
-        max_active = max(active, active)
+        max_active = max(max_active, active)
     if active != 0:
         raise ValueError("UNCLOSED_OVERLAP_EVENTS")
     return {"pairs": pairs, "max_simultaneously_open_on_separate_paper_ledgers": max_active,
