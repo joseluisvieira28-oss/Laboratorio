@@ -1,0 +1,57 @@
+name: CONVEX V03C Original-Blocked BookTicker Streaming Source Recovery
+on:
+  push:
+    branches:
+      - research/convex-binance-l1-executable-entry-gate-2026-10-17
+    paths:
+      - .github/workflows/convex-v03c-stream-only-blocked-days.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-source-cap-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - symbol: SOLUSDT
+            subdir: SOL
+          - symbol: BNBUSDT
+            subdir: BNB
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic no-lookahead, archive-parser parity and strict original 21 blocked dates
+        run: |
+          python -m unittest discover -s research/convex_binance_l1_v03 -p 'test_bookticker_gate.py' -v
+          python -m unittest discover -s research/convex_binance_l1_v03 -p 'test_streaming_v03c.py' -v
+      - name: Restore only existing scientific original ledger and V03B source receipts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-original/${{ matrix.subdir }} /tmp/convex-v03b/${{ matrix.symbol }}
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-${{ matrix.symbol }}-RESEARCH --dir /tmp/convex-original/${{ matrix.subdir }}
+          gh run download 39026521571 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-V03B-ALL-ORIGINAL-L1-${{ matrix.symbol }} --dir /tmp/convex-v03b/${{ matrix.symbol }}
+      - name: Recheck ONLY previously resource blocked source days with 320MB streaming limit
+        run: |
+          python -m research.convex_binance_l1_v03.streaming_v03c \
+            --original-dir /tmp/convex-original \
+            --v03b-dir /tmp/convex-v03b \
+            --symbol ${{ matrix.symbol }} \
+            --out research/convex_binance_l1_v03/receipts_v03c/${{ matrix.symbol }}
+      - name: Publish complete 33/6 population and every remaining source cap error
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V03C-STREAMING-ONLY-SIZE-BLOCKED-${{ matrix.symbol }}
+          path: research/convex_binance_l1_v03/receipts_v03c/${{ matrix.symbol }}/**
+          if-no-files-found: warn
+          retention-days: 30

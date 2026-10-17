@@ -1,0 +1,42 @@
+name: CONVEX V03B Artifact-Only Failed Source Root Cause
+on:
+  push:
+    branches:
+      - research/convex-binance-l1-executable-entry-gate-2026-10-17
+    paths:
+      - .github/workflows/convex-v03b-source-rootcause-artifact-only.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  check-original-no-market-rerun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download immutable original two market SOURCE receipts ONLY
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-v03b-receipts/SOLUSDT /tmp/convex-v03b-receipts/BNBUSDT
+          gh run download 39026521571 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-V03B-ALL-ORIGINAL-L1-SOLUSDT --dir /tmp/convex-v03b-receipts/SOLUSDT
+          gh run download 39026521571 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-V03B-ALL-ORIGINAL-L1-BNBUSDT --dir /tmp/convex-v03b-receipts/BNBUSDT
+      - name: Classify source errors from existing evidence, no new market requests
+        run: |
+          python -m research.convex_binance_l1_v03.artifact_only_rootcause \
+            --artifacts-dir /tmp/convex-v03b-receipts \
+            --out research/convex_binance_l1_v03/receipts_rootcause
+      - name: Archive exact error classes and source provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V03B-ARTIFACT-ONLY-ROOTCAUSE
+          path: research/convex_binance_l1_v03/receipts_rootcause/**
+          if-no-files-found: warn
+          retention-days: 30
