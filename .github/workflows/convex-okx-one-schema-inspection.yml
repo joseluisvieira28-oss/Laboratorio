@@ -1,0 +1,27 @@
+name: CONVEX OKX One Fixed Historical Catalogue Schema Inspection
+on:
+  push:
+    branches:
+      - research/convex-okx-l2-stop-proof-v01-2026-10-17
+    paths:
+      - .github/workflows/convex-okx-one-schema-inspection.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m research.convex_okx_l2_stop_v02.okx_one_schema
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OKX-ONE-SCHEMA-NO-MARKET-PRICES
+          path: research/convex_okx_l2_stop_v02/receipts_schema/**
+          retention-days: 30

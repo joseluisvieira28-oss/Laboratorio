@@ -1,0 +1,42 @@
+name: CONVEX OKX Historical Catalogue + Stop Protection Mock Gates
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-stop-and-source-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s research/convex_okx_l2_stop_v02 -p 'test_v02.py' -v
+  six-public-only-source-catalogue:
+    needs: offline-stop-and-source-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Exactly six predeclared OKX anonymous public catalogue GETs (not trading)
+        run: python -m research.convex_okx_l2_stop_v02.okx_source_gate --out research/convex_okx_l2_stop_v02/receipts
+      - name: Archive source-only metadata (no market prices)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-OKX-SIX-SOURCE-CATALOGUE-RECEIPTS
+          path: research/convex_okx_l2_stop_v02/receipts/*
+          retention-days: 30
+          if-no-files-found: warn

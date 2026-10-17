@@ -1,0 +1,53 @@
+name: CONVEX SOL1H BNB4H Monotonic-Only 2023-25 Historical Descriptive Replay
+on:
+  push:
+    branches:
+      - research/convex-okx-l2-stop-proof-v01-2026-10-17
+    paths:
+      - 'research/convex_okx_l2_stop_v02/monotonic_*'
+      - 'research/convex_okx_l2_stop_v02/test_child_freeze.py'
+      - '.github/workflows/convex-monotonic-only-historical-child-v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frozen-single-line-change:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s research/convex_okx_l2_stop_v02 -p 'test_child_freeze.py' -v
+  whole-source-historical-descriptive-replay:
+    needs: frozen-single-line-change
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        symbol: [SOLUSDT, BNBUSDT]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify 112 publisher checked sources, original BASE/STRESS exact result, then ONLY monotonic child
+        run: |
+          python -m research.convex_okx_l2_stop_v02.monotonic_child_replay \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_okx_l2_stop_v02/receipts/${{ matrix.symbol }}
+      - name: Preserve source receipts and complete six ledgers, including failed outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-MONOTONIC-ONLY-2023-25-${{ matrix.symbol }}
+          path: research/convex_okx_l2_stop_v02/receipts/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
