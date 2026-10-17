@@ -1,0 +1,7 @@
+# Source timestamp unit schema amendment V0.1A — before rerun
+
+2026-10-17 UTC. First original fixed 16 public probes run #39019805025 completed, with 14 source blocks (six spreads timestamp out-of-window, eight empty funding) and two BNB prelaunch negative controls. Its HTTP 200 small valid JSON schema does not prove the returned `timestamp` integers are expressed in epoch seconds. The API documentation does not identify units for that field in the shown schema.
+
+**Prior to any re-query**, allow **only** one deterministic representation for a whole response: all epoch seconds (10-digit for 2023–25) or all epoch milliseconds (13-digit for 2023–25, normalized by integer divide 1000 when remainder = 0). Reject mixed units, timestamps outside the ORIGINAL fixed five-day window, duplicates, non-monotonic timestamps and invalid types. No time window changes, symbol changes, new dates, new analytics types, field selection, economic outcomes or no-lookahead weakening. Correct a potential source schema unit ambiguity only.
+
+The original run remains canonical for V0.1 interpretation and is not overwritten. This V0.1A is a separate source semantics check, no economic OOS credit, no orders, no main merge. If milliseconds normalization changes outcome, report both prior and post-amendment source statuses. `SOURCE_DATE_COVERAGE_CANDIDATE` still means source timestamp presence only, not quote executable liquidity or alpha. If only seconds or only milliseconds do not match window, the source remains blocked; no further remediations allowed within this V0.1A branch.
