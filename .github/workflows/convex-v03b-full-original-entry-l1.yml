@@ -1,0 +1,53 @@
+name: CONVEX V03B All Original Eligible 2023-24 L1 Quotes
+on:
+  push:
+    branches:
+      - research/convex-binance-l1-executable-entry-gate-2026-10-17
+    paths:
+      - .github/workflows/convex-v03b-full-original-entry-l1.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  all-eligible-frozen-population:
+    runs-on: ubuntu-latest
+    timeout-minutes: 48
+    strategy:
+      max-parallel: 2
+      fail-fast: false
+      matrix:
+        include:
+          - symbol: SOLUSDT
+            subdir: SOL
+          - symbol: BNBUSDT
+            subdir: BNB
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Static original causal parsing regression tests
+        run: python -m unittest discover -s research/convex_binance_l1_v03 -p 'test_bookticker_gate.py' -v
+      - name: Read original canonical source artifact without new strategy replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-v03b-original/${{ matrix.subdir }}
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-${{ matrix.symbol }}-RESEARCH --dir /tmp/convex-v03b-original/${{ matrix.subdir }}
+      - name: Exactly all 33 SOL or all 6 BNB original historical entries, no favorable cherry picking
+        run: |
+          python -m research.convex_binance_l1_v03.full_population_gate \
+            --source-dir /tmp/convex-v03b-original \
+            --symbol ${{ matrix.symbol }} \
+            --output-dir research/convex_binance_l1_v03/receipts_full/${{ matrix.symbol }}
+      - name: Preserve complete denominator, invalid dates, source SHA and source-only verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V03B-ALL-ORIGINAL-L1-${{ matrix.symbol }}
+          path: research/convex_binance_l1_v03/receipts_full/${{ matrix.symbol }}/**
+          retention-days: 30
+          if-no-files-found: warn
