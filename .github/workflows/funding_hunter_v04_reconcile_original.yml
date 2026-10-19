@@ -1,0 +1,33 @@
+name: FUNDING HUNTER V04 Sealed Original Rate-Only Receipt Reconciliation
+on:
+  push:
+    branches: [research/funding-hunter-v04-june-2025-cashflow-gate-2026-10-19]
+    paths: [.github/workflows/funding_hunter_v04_reconcile_original.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  sealed-previous-github-run-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Restore actual V04 original completed source-only receipt, no data redownload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-funding-v04-sealed
+          gh run download 39242521078 --repo joseluisvieira28-oss/Laboratorio --name FUNDING-HUNTER-V04-REAL-BTC-JUNE2025-RATE-ONLY-NOT-EXECUTION --dir /tmp/convex-funding-v04-sealed
+          find /tmp/convex-funding-v04-sealed -type f
+      - name: Confirm all 28 flat UTC entries and report independent largest rate differential
+        run: python -m research.funding_hunter_v04.reconcile_original_rate_only_receipt --receipt /tmp/convex-funding-v04-sealed/V04_JUNE_BTC_TWO_REAL_FUNDING_ARCHIVES_RATE_ONLY.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FUNDING-HUNTER-V04-ORIGINAL-JUNE-2025-RATE-CENSUS-RECONCILED
+          path: research/funding_hunter_v04/receipts/V04_ORIGINAL_SOURCE_RECEIPT_RECONCILIATION.json
+          retention-days: 25
