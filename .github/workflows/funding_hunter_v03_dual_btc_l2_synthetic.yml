@@ -1,0 +1,25 @@
+name: FUNDING HUNTER V03 Offline BTC Dual Perpetual L2 Source Parser
+on:
+  push:
+    branches: [research/funding-hunter-v03-okx-btc-dual-l2-2026-10-19]
+    paths:
+      - .github/workflows/funding_hunter_v03_dual_btc_l2_synthetic.yml
+permissions:
+  contents: read
+jobs:
+  source-contract-tests:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 7
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Hermetic dummy .data sources, six causal quotes, no private historical files
+        run: python -m unittest discover -s research/funding_hunter_v03 -p 'test_dual_btc_400l2_private_replay.py' -v
