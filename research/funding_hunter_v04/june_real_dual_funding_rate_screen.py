@@ -123,7 +123,7 @@ def parse_month(raw,contract):
         if row.get("instrument_name")!=contract:raise ValueError("MISMATCH_INSTRUMENT")
         time=utc_ms(row["funding_time"])
         dt=datetime.fromtimestamp(time/1000,UTC)
-        if not(dt.year==2025 and dt.month==6):raise ValueError("UNFROZEN_MONTH")
+        if not(dt.year==2025 and dt.month==6):raise ValueError("UNFROZEN_MONTH:"+contract+":"+dt.isoformat())
         try:rate=Decimal(row["funding_rate"])
         except (InvalidOperation,TypeError) as e:raise ValueError("BAD_RATE_DECIMAL") from e
         if not rate.is_finite() or abs(rate)>Decimal("0.05"):
