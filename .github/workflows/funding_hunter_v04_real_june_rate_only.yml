@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Fetch two fixed 2025 June official ZIPs, emit rate-only economics not actual fills
+      - name: Check 2025 June publisher month-source UTC anomaly with unchanged fail-closed gate
         run: python -m research.funding_hunter_v04.june_real_dual_funding_rate_screen
       - name: Preserve derived financial screens and source SHA256, never raw ZIPs
         if: always()
