@@ -1,0 +1,26 @@
+name: FUNDING HUNTER V02B Historic Source Transport No Market Outcomes
+on:
+  push:
+    branches: [research/funding-hunter-v02-source-rescue-2026-10-19]
+    paths: [.github/workflows/funding_hunter_v02b_transport.yml]
+permissions:
+  contents: read
+jobs:
+  public-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Only 2025 funding ZIP schema and Binance BTC bookTicker/bookDepth HEAD, no outcomes
+        run: python -m research.funding_hunter_v02.transport_2025_only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FUNDING-V02B-2025-OFFICIAL-SOURCE-TRANSPORT-NO-OUTCOMES
+          path: research/funding_hunter_v02/receipts/V02B_SOURCE_TRANSPORT.json
+          if-no-files-found: error
+          retention-days: 15
