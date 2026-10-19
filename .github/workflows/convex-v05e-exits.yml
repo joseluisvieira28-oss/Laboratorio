@@ -1,0 +1,23 @@
+name: CONVEX V05E Frozen Original Exit Dates
+on:
+  push:
+    branches: [research/convex-okx-l2-custody-and-sweep-v05-2026-10-19]
+    paths: [.github/workflows/convex-v05e-exits.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read original immutable result artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/a/SOL /tmp/a/BNB
+          gh run download 38432883246 --name CONVEX-8ALT-COMMON-3YEAR-SOLUSDT-RESEARCH --dir /tmp/a/SOL
+          gh run download 38432883246 --name CONVEX-8ALT-COMMON-3YEAR-BNBUSDT-RESEARCH --dir /tmp/a/BNB
+      - name: Determine two exact closed-trade source dates only
+        run: python -m research.convex_okx_l2_v05.exact_two_original_exit_dates --sol-root /tmp/a/SOL --bnb-root /tmp/a/BNB --out /tmp/a/report
