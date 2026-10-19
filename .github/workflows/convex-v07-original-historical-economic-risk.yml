@@ -1,0 +1,58 @@
+name: CONVEX V07 Immutable Original-Ledger Economic Risk Calibration
+on:
+  push:
+    branches:
+      - research/convex-v07-economic-risk-calibration-2026-10-19
+    paths:
+      - .github/workflows/convex-v07-original-historical-economic-risk.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  synthetic-science-contracts:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Hermetic risk calibrator fail-closed source decomposition tests
+        run: python -m unittest discover -s research/convex_economic_risk_v07 -p 'test_*.py' -v
+  original-2023-25-financial-trade-census:
+    needs: synthetic-science-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Restore ONLY original publisher verified immutable Actions 38432883246 trade ledgers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-v07-original/SOLUSDT /tmp/convex-v07-original/BNBUSDT
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-SOLUSDT-RESEARCH --dir /tmp/convex-v07-original/SOLUSDT
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-BNBUSDT-RESEARCH --dir /tmp/convex-v07-original/BNBUSDT
+      - name: Pre-registered all-trade two-lane cost-break-even regime risk candidate gate
+        run: |
+          python -m research.convex_economic_risk_v07.economic_risk_gate \
+            --original-artifacts /tmp/convex-v07-original \
+            --out research/convex_economic_risk_v07/receipts
+      - name: Publish historic financial diagnostics and every rejected risk candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V07-STRICT-ORIGINAL-RISK-CALIBRATION-NO-OOS
+          path: research/convex_economic_risk_v07/receipts/**
+          retention-days: 30
+          if-no-files-found: warn
