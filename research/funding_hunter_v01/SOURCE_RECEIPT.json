@@ -1,0 +1,61 @@
+{
+  "mission": "CRYPTO LAB FUNDING HUNTER V01",
+  "status": "SOURCE_BLOCKED",
+  "stage": "DOCUMENTARY_SOURCE_GATE",
+  "retrieved_utc": "2026-10-19T08:40:41Z",
+  "freeze_commit": "51879d805650169a338019fc2adc91646933079e",
+  "market_payload_requests": 0,
+  "market_outcomes_opened": false,
+  "protected_2026_opened": false,
+  "raw_market_payload_hashes": [],
+  "exact_settlement_manifest": null,
+  "economic_results": null,
+  "forward_started": false,
+  "notes": [
+    "retrieved_utc is audit checkpoint, not exact fetch time of every page",
+    "Documentation examples are not historical observations; no raw HTTP receipt or byte hash is claimed for browser-rendered documentation",
+    "No exhaustive proof that every possible free archive is absent; admitted sources do not demonstrate required coverage",
+    "Schema validator and accounting primitives are tested; no full collector, simulator, automatic source certification or promotion engine is implemented because source gate failed"
+  ],
+  "sources": [
+    {
+      "url": "https://www.mexc.com/api-docs/futures/market-endpoints/get-funding-rate-history",
+      "evidence": "Public history includes settleTime, fundingRate, collectCycle and pagination. No historical valuation price in documented response; no start/end request selector."
+    },
+    {
+      "url": "https://www.mexc.com/api-docs/futures/market-endpoints/get-contract-order-book-depth",
+      "evidence": "Current book endpoint takes symbol/limit; no historical date selector."
+    },
+    {
+      "url": "https://www.mexc.com/api-docs/futures/market-endpoints/get-the-last-n-depth-snapshots",
+      "evidence": "Latest N snapshots by symbol/limit, not a documented dated 2025 archive. Example contains deltas without timestamp; reconstruction is not demonstrated."
+    },
+    {
+      "url": "https://www.mexc.com/api-docs/futures/market-endpoints/get-fair-price-candles",
+      "evidence": "Timestamped OHLC windows, not an authenticated exact settlement valuation mapping. Cannot certify settlement prices or executable bid/ask."
+    },
+    {
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data",
+      "evidence": "Funding history supports start/end milliseconds and charge-associated markPrice; fundingInfo supplies adjusted intervals. Schema availability is not historical completeness."
+    },
+    {
+      "url": "https://www.mexc.co/en-GB/announcements/article/updates-to-api-futures-trading-fees-may-1-2026-17827791535194",
+      "evidence": "API fee tier differs from web promotions; 6bps taker effective May 2026. Used to motivate conservative scenario, not as 2025 fee history or market outcome."
+    },
+    {
+      "url": "https://www.binance.com/en-NG/support/faq/detail/360033544231",
+      "evidence": "Fee calculation example uses 5bps taker. No account-specific or complete historical schedule was fetched."
+    },
+    {
+      "url": "https://www.mexc.com/announcements/article/user-agreement-360031501631",
+      "evidence": "Geographic restrictions are mutable and non-exclusive. Swiss timezone is not evidence of user residence or futures eligibility; no login or eligibility assertion."
+    }
+  ],
+  "blockers": [
+    "MEXC exact charge-time valuation price history not demonstrated",
+    "Paired 2025 executable orderbook/depth coverage not demonstrated, particularly MEXC",
+    "Pre-2026-only MEXC funding-history retrieval cannot be certified from documented pagination without a dated archive/index",
+    "Historical contract multipliers/lot filters, complete applicable 2025 fee schedules and maintenance margin/availability not certified"
+  ],
+  "decision": "Do not run retrospective economics or start prospective collection. No economic NO-GO and no candidate claim. No edge proven."
+}

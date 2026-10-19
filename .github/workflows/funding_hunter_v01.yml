@@ -1,0 +1,35 @@
+name: Funding Hunter V01 offline verification
+on:
+  push:
+    branches: ['research/funding-hunter-v01-2026-10-19']
+    paths:
+      - 'research/funding_hunter_v01/ledger.py'
+      - 'research/funding_hunter_v01/test_ledger.py'
+      - '.github/workflows/funding_hunter_v01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline tests and synthetic cost arithmetic
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p funding-hunter-verification
+          python -m unittest discover -s research/funding_hunter_v01 -v 2>&1 | tee funding-hunter-verification/tests.log
+          python research/funding_hunter_v01/ledger.py > funding-hunter-verification/cost_arithmetic.json
+          sha256sum research/funding_hunter_v01/PROTOCOL.md research/funding_hunter_v01/SOURCE_RECEIPT.json > funding-hunter-verification/sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: funding-hunter-v01-offline-verification
+          path: funding-hunter-verification/
+          retention-days: 14
