@@ -1,5 +1,5 @@
 """Test the frozen V03 replay against SYNTHETIC dummy records, not user books."""
-import io,json,tarfile,tempfile,unittest
+import gzip,io,json,tarfile,tempfile,unittest
 from pathlib import Path
 from research.funding_hunter_v03.dual_btc_400l2_private_replay import INSTS,PROBES,run,replay,stamp
 
@@ -21,12 +21,52 @@ def fake(d,inst,mode="ok"):
     if mode=="update_first":records[0]["action"]="update"
     records.append({"instId":inst,"action":"update","ts":str(stamp("23:55:00")+1),
                     "asks":[],"bids":[]})
+    if mode=="bad_tail":records[-1]["instId"]="BAD"
+    if mode=="invalid_count":records[-1]["asks"]=[["110000","1","nan"]]
+    if mode=="exact_time":records[0]["ts"]=str(stamp(PROBES[0]))
+    if mode=="equal_timestamp":
+        records.insert(1,{"instId":inst,"action":"update","ts":records[0]["ts"],
+                         "asks":[["110000","0","0"]],"bids":[]})
     raw=b"\n".join(json.dumps(x).encode() for x in records)+b"\n"
     with tarfile.open(p,"w:gz") as z:
         m=tarfile.TarInfo(fn+".data");m.size=len(raw);z.addfile(m,io.BytesIO(raw))
+        if mode=="extra_member":
+            m=tarfile.TarInfo("unexpected.data");m.size=1;z.addfile(m,io.BytesIO(b"x"))
     return p
 
 class FreezeContracts(unittest.TestCase):
+    def test_entire_tail_validated_after_last_probe(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=fake(d,INSTS["LINEAR"],"bad_tail")
+            with self.assertRaisesRegex(ValueError,"WRONG_INSTRUMENT"):
+                replay(p,INSTS["LINEAR"])
+    def test_gzip_trailer_crc_corruption_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=fake(d,INSTS["LINEAR"])
+            raw=bytearray(p.read_bytes());raw[-8]^=1;p.write_bytes(raw)
+            with self.assertRaises(gzip.BadGzipFile):replay(p,INSTS["LINEAR"])
+    def test_truncated_gzip_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=fake(d,INSTS["LINEAR"]);p.write_bytes(p.read_bytes()[:-8])
+            with self.assertRaises(EOFError):replay(p,INSTS["LINEAR"])
+    def test_extra_tar_member_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=fake(d,INSTS["LINEAR"],"extra_member")
+            with self.assertRaisesRegex(ValueError,"EXTRA_TAR_MEMBER"):replay(p,INSTS["LINEAR"])
+    def test_invalid_order_count_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=fake(d,INSTS["LINEAR"],"invalid_count")
+            with self.assertRaisesRegex(ValueError,"INVALID_ORDER_COUNT"):replay(p,INSTS["LINEAR"])
+    def test_probe_includes_event_exactly_at_clock(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=fake(d,INSTS["LINEAR"],"exact_time")
+            self.assertEqual(replay(p,INSTS["LINEAR"])["sample_quotes"][0]["source_quote_age_ms"],0)
+    def test_equal_timestamp_and_zero_delete(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=fake(d,INSTS["LINEAR"],"equal_timestamp");out=replay(p,INSTS["LINEAR"])
+            self.assertEqual(out["same_timestamp_adjacent_events"],1)
+            self.assertEqual(out["zero_quantity_deletions"],1)
+            self.assertTrue(out["gzip_crc32_isize_verified_to_eof"])
     def test_exact_clocks_and_names_frozen(self):
         self.assertEqual(PROBES,("00:05:00","12:05:00","23:55:00"))
         self.assertEqual(tuple(INSTS),("LINEAR","INVERSE"))
