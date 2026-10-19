@@ -7,7 +7,7 @@ from decimal import Decimal
 from research.funding_hunter_v04.june_real_dual_funding_rate_screen import (
     parse_month,prior_pair,episode_for_day,evaluate,utc_ms,archive_links,SIGNAL_THRESHOLD_BPS_PER_HOUR)
 
-def fixture(contract,rates=("0.00064",)*90):
+def fixture(contract,rates=("0.00064",)*89):
     first=datetime(2025,6,1,tzinfo=timezone.utc)
     csvrows=["instrument_name,funding_rate,funding_time"]
     for i,rate in enumerate(rates):
@@ -19,7 +19,7 @@ def fixture(contract,rates=("0.00064",)*90):
     return out.getvalue()
 def records(rate):
     first=datetime(2025,6,1,tzinfo=timezone.utc)
-    return [(int((first+timedelta(hours=8*i)).timestamp()*1000),Decimal(str(rate))) for i in range(90)]
+    return [(int((first+timedelta(hours=8*i)).timestamp()*1000),Decimal(str(rate))) for i in range(89)]
 
 class ScienceAndCausality(unittest.TestCase):
     def test_original_conservative_threshold(self):
@@ -27,23 +27,26 @@ class ScienceAndCausality(unittest.TestCase):
     def test_correct_two_original_zip_schemas(self):
         for sym in ("BTC-USDT-SWAP","BTC-USD-SWAP"):
             rows,meta=parse_month(fixture(sym),sym)
-            self.assertEqual(len(rows),90)
-            self.assertEqual(meta["observed_intervals_minutes"],{480:89})
+            self.assertEqual(len(rows),89)
+            self.assertEqual(meta["observed_intervals_minutes"],{480:88})
     def test_bad_contract_source_fail_closed(self):
         with self.assertRaisesRegex(ValueError,"MISMATCH_INSTRUMENT"):
             parse_month(fixture("BTC-USDT-SWAP"),"BTC-USD-SWAP")
     def test_2026_outside_source_fails(self):
-        out=fixture("BTC-USD-SWAP")
-        # This source is always June, no protected data can be injected as a source.
-        self.assertEqual(parse_month(out,"BTC-USD-SWAP")[1]["rows"],90)
+        z=io.BytesIO()
+        with zipfile.ZipFile(z,"w") as f:
+            f.writestr("funding.csv","instrument_name,funding_rate,funding_time\n"
+              "BTC-USD-SWAP,0.0001,2026-01-01T00:00:00Z\n")
+        with self.assertRaisesRegex(ValueError,"OUTSIDE_FROZEN_UTC_PLUS8"):
+            parse_month(z.getvalue(),"BTC-USD-SWAP")
     def test_csv_wrong_fields(self):
         bad=io.BytesIO()
         with zipfile.ZipFile(bad,"w") as z:z.writestr("one.csv","name,time,rate\nx,x,1\n")
         with self.assertRaisesRegex(ValueError,"FUNDING_COLUMNS"):
             parse_month(bad.getvalue(),"BTC-USDT-SWAP")
     def test_duplicate_timestamp_blocked(self):
-        blob=fixture("BTC-USD-SWAP",("0.0005",)*90)
-        self.assertEqual(parse_month(blob,"BTC-USD-SWAP")[1]["rows"],90)
+        blob=fixture("BTC-USD-SWAP",("0.0005",)*89)
+        self.assertEqual(parse_month(blob,"BTC-USD-SWAP")[1]["rows"],89)
         text=io.StringIO()
         z=io.BytesIO()
         with zipfile.ZipFile(z,"w") as f:
