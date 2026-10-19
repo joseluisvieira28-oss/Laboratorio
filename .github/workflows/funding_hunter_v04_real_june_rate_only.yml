@@ -1,0 +1,45 @@
+name: FUNDING HUNTER V04 Original 2025 BTC Funding Rate-Only Screen
+on:
+  push:
+    branches: [research/funding-hunter-v04-june-2025-cashflow-gate-2026-10-19]
+    paths: [.github/workflows/funding_hunter_v04_real_june_rate_only.yml]
+permissions:
+  contents: read
+jobs:
+  synthetic-science-contracts:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Hermetic causal original June 2025 funding schema and all 28 day checks
+        run: python -m unittest discover -s research/funding_hunter_v04 -p 'test_june_real_dual_funding_rate_screen.py' -v
+  read-only-original-2025-funding-archive-source:
+    needs: synthetic-science-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch two fixed 2025 June official ZIPs, emit rate-only economics not actual fills
+        run: python -m research.funding_hunter_v04.june_real_dual_funding_rate_screen
+      - name: Preserve derived financial screens and source SHA256, never raw ZIPs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FUNDING-HUNTER-V04-REAL-BTC-JUNE2025-RATE-ONLY-NOT-EXECUTION
+          path: research/funding_hunter_v04/receipts/*.json
+          if-no-files-found: warn
+          retention-days: 25
