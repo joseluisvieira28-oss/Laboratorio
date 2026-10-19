@@ -1,0 +1,49 @@
+name: CONVEX V05 OKX Historical L2 Custody and Contract-Aware Sweep Gate
+on:
+  push:
+    branches:
+      - research/convex-okx-l2-custody-and-sweep-v05-2026-10-19
+    paths:
+      - .github/workflows/convex-v05-okx-historical-l2-source-once.yml
+permissions:
+  contents: read
+jobs:
+  source-parser-contracts:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Hermetic historical source gates and bid/ask sweep checks
+        run: python -m unittest discover -s research/convex_okx_l2_v05 -p 'test_v05.py' -v
+  exactly-two-frozen-public-source-probes:
+    needs: source-parser-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Exactly two fixed historical OKX public metadata GETs, no archives or trading
+        run: |
+          python -m research.convex_okx_l2_v05.catalogue_gate \
+            --out research/convex_okx_l2_v05/receipts
+      - name: Retain literal source transport and sanitized catalogue schema receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V05-TWO-OKX-HISTORICAL-L2-PUBLIC-SOURCE-RECEIPTS
+          path: research/convex_okx_l2_v05/receipts/**
+          retention-days: 30
+          if-no-files-found: warn

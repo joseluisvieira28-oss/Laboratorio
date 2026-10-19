@@ -1,0 +1,20 @@
+# V05D — OPERATOR-UPLOADED HISTORICAL OKX L2 DATA — PRE-ENTRY-QUOTE FREEZE (19 OCT 2026)
+
+Two original official OKX portal uploads now present in the private current conversation container, before price/outcome computation:
+
+- `BNB-USDT-SWAP-L2orderbook-400lv-2023-11-01.tar.gz`: observed ~56,795,907 compressed bytes, one 492,962,096-byte regular `.data` member; first two schema rows JSON with top-level `instId,action,ts,asks,bids` and price levels `[price,qty,orderCount]` — unlike the incorrectly assumed `.ndjson` and absent `seqId/prevSeqId`.
+- `SOL-USDT-SWAP-L2orderbook-400lv-2023-05-29.tar.gz`: observed ~57,178,092 compressed bytes, one 535,960,489-byte `.data` member with the same raw schema.
+- Actual opening snapshots visibly exist on both UTC dates; neither subsequent actual original V5 entry T0 state, matching prices, book-size fill, full time-coverage nor historical trade outcomes have been inspected at this freeze. The two files must remain **PRIVATE**, never commit/upload to public GitHub/Actions or redistribute raw data.
+
+## Exact fixed signal timestamps and no data snooping
+
+- SOL-USDT-SWAP / original Binance V5 SOL1H LONG, **2023-05-29 16:05:00.000Z** = 1685376300000 ms, BASE original model order quantity (coin) from already-published immutable V03 receipt 104.79202 SOL; quote comparison only, original model entry price must be verified from immutable original V03 receipt before any claim.
+- BNB-USDT-SWAP / original Binance V5 BNB4H LONG, **2023-11-01 16:05:00.000Z** = 1698854700000 ms, BASE original model order quantity (coin) from immutable V03 receipt 8.82249 BNB.
+- Whole data from UTC start up to and including T0, ZERO post-T0 events for book; require first full `snapshot`, strictly nondecreasing ms, correct `instId`, valid positive bids/asks, qty zero deletes levels, newest update at/before T0 only. Quote freshness <=2000ms, report peak gap and number of resets. If schema lacks `seqId/prevSeqId`, classify `SEQUENCE_CONTINUITY_NOT_PROVEN` no matter other passes; no source integrity claim beyond local archive SHA256 (not vendor signed). Source files stored locally only.
+- For each reconstructed current book at T0 show best bid/ask price, aggregate ASK depth and price-walk for **four frozen relative order-quantity fractions** 0.25,0.50,0.75,1.00 from original BASE qty; do NOT change to a good-looking ratio after inspection. Convert base qty using original 2023 public contract face-value listing docs as **historical listing evidence only**: OKX BNB-USDT-SWAP Dec 22 2022 lists `0.01 BNB/contract` at launch; OKX SOL-USDT-SWAP Jan 2021 lists `1 SOL/contract` at launch. Changes by the 2023 target date and actual lot increment MUST be independently verified; until then classify simulated quantities `FACE_VALUE_AT_LAUNCH_ASSUMPTION`. No unsupported guaranteed fill, executable actual broker limit, API auto-order or net after-cost PnL.
+- Report top ASK count vs required number of provisional contracts, L2 cumulative depth and theoretical VWAP price walk (bps vs top ASK), plus difference vs original Binance assumed modeled LONG entry price if exact prior receipt found. No maker assumptions or actual fee/funding/re-entry/stop. Do NOT copy Binance venue execution PnL to OKX.
+- Absent sequencing metadata means cannot verify dropped update packets. Prefix snapshots plus update timestamps can be reconstructed provisionally if chronological and no corruption; *always report continuity caveat*. If abnormal/crossed/stale/out-of-order/time gaps => fail closed; do not silently reorder data or use future rows.
+- Preplanned sensitivity: explicit 0.25/0.50/0.75/1.00 of original paper qty at the same T0 and quote, top ASK and cumulative ASK up to 400 levels. Do not select favorable date or filter failures.
+- IMPORTANT economic gate requires BOTH full originals matched and historical contract ctVal+lot verified independently and true stop/exit prices, fees, funding, bid-ask time and OOS. This experiment alone always outputs `HISTORICAL_QUOTE_ONLY_NO_OOS_NO_LIVE_GO`.
+
+Original 2026 holdout stays locked; no main merge, wallet/exchange mutation, orders or leverage.

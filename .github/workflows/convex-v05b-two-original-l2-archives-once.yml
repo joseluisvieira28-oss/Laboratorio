@@ -1,0 +1,42 @@
+name: CONVEX V05B Two Raw Historical OKX L2 Archives No Raw Redistribution
+on:
+  push:
+    branches:
+      - research/convex-okx-l2-custody-and-sweep-v05-2026-10-19
+    paths:
+      - .github/workflows/convex-v05b-two-original-l2-archives-once.yml
+permissions:
+  contents: read
+jobs:
+  offline-contract-sweep-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s research/convex_okx_l2_v05 -p 'test_v05.py' -v
+  two-publisher-archive-personal-readonly-gates:
+    needs: offline-contract-sweep-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read EXACT two historical source archives personal-use only, emit hashes and structural receipts, not market data
+        run: python -m research.convex_okx_l2_v05.raw_l2_two_archives --out research/convex_okx_l2_v05/receipts_archives
+      - name: Keep only sanitized status, archive SHA256 and timestamp counts; no raw files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V05B-TWO-L2-ARCHIVE-SOURCE-STRUCTURE-ONLY
+          path: research/convex_okx_l2_v05/receipts_archives/**
+          if-no-files-found: warn
+          retention-days: 30
