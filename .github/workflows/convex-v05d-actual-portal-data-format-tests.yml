@@ -1,0 +1,27 @@
+name: CONVEX V05D True 2023 OKX Portal DATA Format Offline Parser
+on:
+  push:
+    branches:
+      - research/convex-okx-l2-custody-and-sweep-v05-2026-10-19
+    paths:
+      - .github/workflows/convex-v05d-actual-portal-data-format-tests.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  true-schema-hermetic-tests:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic actual .data level-price-qty-count, chronology, source quantity fractions, no-network tests
+        run: python -m unittest discover -s research/convex_okx_l2_v05 -p 'test_operator_uploaded_v05d.py' -v
