@@ -16,7 +16,7 @@ def inverse_candidates(doc):
                     found.append(url)
             for k,v in obj.items():
                 if k not in ("filename","url"):walk(v,fam)
-    walk(doc.get("data",[]))
+    walk(doc)
     return list(dict.fromkeys(found))
 def main():
     origin.url="https://www.okx.com/api/v5/public/market-data-history?"+urllib.parse.urlencode({
