@@ -1,0 +1,59 @@
+name: CONVEX V04 Immutable L1 Capacity Frontier (no market requests)
+on:
+  push:
+    branches:
+      - research/convex-l1-capacity-frontier-v04-2026-10-19
+    paths:
+      - .github/workflows/convex-v04-immutable-l1-capacity.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  hermetic-coverage-tests:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic source status, quote fraction and fail-closed checks
+        run: python -m unittest discover -s research/convex_l1_capacity_v04 -p 'test_*.py' -v
+  read-published-v03c-source-receipts:
+    needs: hermetic-coverage-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download prior immutable V03C source receipts ONLY (zero exchange or public market GET)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/convex-v04-source/SOLUSDT /tmp/convex-v04-source/BNBUSDT
+          gh run download 39027126160 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-V03C-STREAMING-ONLY-SIZE-BLOCKED-SOLUSDT --dir /tmp/convex-v04-source/SOLUSDT
+          gh run download 39027126160 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-V03C-STREAMING-ONLY-SIZE-BLOCKED-BNBUSDT --dir /tmp/convex-v04-source/BNBUSDT
+      - name: Compute 4 predeclared static fractional-position quote-depth scenarios for all 39 ORIGINAL events
+        run: |
+          python -m research.convex_l1_capacity_v04.capacity_audit \
+            --source-dir /tmp/convex-v04-source \
+            --output-dir research/convex_l1_capacity_v04/receipts
+      - name: Store immutable source hashes and full denominator
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONVEX-V04-39-L1-FROZEN-CAPACITY-FRONTIER
+          path: research/convex_l1_capacity_v04/receipts/**
+          if-no-files-found: warn
+          retention-days: 30
