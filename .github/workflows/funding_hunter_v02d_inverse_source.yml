@@ -1,0 +1,25 @@
+name: FUNDING HUNTER V02D 2025 OKX USD Inverse Source Discovery
+on:
+  push:
+    branches: [research/funding-hunter-v02-source-rescue-2026-10-19]
+    paths: [.github/workflows/funding_hunter_v02d_inverse_source.yml]
+permissions:
+  contents: read
+jobs:
+  frozen-three-asset-2025-inverse-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Four bounded official OKX public 2025 USD-inverse archive metadata queries
+        run: python -m research.funding_hunter_v02.okx_usd_inverse_2025_metadata
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FUNDING-HUNTER-V02D-USD-INVERSE-2025-SOURCE-ONLY
+          path: research/funding_hunter_v02/receipts/V02D_USD_INVERSE_2025_METADATA_ONLY.json
+          retention-days: 15

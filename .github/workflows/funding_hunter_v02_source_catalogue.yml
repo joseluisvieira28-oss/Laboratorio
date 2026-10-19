@@ -1,0 +1,27 @@
+name: FUNDING HUNTER V02 Official 2025 OKX Public Archive Catalogue Only
+on:
+  push:
+    branches: [research/funding-hunter-v02-source-rescue-2026-10-19]
+    paths: [.github/workflows/funding_hunter_v02_source_catalogue.yml]
+permissions:
+  contents: read
+jobs:
+  public-only-2025-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Four official unsigned GETs catalogue metadata only, not market files, no 2026
+        run: python -m research.funding_hunter_v02.okx_2025_archive_catalogue_gate
+      - name: Store sanitized metadata receipts, no raw source redistribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: FUNDING-HUNTER-V02-OKX-2025-METADATA-ONLY
+          path: research/funding_hunter_v02/receipts/*.json
+          if-no-files-found: error
+          retention-days: 15
