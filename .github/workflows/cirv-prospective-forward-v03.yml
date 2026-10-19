@@ -1,0 +1,106 @@
+name: CIRV BTC ETH Prospective Forward V0.3
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".github/workflows/cirv-prospective-forward-v03.yml"
+      - "labs/CRYPTO_INTRAWEEK_RV_001/CIRV_FORWARD_DAILY_TRIGGER.txt"
+      - "labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py"
+      - "labs/CRYPTO_INTRAWEEK_RV_001/FORWARD_OPERATIONS_AMENDMENT_V0.3.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cirv-btceth-forward-v03
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crypto-intraweek-rv-forward-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m pip install --disable-pip-version-check -q pandas numpy
+
+      - name: Compile unchanged frozen watcher
+        run: python -m py_compile labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py
+
+      - name: Read prospective target trigger
+        id: target
+        shell: bash
+        run: |
+          FILE="labs/CRYPTO_INTRAWEEK_RV_001/CIRV_FORWARD_DAILY_TRIGGER.txt"
+          if [[ ! -f "$FILE" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "reason=NO_TRIGGER_FILE" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TARGET="$(grep -E '^target_date=' "$FILE" | head -1 | cut -d= -f2 || true)"
+          if [[ ! "$TARGET" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "reason=DISABLED_OR_INVALID_TRIGGER" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$TARGET" < "2026-09-23" ]]; then
+            echo "Forbidden pre-remediation target: $TARGET"
+            exit 12
+          fi
+
+          TODAY="$(date -u +%F)"
+          HM="$(date -u +%H%M)"
+          if [[ "$TARGET" != "$TODAY" ]]; then
+            echo "Target $TARGET is not current UTC date $TODAY"
+            exit 13
+          fi
+
+          if (( 10#$HM < 900 || 10#$HM > 1030 )); then
+            echo "Outside frozen delayed-source prospective window: $HM UTC"
+            exit 14
+          fi
+
+          PREV="$(date -u -d "$TARGET -1 day" +%F)"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "previous=$PREV" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Verify canonical D-1 Binance Vision archives are published
+        if: steps.target.outputs.skip == 'false'
+        env:
+          PREV: ${{ steps.target.outputs.previous }}
+        run: |
+          python - <<'PY'
+          import os, urllib.request
+          day=os.environ["PREV"]
+          for sym in ("BTCUSDT","ETHUSDT"):
+              url=f"https://data.binance.vision/data/futures/um/daily/klines/{sym}/5m/{sym}-5m-{day}.zip"
+              req=urllib.request.Request(url,method="HEAD",headers={"User-Agent":"CryptoLab-CIRV-Forward-V0.3"})
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  if r.status != 200:
+                      raise SystemExit(f"{sym} D-1 archive unavailable: HTTP {r.status}")
+                  print(sym, day, r.status, r.headers.get("Last-Modified"), r.headers.get("ETag"))
+          PY
+
+      - name: Generate prospective blind delayed-source forecast
+        if: steps.target.outputs.skip == 'false'
+        run: python labs/CRYPTO_INTRAWEEK_RV_001/forward_watcher_v01.py "${{ steps.target.outputs.target }}"
+
+      - name: Upload immutable forecast evidence
+        if: steps.target.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CIRV_FORWARD_V03_${{ steps.target.outputs.target }}_${{ github.run_id }}
+          path: cirv_forward_forecast_${{ steps.target.outputs.target }}.json
+          if-no-files-found: error
+          retention-days: 90
