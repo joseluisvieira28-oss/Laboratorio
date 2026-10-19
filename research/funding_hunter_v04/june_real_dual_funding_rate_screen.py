@@ -65,7 +65,7 @@ def archive_links(doc):
                 if urlparse(url).scheme!="https" or urlparse(url).hostname!="static.okx.com":
                     raise ValueError("UNTRUSTED_ARCHIVE_HOST")
                 for kind,contract in CONTRACTS.items():
-                    matched=family==FAMILIES[kind] and contract in fn and MONTH in fn
+                    matched=family==FAMILIES[kind] and MONTH in fn
                     if matched:hits[kind].append(url)
             for key,value in obj.items():
                 if key not in ("filename","url"):walk(value,family,depth+1)
@@ -130,8 +130,7 @@ def parse_month(raw,contract):
             raise ValueError("FUNDING_RATE_OUT_OF_BOUNDS")
         rows.append((time,rate))
     if not rows:raise ValueError("NO_FUNDING_ROWS")
-    rows.sort(key=lambda x:x[0])
-    if len(rows)!=len({t for t,r in rows}):raise ValueError("DUPLICATE_SETTLEMENT_TIME")
+    if any(a[0]>=b[0] for a,b in zip(rows,rows[1:])):raise ValueError("NONMONOTONIC_OR_DUPLICATE_SETTLEMENT_TIME")
     intervals=Counter()
     for first,last in zip(rows,rows[1:]):
         step=last[0]-first[0]
