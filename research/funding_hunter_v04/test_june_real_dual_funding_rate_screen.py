@@ -60,6 +60,22 @@ class ScienceAndCausality(unittest.TestCase):
                 "BTC-USD-SWAP,0.002,2025-06-01T02:00:00Z\n")
         with self.assertRaisesRegex(ValueError,"UNEXPECTED_FUNDING_PERIOD"):
             parse_month(data.getvalue(),"BTC-USD-SWAP")
+    def test_utc_plus8_archive_start_is_accepted_without_shifting_event_utc(self):
+        z=io.BytesIO()
+        with zipfile.ZipFile(z,"w") as f:
+            f.writestr("funding.csv","instrument_name,funding_rate,funding_time\n"
+              "BTC-USDT-SWAP,0.0001,2025-06-01T00:00:00+08:00\n"
+              "BTC-USDT-SWAP,0.0002,2025-06-01T08:00:00+08:00\n")
+        rows,meta=parse_month(z.getvalue(),"BTC-USDT-SWAP")
+        self.assertEqual(rows[0][0],1748707200000)
+        self.assertEqual(meta["observed_intervals_minutes"],{480:1})
+    def test_utc_plus8_archive_july_boundary_is_rejected(self):
+        z=io.BytesIO()
+        with zipfile.ZipFile(z,"w") as f:
+            f.writestr("funding.csv","instrument_name,funding_rate,funding_time\n"
+              "BTC-USD-SWAP,0.0001,2025-07-01T00:00:00+08:00\n")
+        with self.assertRaisesRegex(ValueError,"OUTSIDE_FROZEN_UTC_PLUS8"):
+            parse_month(z.getvalue(),"BTC-USD-SWAP")
     def test_exact_2025_month_time(self):
         self.assertEqual(utc_ms("2025-06-01T00:00:00+00:00"),1748736000000)
     def test_pre_entry_no_lookahead(self):
