@@ -1,31 +1,39 @@
-# CONVEX V05C — WINDOWS / PERSONAL OFFLINE OKX HISTORICAL 400-L2 HANDOFF
+# CONVEX V05D — OFFLINE WINDOWS TWO-ARCHIVE REAL `.data` OPERATOR GUIDE
 
-**No exchange accounts, API key, trading authorization, capital or wallets needed.** The frozen V05 source [run 39202147739](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/39202147739) established authentic OKX **public catalogue download-link candidates** hosted at `static.okx.com` for EXACT 2023-05-29 SOL and 2023-11-01 BNB. The bounded raw-read runner [39202571193](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/39202571193) returned **HTTP 403** for both historical archive attempts; the current logs do NOT isolate whether the 403 happened during renewed catalogue fetch or archive download. We do not bypass with VPN, proxies or alternate region endpoints.
+**CURRENT CORRECT GUIDE, 19 Oct 2026. This supersedes V05C's experimental `local_archive_importer.py`**: that older V05C prototype incorrectly assumed `.ndjson` TAR members and exchange-provided `seqId` fields; the real original OKX portal files have one `.data` member with JSON lines and **no sequence metadata**. Do not use V05C to claim these official portal files are invalid.
 
-## Manual path (personal strategy research under OKX historical data license)
+## Two original files already downloaded by operator
 
-1. Open the publisher's [official OKX Historical Market Data](https://www.okx.com/historical-data) using your own normal browser. Choose **Order book**, **Perpetual SWAP / USDT-margined (NOT Spot)**, **400-level L2** if the choice is shown.
-2. Retrieve the archive for instrument **SOL-USDT-SWAP** on **2023-05-29 UTC**; and separately **BNB-USDT-SWAP** on **2023-11-01 UTC**. These exact historical dates were frozen BEFORE looking at OKX. They represent original Binance V5 SOL1H and BNB4H paper entry UTC times **16:05:00.000** on the respective days.
-3. Expect official files resembling `SOL-USDT-SWAP_..._2023-05-29.tar.gz` and `BNB-USDT-SWAP_..._2023-11-01.tar.gz`. Exact filenames are set by OKX; do not rename a different symbol/date/archive into a matching name. If the archive uses a different archive format, report it without converting/pretending. Do NOT upload raw market files to public GitHub/Telegram.
-4. If OKX prompts for a user account or shows an availability/region error, **do not provide any password or trading key** to the assistant. Share only a redacted screenshot or a brief text of the product/date and error; stop if terms/restrictions prohibit download.
-5. On a Windows local clone or downloaded ZIP of branch `research/convex-okx-l2-custody-and-sweep-v05-2026-10-19`, from repository root use Python 3.11 or later:
+1. `SOL-USDT-SWAP-L2orderbook-400lv-2023-05-29.tar.gz`
+2. `BNB-USDT-SWAP-L2orderbook-400lv-2023-11-01.tar.gz`
+
+Do not rename/convert/redistribute; terms restrict raw historical market data redistribution. The V05D source review was pre-frozen in `V05D_REAL_UPLOADED_ARCHIVE_PRE_T0_FREEZE_2026_10_19.md`.
+
+### Execute **locally without internet** (Windows PowerShell)
+
+From the root of branch `research/convex-okx-l2-custody-and-sweep-v05-2026-10-19` with Python 3.11+:
 
 ```powershell
-py -3 -m research.convex_okx_l2_v05.local_archive_importer `
-  --sol-archive "C:\Users\Public\Downloads\SOL-USDT-SWAP_l2_orderbook_2023-05-29.tar.gz" `
-  --bnb-archive "C:\Users\Public\Downloads\BNB-USDT-SWAP_l2_orderbook_2023-11-01.tar.gz" `
-  --out ".\local-only-source-receipts"
+py -3 -m research.convex_okx_l2_v05.operator_uploaded_l2_v05d `
+  --sol "C:\Users\Public\Downloads\SOL-USDT-SWAP-L2orderbook-400lv-2023-05-29.tar.gz" `
+  --bnb "C:\Users\Public\Downloads\BNB-USDT-SWAP-L2orderbook-400lv-2023-11-01.tar.gz" `
+  --out ".\local-private-okx-v05d"
 ```
 
-Replace the two paths with the ACTUAL publisher download filenames and your download location. You may omit one `--*-archive` while you only have the other; missing one is reported SOURCE_BLOCKED, never synthesized.
+Replace `C:\Users\Public\Downloads` with the files' actual directory. The tool has **no network calls or trading methods** and never sends any private orderbook file to GitHub. It reads tar.gz incrementally, requires exact original filename, one `.data` member, source UTC date/instrument, first snapshot, nondecreasing updates, 400 levels on each side and causal prior price <= frozen V5 entry T0.
 
-6. Inspect `local-only-source-receipts\V05C_LOCAL_TWO_ARCHIVE_SOURCE_REPORT.json` and paste **only the sanitized JSON report** back into our chat. It contains SHA256, source structure/status and UTC event age but **no raw bid/ask prices**, no API key or wallet details. Do not publicly commit the two raw `.tar.gz` source files. Official terms permit personal use for your own strategy development but restrict redistribution: https://www.okx.com/en-ae/help/historicaldata-terms-and-conditions
+Optional `orjson` speeds up parsing but Python stdlib JSON works without it. A result JSON is created at `local-private-okx-v05d\V05D_LOCAL_TWO_UPLOADED_ORDERBOOK_CAUSAL_RECEIPT.json`. You may share the **derived sanitized summary** only, not the raw archive. For verification, check the local archive SHA256 values against the uploaded-file receipts stored privately:
+- SOL compressed raw `330bfc2eb74a926cf6525cbadc70a16345330b14814f93d05a61c5cc185b1289`.
+- BNB compressed raw `5eb76eac5e930086b3068528379d8fb0ec1373aa523fbb46640042d2d22afdbe`.
 
-## What the local tool DOES and DOESN'T prove
+These are local-file SHA256 hashes, **not official OKX signed checksums**.
 
-- Checks filename instrument/day, local file bounded <=190MB, SHA256 transport custody, TAR/NDJSON structural integrity, chronological original T0, mandatory full snapshot and sequential delta continuity when available, no future/stale book accepted.
-- If a file is >190MB, the source gate fails closed. Do not change caps post-outcome inside this frozen experiment.
-- A local file SHA is NOT a vendor-signed checksum. Additional publisher custody (if available), historic contract `ctVal`, tick/lot rules, L2 depth and bid-side exit are needed before exact historical taker VWA price and FULL net simulated economics.
-- Even if source structure passes, no real broker fills, stops, independent OOS, permission to trade, strategy profitability or guaranteed money machine follows from it.
+## Frozen economic limitations
 
-No user action required to keep original shadow signals working. Nothing touches `main`/Windows watchers/MEXC account.
+T0 original SOL1h signal: `2023-05-29 16:05:00.000Z`, original frozen Binance-model base qty `104.79202011433037 SOL`. Original BNB4h signal: `2023-11-01 16:05:00.000Z`, base qty `8.822493532731512 BNB`. Four tiers of EXACT 0.25/0.50/0.75/1.00 of those base quantities; no hindsight ratio selection. The analysis applies OKX official listing announcements as **provisional 2023 contract sizes**: SOL `1 SOL /contract` announced 2021 and BNB `0.01 BNB /contract` announced 2022. Actual 2023 dates' contract size and lot/increments are not individually verified; so output quantities may be unorderable fractions of a contract.
+
+No sequence identifiers in actual 2023 `.data` files: timestamp order and repeated snapshots are observed but losslessness of updates is NOT provable. Book state at T0 and hypothetical ASK-level walk are **descriptive source observations, not actual broker fills**. No funding, exits, gaps, venue commissions, stop execution or 2026 independent holdout analyzed. No LIVE GO. Nothing needs access to any trading account or keys.
+
+Official original notices:
+- SOL: https://www.okx.com/en-eu/help/okx-to-enable-margin-trading-savings-and-list-perpetual-for-sol-lon
+- BNB: https://www.okx.com/de/help/okx-to-enable-margin-trading-savings-and-list-perpetual-for-bnb
