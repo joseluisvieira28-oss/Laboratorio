@@ -1,0 +1,111 @@
+{
+  "document_type": "MRCR_H02_SCIENTIFIC_RULESET_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
+  "status": "FROZEN_RULESET__CALENDAR_BINDING_PENDING",
+  "version": "0.1",
+  "frozen_at_utc": "2026-09-25T15:02:35Z",
+  "authority_receipt_sha256": "30c189762d05f33f88a1a6d8a9ad3af80355b4589564c70ca15f996dc7f4a155",
+  "event_scope": {
+    "event_families": [
+      "US_CPI",
+      "US_EMPLOYMENT_SITUATION",
+      "FOMC_STATEMENT"
+    ],
+    "t0_definition": "official scheduled release timestamp from BLS/Federal Reserve authority",
+    "actual_vs_consensus_used": false,
+    "event_direction_used": false,
+    "calendar_year": 2027,
+    "complete_official_calendar_required": true
+  },
+  "market_scope": {
+    "assets": [
+      "BTC",
+      "ETH"
+    ],
+    "venues": {
+      "BINANCE_SPOT": {
+        "BTC": "BTCUSDT",
+        "ETH": "ETHUSDT"
+      },
+      "COINBASE_ADVANCED_SPOT": {
+        "BTC": "BTC-USD",
+        "ETH": "ETH-USD"
+      }
+    },
+    "cross_venue_price_merge_allowed": false,
+    "cross_venue_state_confirmation_required": true
+  },
+  "decision_state": {
+    "pre_anchor_definition": "latest valid venue-native book state strictly before T0",
+    "feature_interval": "[T0,T0+180s]",
+    "decision_clock_seconds": 180,
+    "availability_rule": "SOURCE_AND_COLLECTOR_ARRIVAL",
+    "depth_definition": {
+      "mode": "BPS_BAND",
+      "value": 10
+    },
+    "measurement_catalog_sha256": "5f329ddcd7ba7438885e0936a522b5a4b08248fa6e7c7b76b7c4ef9be489cc97",
+    "classifier_spec_sha256": "d92029514a512dd5db1bb91431ab4df1887169f46545bfa81c692456e9f715ff"
+  },
+  "hypothesis": {
+    "causal_statement": "Response-conditioned acceptance states after scheduled macro impulses have larger subsequent direction-aligned returns than rejection states.",
+    "primary_comparison": "ACCEPTANCE minus REJECTION",
+    "classifier_id": "MRCR_H02_CLASSIFIER_SPEC_V01",
+    "abstention_rule": "Any missing/invalid input, sub-spread displacement, unresolved spread, mixed venue state, cross-venue state disagreement, or cross-venue direction disagreement => ABSTAIN."
+  },
+  "outcome": {
+    "future_horizon_seconds": 900,
+    "outcome_time_definition": "decision timestamp + 900 seconds",
+    "venue_outcome": "direction * log(mid_outcome/mid_decision) * 10000",
+    "asset_outcome": "equal-weight arithmetic mean of the two venue-specific dimensionless signed returns",
+    "primary_statistic": "mean(asset_outcome | ACCEPTANCE) - mean(asset_outcome | REJECTION)",
+    "inference": {
+      "method": "event-cluster bootstrap percentile CI",
+      "replicates": 10000,
+      "seed": 1729,
+      "confidence_level": 0.95,
+      "success_rule": "ci_lower_bps > 0",
+      "wrong_sign_rule": "ci_upper_bps < 0",
+      "otherwise": "H02_NO_EDGE"
+    }
+  },
+  "sample_and_reveal": {
+    "first_checkpoint_event_family_minima": {
+      "US_CPI": 10,
+      "US_EMPLOYMENT_SITUATION": 10,
+      "FOMC_STATEMENT": 6
+    },
+    "classified_state_minima": {
+      "ACCEPTANCE_event_asset_units": 10,
+      "REJECTION_event_asset_units": 10,
+      "distinct_classified_events": 20
+    },
+    "first_checkpoint_action": "Inspect decision-time state counts only. If all minima pass, freeze reveal set and reveal outcomes once.",
+    "insufficient_at_first_checkpoint": "Keep outcomes unopened and continue through remaining official 2027 events.",
+    "year_end_action": "If state minima then pass, reveal once and run frozen test; otherwise close INSUFFICIENT_SAMPLE without threshold relaxation.",
+    "repeated_outcome_looks_allowed": false
+  },
+  "economics": {
+    "tested": false,
+    "fee_model": null,
+    "slippage_model": null,
+    "latency_model": null,
+    "pnl": false,
+    "trading_actions": false
+  },
+  "contamination": {
+    "historical_internal_macro_outcomes_allowed_for_selection": false,
+    "post_outcome_threshold_tuning_allowed": false,
+    "subgroup_rescue_allowed": false,
+    "alternative_horizon_rescue_allowed": false,
+    "promotion_credit_inherited": false
+  },
+  "final_protocol_requirements": {
+    "complete_official_2027_calendar_manifest": true,
+    "implementation_manifest": true,
+    "ruleset_must_be_copied_without_scientific_mutation": true,
+    "separate_target_observation_open_authority": true
+  },
+  "ruleset_sha256": "28b01887b73298bae5ffa695599c49af5c40355392ae64255abe06d9f0d6849e"
+}

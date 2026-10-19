@@ -1,0 +1,103 @@
+{
+  "document_type": "MRCR_H02_FROZEN_SCOPE_SHADOW_OPERATOR_ATTEMPT_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
+  "evidence_date": "2026-09-26",
+  "batch_id": "f175a974-f3ba-41e2-9caf-8d27a03262e0",
+  "overall_status": "FAIL_CLOSED_INFRASTRUCTURE_BUG",
+  "scientific_interpretation": "NONE",
+  "no_edge_interpretation": false,
+  "promotion_credit": "NONE",
+  "target_observation_authorized": false,
+  "summary": {
+    "session_count": 6,
+    "passed_session_count": 4,
+    "failed_session_count": 2,
+    "sqlite_integrity_pass": true,
+    "independent_offline_verifier_status": "FAIL_CLOSED"
+  },
+  "passed_sessions": [
+    {
+      "venue": "COINBASE_ADVANCED_SPOT",
+      "native_symbol": "BTC-USD",
+      "stream_group": "COINBASE_LEVEL2",
+      "persisted_records": 966,
+      "data_messages": 965,
+      "recovered_final_sequence": 965,
+      "status": "PASS"
+    },
+    {
+      "venue": "COINBASE_ADVANCED_SPOT",
+      "native_symbol": "BTC-USD",
+      "stream_group": "COINBASE_MARKET_TRADES",
+      "persisted_records": 154,
+      "data_messages": 153,
+      "recovered_final_sequence": 153,
+      "status": "PASS"
+    },
+    {
+      "venue": "COINBASE_ADVANCED_SPOT",
+      "native_symbol": "ETH-USD",
+      "stream_group": "COINBASE_LEVEL2",
+      "persisted_records": 776,
+      "data_messages": 775,
+      "recovered_final_sequence": 775,
+      "status": "PASS"
+    },
+    {
+      "venue": "COINBASE_ADVANCED_SPOT",
+      "native_symbol": "ETH-USD",
+      "stream_group": "COINBASE_MARKET_TRADES",
+      "persisted_records": 38,
+      "data_messages": 37,
+      "recovered_final_sequence": 37,
+      "status": "PASS"
+    }
+  ],
+  "failed_sessions": [
+    {
+      "venue": "BINANCE_SPOT",
+      "native_symbol": "BTCUSDT",
+      "stream_group": "BINANCE_TRADES_DEPTH",
+      "transport": "PASS",
+      "snapshot_seen": true,
+      "aggtrade_messages": 243,
+      "depth_messages": 594,
+      "persisted_records": 838,
+      "chain_integrity_pass": false,
+      "recovery_pass": false,
+      "failure_reason": "COLLECTOR_MONOTONIC_REVERSAL",
+      "status": "FAIL_CLOSED"
+    },
+    {
+      "venue": "BINANCE_SPOT",
+      "native_symbol": "ETHUSDT",
+      "stream_group": "BINANCE_TRADES_DEPTH",
+      "transport": "PASS",
+      "snapshot_seen": true,
+      "aggtrade_messages": 117,
+      "depth_messages": 587,
+      "persisted_records": 705,
+      "chain_integrity_pass": false,
+      "recovery_pass": false,
+      "failure_reason": "COLLECTOR_MONOTONIC_REVERSAL",
+      "status": "FAIL_CLOSED"
+    }
+  ],
+  "root_cause": {
+    "classification": "COLLECTOR_PERSISTENCE_ORDERING_BUG",
+    "description": "The Binance REST snapshot was fetched concurrently and timestamped at response completion, but could be appended after later WebSocket records. Journal ordinal therefore did not always follow collector_monotonic_ns, creating a false monotonic reversal.",
+    "exchange_transport_failure": false,
+    "source_schema_failure": false,
+    "sequence_gap_proven": false
+  },
+  "correction": {
+    "status": "IMPLEMENTED_PENDING_OPERATOR_RETRY",
+    "rule": "Buffer pre-snapshot WebSocket records and the concurrent REST snapshot, then append them in deterministic collector_monotonic_ns order before direct live persistence begins.",
+    "monotonic_guard_relaxed": false,
+    "h02_science_changed": false,
+    "assets_or_venues_changed": false,
+    "outcomes_opened": false
+  },
+  "retry_required": true
+}

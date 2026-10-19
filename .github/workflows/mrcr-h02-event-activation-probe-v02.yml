@@ -1,0 +1,138 @@
+name: MRCR H02 Event Activation Probe V0.2
+
+on:
+  workflow_dispatch:
+    inputs:
+      event_id:
+        description: Exact annual-plan event_id to validate
+        required: true
+        type: string
+      annual_plan_path:
+        description: Repository path to MRCR_H02_ANNUAL_PLAN_MANIFEST_V02.json
+        required: true
+        type: string
+      protocol_path:
+        description: Optional repository path to frozen protocol V0.2
+        required: false
+        default: ''
+        type: string
+      implementation_manifest_path:
+        description: Optional repository path to Trigger-A implementation manifest
+        required: false
+        default: ''
+        type: string
+      target_open_authority_path:
+        description: Optional repository path to TARGET_OBSERVATION_OPEN receipt
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  event-activation-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: market-reveal-confirmation-reaction-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate input mode
+        id: mode
+        shell: bash
+        env:
+          PROTOCOL_PATH: ${{ inputs.protocol_path }}
+          IMPL_PATH: ${{ inputs.implementation_manifest_path }}
+          AUTH_PATH: ${{ inputs.target_open_authority_path }}
+        run: |
+          set -euo pipefail
+          COUNT=0
+          [ -n "$PROTOCOL_PATH" ] && COUNT=$((COUNT+1))
+          [ -n "$IMPL_PATH" ] && COUNT=$((COUNT+1))
+          [ -n "$AUTH_PATH" ] && COUNT=$((COUNT+1))
+          if [ "$COUNT" -ne 0 ] && [ "$COUNT" -ne 3 ]; then
+            echo "Partial runtime guard inputs are forbidden."
+            exit 2
+          fi
+          if [ "$COUNT" -eq 3 ]; then
+            echo "runtime_guard=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "runtime_guard=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Probe official event evidence and build activation receipt
+        shell: bash
+        env:
+          EVENT_ID: ${{ inputs.event_id }}
+          ANNUAL_PLAN: ${{ inputs.annual_plan_path }}
+          PROTOCOL_PATH: ${{ inputs.protocol_path }}
+          IMPL_PATH: ${{ inputs.implementation_manifest_path }}
+          AUTH_PATH: ${{ inputs.target_open_authority_path }}
+          RUNTIME_GUARD: ${{ steps.mode.outputs.runtime_guard }}
+        run: |
+          set -euo pipefail
+          BASE="Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01"
+          OUT="mrcr_event_activation_status_v02.json"
+
+          if [ "$RUNTIME_GUARD" = "true" ]; then
+            python "$BASE/live_event_activation_probe_v02.py"               --annual-plan "$ANNUAL_PLAN"               --event-id "$EVENT_ID"               --protocol "$PROTOCOL_PATH"               --implementation-manifest "$IMPL_PATH"               --target-open-authority "$AUTH_PATH"               --ruleset "$BASE/H02_SCIENTIFIC_RULESET_V01.json"               --output "$OUT"               | tee mrcr_event_activation_stdout.json
+          else
+            python "$BASE/live_event_activation_probe_v02.py"               --annual-plan "$ANNUAL_PLAN"               --event-id "$EVENT_ID"               --output "$OUT"               | tee mrcr_event_activation_stdout.json
+          fi
+
+      - name: Enforce no capture/outcome/order action
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          row=json.loads(
+              Path("mrcr_event_activation_status_v02.json")
+              .read_text(encoding="utf-8")
+          )
+          assert row.get("outcomes_authorized") is False
+          assert row.get("orders_enabled") is False
+          status=row.get("status")
+          assert status in {
+              "EVIDENCE_NOT_READY",
+              "ACTIVATION_RECEIPT_READY_TARGET_OBSERVATION_STILL_LOCKED",
+              "READY_FOR_EVENT_CAPTURE",
+              "BLOCKED_BY_RUNTIME_GUARD",
+          }
+          PY
+
+      - name: Write activation summary
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          row=json.loads(
+              Path("mrcr_event_activation_status_v02.json")
+              .read_text(encoding="utf-8")
+          )
+          print("## MRCR H02 Event Activation V0.2")
+          print()
+          print(f"Event: **{row.get('event_id')}**")
+          print(f"Status: **{row.get('status')}**")
+          print(f"T0 UTC: **{row.get('scheduled_time_utc', 'not available')}**")
+          print()
+          print("This workflow does not start market-data capture, outcomes, or orders.")
+          PY
+
+      - name: Upload activation evidence receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrcr-h02-event-activation-${{ inputs.event_id }}
+          path: |
+            mrcr_event_activation_status_v02.json
+            mrcr_event_activation_stdout.json
+          if-no-files-found: error
+          retention-days: 30

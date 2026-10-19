@@ -1,0 +1,88 @@
+{
+  "document_type": "MRCR_H02_PRETARGET_AUTOMATION_COMPLETION_V02",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
+  "evidence_date": "2026-09-27",
+  "status": "PASS_PRETARGET_AUTOMATION_COMPLETE__EXTERNAL_BLS_TRIGGER_PENDING",
+  "trigger_a_finalizer": {
+    "component": "trigger_a_finalizer_v02.py",
+    "behavior": [
+      "official live probe",
+      "deterministic 32-event annual plan",
+      "annual-plan SHA-256",
+      "implementation manifest",
+      "final_binding_preflight_v02",
+      "freeze target-locked protocol V0.2",
+      "hard stop before TARGET_OBSERVATION_OPEN"
+    ],
+    "blocked_live_behavior": "writes live-status + blocked receipt only; no annual plan/protocol",
+    "git_head_binding_enforced": true,
+    "target_observation_authorized": false,
+    "outcomes_authorized": false,
+    "orders_enabled": false
+  },
+  "event_activation": {
+    "components": [
+      "official_event_t0_extractor_v02.py",
+      "event_activation_receipt_builder_v02.py",
+      "live_event_activation_probe_v02.py",
+      "event_capture_runtime_guard_v02.py"
+    ],
+    "bls_mode": "official family schedule + official BLS dissemination policy => exact 08:30 America/New_York T0",
+    "fomc_mode": "official annual schedule announcement + preceding-meeting minutes confirmation => second-day 14:00 America/New_York T0",
+    "receipt_text_hash_binding": true,
+    "receipt_tamper_evident": true,
+    "receipt_only_status": "ACTIVATION_RECEIPT_READY_TARGET_OBSERVATION_STILL_LOCKED",
+    "full_guard_ready_status": "READY_FOR_EVENT_CAPTURE",
+    "starts_capture": false,
+    "outcomes_authorized": false,
+    "orders_enabled": false
+  },
+  "evidence_hashing": {
+    "annual_calendar_source_text_sha256_required": true,
+    "event_supporting_source_text_sha256_required": true,
+    "mutated_or_missing_hash_fail_closed": true
+  },
+  "validation": {
+    "synthetic_ci": {
+      "run_id": 36323164976,
+      "head_sha": "b774e8f48e0cc3e7b2003927d1252d5899fa6470",
+      "conclusion": "SUCCESS",
+      "completed_steps": 51
+    },
+    "official_t0_live_smoke": {
+      "run_id": 36323198410,
+      "head_sha": "2a852cdf7cc394073795083a35a6ee42ad4a70d2",
+      "conclusion": "SUCCESS",
+      "completed_steps": 9,
+      "source_domains": [
+        "bls.gov",
+        "federalreserve.gov"
+      ],
+      "target_observation_authorized": false,
+      "outcomes_authorized": false,
+      "orders_enabled": false
+    },
+    "official_calendar_live_watch": {
+      "run_id": 36322951303,
+      "conclusion": "SUCCESS",
+      "real_state": "BLOCKED",
+      "reason": "BLS_2027_ANNUAL_PLAN_INCOMPLETE"
+    }
+  },
+  "current_external_blocker": "BLS_2027_ANNUAL_PLAN_INCOMPLETE",
+  "current_automatic_path": [
+    "official calendar watcher observes annual_plan_trigger_ready_v02=true",
+    "watcher invokes trigger_a_finalizer_v02",
+    "target-locked Trigger-A package is produced and uploaded",
+    "workflow stops before TARGET_OBSERVATION_OPEN",
+    "separate explicit authority remains required",
+    "live_event_activation_probe_v02 validates each event immediately before capture eligibility"
+  ],
+  "science_changed": false,
+  "target_observation_authorized": false,
+  "outcomes_authorized": false,
+  "live_trading_authorized": false,
+  "main_merge_authorized": false,
+  "promotion_credit": "NONE"
+}

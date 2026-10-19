@@ -1,0 +1,35 @@
+{
+  "document_type": "MRCR_H02_FROZEN_SCOPE_SHADOW_CHRONOLOGY_HOTFIX_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "h02_id": "MRCR-H02-ACCEPTANCE-REJECTION-V01",
+  "status": "PASS_SYNTHETIC_OPERATOR_RETRY_REQUIRED",
+  "evidence_date": "2026-09-26",
+  "triggering_operator_batch": "f175a974-f3ba-41e2-9caf-8d27a03262e0",
+  "failure": "COLLECTOR_MONOTONIC_REVERSAL",
+  "root_cause": "Concurrent Binance REST snapshot was timestamped at response completion but could be appended after later WebSocket records, so journal ordinal could disagree with true collector arrival order.",
+  "correction": {
+    "collector_version": "MRCR_H02_FROZEN_SCOPE_SHADOW_V01_1",
+    "behavior": "Buffer pre-snapshot WebSocket records and the concurrent REST snapshot, sort the pending set by collector_monotonic_ns with deterministic tie-breakers, append in true collector-arrival order, then switch to direct live persistence.",
+    "monotonic_guard_preserved": true,
+    "source_timestamp_guard_preserved": true,
+    "raw_hash_chain_preserved": true,
+    "binance_snapshot_bridge_semantics_preserved": true
+  },
+  "regression": {
+    "test": "test_binance_async_snapshot_records_are_sorted_before_journaling",
+    "synthetic_safety_ci_run_id": 36262730879,
+    "validated_head_sha": "b550d86a6ac90846b3b984a83ee0c17faf7dec89",
+    "conclusion": "SUCCESS"
+  },
+  "science_unchanged": {
+    "h02_ruleset_changed": false,
+    "classifier_changed": false,
+    "measurement_catalog_changed": false,
+    "event_family_changed": false,
+    "venue_or_asset_scope_changed": false,
+    "target_observation_opened": false,
+    "outcomes_opened": false,
+    "promotion_credit": "NONE"
+  },
+  "next_gate": "OPERATOR_WINDOWS_RETRY_ALL_SIX_SESSIONS"
+}

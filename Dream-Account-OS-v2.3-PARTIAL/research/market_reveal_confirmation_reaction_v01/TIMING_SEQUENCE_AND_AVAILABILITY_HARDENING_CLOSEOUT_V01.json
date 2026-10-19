@@ -1,0 +1,63 @@
+{
+  "document_type": "MRCR_TIMING_SEQUENCE_AND_AVAILABILITY_HARDENING_CLOSEOUT_V01",
+  "lab_id": "MARKET-REVEAL-CONFIRMATION-REACTION-001",
+  "date": "2026-09-24",
+  "classification": "PRETARGET_TIMING_AND_SOURCE_SEMANTICS_HARDENING_PASS",
+  "validated_head_before_closeout": "f96c78e1967affa216a9e092fbf9806af63823c4",
+  "validated_ci_run": 36044125237,
+  "validated_ci_conclusion": "success",
+  "implemented": {
+    "strict_rfc3339_integer_nanosecond_parser": true,
+    "fractional_digits_supported_min": 1,
+    "fractional_digits_supported_max": 9,
+    "float_timestamp_conversion_removed": true,
+    "one_nanosecond_future_boundary_tested": true,
+    "coinbase_multi_update_batch_uses_latest_engine_time": true,
+    "future_constituent_update_blocks_entire_batch": true,
+    "binance_snapshot_bridge_status_explicit": true,
+    "binance_snapshot_bridge_states": [
+      "STALE",
+      "BRIDGES",
+      "GAP",
+      "INVALID_INTERVAL"
+    ],
+    "source_plus_collector_arrival_guard": true,
+    "future_target_required_availability_mode": "SOURCE_AND_COLLECTOR_ARRIVAL",
+    "metamorphic_measurement_tests": true,
+    "cross_channel_coinbase_sequence_adjudication_removed": true,
+    "github_live_schema_shakedown_manual_only": true
+  },
+  "official_source_audit": {
+    "binance": {
+      "finding": "diff-depth local-book sync requires snapshot plus buffered-event bridge and gap restart",
+      "source_class": "OFFICIAL_BINANCE_DEVELOPER_DOCUMENTATION"
+    },
+    "coinbase": {
+      "finding": "sequence numbers are increasing per product; level2 guarantees delivery and carries per-update event_time and absolute new_quantity",
+      "source_class": "OFFICIAL_COINBASE_DEVELOPER_DOCUMENTATION"
+    }
+  },
+  "unintended_auto_trigger": {
+    "workflow_run_id": 36043970253,
+    "head_sha": "d069cb1c60b2953f50727b1500ab59eda3314229",
+    "conclusion": "failure",
+    "classification": "AUTO_TRIGGERED_NON_AUTHORITATIVE",
+    "scientific_use": "NONE",
+    "reason": "legacy push trigger fired before workflow was converted to manual-only",
+    "remediation_commit": "145ddfa51b9fc883070e8af2b7c2dd101fcec8e0"
+  },
+  "scientific_boundary": {
+    "h02_authorized": false,
+    "target_observation_authorized": false,
+    "decision_clock_selected": false,
+    "availability_rule_selected_in_canonical_template": false,
+    "depth_selected": false,
+    "classifier_defined": false,
+    "future_outcome_horizon_defined": false,
+    "live_trading": false,
+    "exchange_mutation": false,
+    "render_deployment": false,
+    "main_merge": false
+  },
+  "final_state": "NANOSECOND_TIMING_PASS__BATCH_AVAILABILITY_PASS__SOURCE_PLUS_ARRIVAL_GUARD_PASS__SEQUENCE_SEMANTICS_HARDENED__TARGETS_LOCKED"
+}

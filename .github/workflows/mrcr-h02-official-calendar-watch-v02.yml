@@ -1,0 +1,122 @@
+name: MRCR H02 Official Calendar Watch V0.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - market-reveal-confirmation-reaction-v0.1
+    paths:
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/official_2027_calendar_live_probe.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/annual_plan_builder_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/trigger_a_finalizer_v02.py'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/IMPLEMENTATION_FREEZE_FILESET_V01.json'
+      - 'Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01/TRIGGER_A_WAKEUP_V02.json'
+      - '.github/workflows/mrcr-h02-official-calendar-watch-v02.yml'
+  # Scheduled workflows execute from the repository default branch only.
+  # This cron is intentionally staged and will not become active unless this
+  # workflow later exists on the default branch under separate merge authority.
+  schedule:
+    - cron: '17 7 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  official-calendar-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: market-reveal-confirmation-reaction-v0.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Probe official BLS and Federal Reserve calendars only
+        id: probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01"
+          python "$BASE/official_2027_calendar_live_probe.py" | tee mrcr_calendar_status_v02.json
+          READY="$(python - <<'PY'
+          import json
+          with open("mrcr_calendar_status_v02.json", "r", encoding="utf-8") as fh:
+              row=json.load(fh)
+          print("true" if row.get("annual_plan_trigger_ready_v02") is True else "false")
+          PY
+          )"
+          echo "annual_plan_ready=$READY" >> "$GITHUB_OUTPUT"
+
+      - name: Write blocked status summary
+        if: steps.probe.outputs.annual_plan_ready != 'true'
+        shell: bash
+        run: |
+          {
+            echo "## MRCR H02 Calendar Watch V0.2"
+            echo
+            echo "Status: **BLOCKED**"
+            echo
+            echo "The complete official V0.2 annual plan is not ready."
+            echo "No inferred dates were used and no target authority was changed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run one-shot Trigger-A finalizer
+        if: steps.probe.outputs.annual_plan_ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="Dream-Account-OS-v2.3-PARTIAL/research/market_reveal_confirmation_reaction_v01"
+          FREEZE_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          IMPL_HEAD="$(git rev-parse HEAD)"
+          python "$BASE/trigger_a_finalizer_v02.py" --implementation-head-sha "$IMPL_HEAD" --output-dir trigger_a_package_v02 --live-status mrcr_calendar_status_v02.json --protocol-frozen-at-utc "$FREEZE_AT" | tee trigger_a_finalizer_stdout.json
+
+      - name: Verify hard stop before target-open
+        if: steps.probe.outputs.annual_plan_ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("trigger_a_package_v02/MRCR_TRIGGER_A_FINALIZER_RECEIPT_V02.json")
+          row=json.loads(p.read_text(encoding="utf-8"))
+          assert row["status"] == "PASS_TARGET_LOCKED_PROTOCOL_FROZEN"
+          assert row["target_observation_authorized"] is False
+          assert row["outcomes_authorized"] is False
+          assert row["orders_enabled"] is False
+          assert row["ready_for_separate_target_open_authority"] is True
+          protocol=json.loads(
+              Path("trigger_a_package_v02/MRCR_PRETARGET_PROTOCOL_V02_FROZEN.json")
+              .read_text(encoding="utf-8")
+          )
+          assert protocol["status"] == "FROZEN_PRETARGET_PROTOCOL__TARGET_LOCKED"
+          assert protocol["governance"]["target_observation_authorized"] is False
+          PY
+
+      - name: Write ready notice
+        if: steps.probe.outputs.annual_plan_ready == 'true'
+        shell: bash
+        run: |
+          echo "::notice title=MRCR H02 Trigger A Finalized::Official annual plan requirements are satisfied and a target-locked protocol package was frozen. TARGET_OBSERVATION_OPEN was not issued."
+          {
+            echo "## MRCR H02 Calendar Watch V0.2"
+            echo
+            echo "Status: **TRIGGER_A_FINALIZED_TARGET_LOCKED**"
+            echo
+            echo "The workflow produced annual-plan, implementation-manifest, protocol and finalizer receipts."
+            echo "The protocol remains target-locked. Separate explicit TARGET_OBSERVATION_OPEN authority is still required."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload target-locked Trigger-A package
+        if: steps.probe.outputs.annual_plan_ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrcr-h02-trigger-a-target-locked
+          path: |
+            mrcr_calendar_status_v02.json
+            trigger_a_package_v02/
+          if-no-files-found: error
+          retention-days: 30
