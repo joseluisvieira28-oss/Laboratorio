@@ -49,7 +49,8 @@ class EndpointHealth:
 
 
 class ReliableHTTP:
-    def __init__(self, connect_timeout: float = 4, read_timeout: float = 8, max_retries: int = 3, backoff_base: float = 0.25, circuit_threshold: int = 4, circuit_cooldown: float = 30):
+    def __init__(self, connect_timeout: float = 4, read_timeout: float = 8, max_retries: int = 3, backoff_base: float = 0.25, circuit_threshold: int = 4, circuit_cooldown: float = 30, response_observer=None):
+        self.response_observer = response_observer
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
         self.max_retries = max_retries
@@ -85,6 +86,8 @@ class ReliableHTTP:
                         status = response.status
                     if status >= 400:
                         raise urllib.error.HTTPError(url, status, "HTTP error", {}, None)
+                    if self.response_observer is not None:
+                        self.response_observer(url, status, payload, time.time_ns() // 1_000_000)
                     data = json.loads(payload.decode("utf-8"))
                     latency = (time.monotonic() - started) * 1000
                     state.latencies_ms.append(latency)
