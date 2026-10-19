@@ -1,0 +1,24 @@
+name: CONVEX V06 Source-Only Intrabar BID Replay Synthetic CI
+on:
+  push:
+    branches: [research/convex-okx-l2-exit-bid-v06-2026-10-19]
+    paths: [.github/workflows/convex-v06-exit-bid-intrabar-synthetic.yml]
+permissions:
+  contents: read
+jobs:
+  offline-no-orders:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify exact six causal 5-minute exit BID samples, no lookahead, no live authority
+        run: python -m unittest discover -s research/convex_okx_l2_v06 -p 'test_exit_bid_5m_replay.py' -v
