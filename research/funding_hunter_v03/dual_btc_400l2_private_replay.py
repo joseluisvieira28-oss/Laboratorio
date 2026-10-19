@@ -5,7 +5,7 @@ where the two historical files already exist. No network calls or exchange
 trading. Fails closed rather than pretending to have verified contract lots.
 """
 from __future__ import annotations
-import argparse, hashlib, json, math, tarfile
+import argparse, gzip, hashlib, json, math, tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,6 +55,9 @@ def book_sample(t,last_ts,bids,asks,*,source_name):
       "sum_visible_bid_raw_contracts":sum(bids.values()),
       "sum_visible_ask_raw_contracts":sum(asks.values()),
       "top_spread_bps":(ba/bb-1)*10000,"mid_reference_raw_quote":mid,
+      "spread_over_mid_bps":(ba-bb)/mid*10000,
+      "instantaneous_roundtrip_spread_over_mid_bps":(ba-bb)/mid*10000,
+      "outermost_bid_raw_price":min(bids),"outermost_ask_raw_price":max(asks),
       "venue_same_OKX_but_usd_vs_usdt_denomination":True,
       "point_in_time_contract_face_value_verified":False,
       "broker_executable_fill_verified":False}
@@ -70,21 +73,26 @@ def replay(path:Path,inst:str):
     last_ts=previous_ts=None
     samples=[]
     num_records=0;num_updates=0;num_snapshots=0;max_gap=0;first_ts=None
-    seen_seq=False;num_bad_timestamp=0
-    with tarfile.open(path,"r|gz") as arc:
+    seen_seq=False;data_hash=hashlib.sha256();data_bytes=0;equal_ts=0
+    zero_deletions=0;crossed_events=0;schema_keys=set()
+    with gzip.open(path,"rb") as gz, tarfile.open(fileobj=gz,mode="r|") as arc:
         member=arc.next()
         if member is None or not member.isfile() or member.name!=original+".data":
             raise ValueError("TAR_DATA_MEMBER_UNEXPECTED")
         if member.size>MAX_DECOMPRESSED:raise ValueError("DECOMPRESSED_SIZE_CAP")
         f=arc.extractfile(member)
         if f is None:raise ValueError("DATA_MEMBER_UNREADABLE")
-        for line in f:
+        while True:
+            line=f.readline(MAX_LINE+1)
+            if not line:break
+            data_hash.update(line);data_bytes+=len(line)
             num_records+=1
             if num_records>MAX_RECORDS or len(line)>MAX_LINE:
                 raise ValueError("MAX_RECORDS_OR_LINE_CAP")
             event=loads(line)
             if not isinstance(event,dict) or event.get("instId")!=inst:
                 raise ValueError("WRONG_INSTRUMENT_OR_INVALID_JSON")
+            schema_keys.update(event)
             tsraw=event.get("ts")
             if not isinstance(tsraw,(str,int)) or isinstance(tsraw,bool):
                 raise ValueError("INVALID_TIMESTAMP_SCHEMA")
@@ -94,10 +102,9 @@ def replay(path:Path,inst:str):
             while len(samples)<len(timestamps) and ts>timestamps[len(samples)]:
                 samples.append(book_sample(timestamps[len(samples)],last_ts,
                     books["bids"],books["asks"],source_name=inst))
-            if len(samples)==len(timestamps):
-                break
             if first_ts is None:first_ts=ts
             if previous_ts is not None:max_gap=max(max_gap,ts-previous_ts)
+            if ts==previous_ts:equal_ts+=1
             previous_ts=ts
             action=event.get("action")
             if action=="snapshot":
@@ -114,12 +121,24 @@ def replay(path:Path,inst:str):
                     if not isinstance(lvl,list) or len(lvl)!=3:
                         raise ValueError("INVALID_PRICE_CONTRACT_COUNT_LEVEL")
                     p=float(lvl[0]);q=float(lvl[1])
+                    n=float(lvl[2])
                     if not math.isfinite(p) or p<=0 or not math.isfinite(q) or q<0:
                         raise ValueError("INVALID_PRICE_OR_QTY")
-                    if q==0:book.pop(p,None)
+                    if not math.isfinite(n) or n<0 or not n.is_integer():
+                        raise ValueError("INVALID_ORDER_COUNT")
+                    if q==0:
+                        book.pop(p,None);zero_deletions+=1
                     else:book[p]=q
                 if len(book)>400:raise ValueError("OVER_400_DEPTH")
+            if books["bids"] and books["asks"] and max(books["bids"])>=min(books["asks"]):
+                crossed_events+=1
+                raise ValueError("CROSSED_SOURCE_EVENT")
             last_ts=ts
+        if data_bytes!=member.size:raise ValueError("TAR_MEMBER_SIZE_MISMATCH")
+        if arc.next() is not None:raise ValueError("EXTRA_TAR_MEMBER")
+        # tar stream alone can stop before the gzip trailer. Drain to EOF so
+        # GzipFile validates CRC32/ISIZE, including truncation after the probes.
+        while gz.read(4*1024*1024):pass
         while len(samples)<len(timestamps):
             samples.append(book_sample(timestamps[len(samples)],last_ts,
                 books["bids"],books["asks"],source_name=inst))
@@ -130,7 +149,11 @@ def replay(path:Path,inst:str):
             "raw_archive_local_sha256_not_vendor_signed":filehash(path),
             "raw_archive_bytes":path.stat().st_size,
             "source_first_event_ms":first_ts,"source_last_event_ms":last_ts,
-            "processed_events_before_last_probe":num_records,
+            "processed_events_full_day":num_records,
+            "data_member_bytes":data_bytes,"data_member_sha256":data_hash.hexdigest(),
+            "gzip_crc32_isize_verified_to_eof":True,"tar_exactly_one_expected_member":True,
+            "event_schema_keys":sorted(schema_keys),"same_timestamp_adjacent_events":equal_ts,
+            "zero_quantity_deletions":zero_deletions,"crossed_source_events":crossed_events,
             "updates_applied":num_updates,"snapshots_applied":num_snapshots,
             "max_adjacent_source_timestamp_gap_ms":max_gap,
             "sequence_fields_any_seen":seen_seq,
@@ -139,7 +162,8 @@ def replay(path:Path,inst:str):
 
 def run(files):
     result={"study":"FUNDING_HUNTER_V03_2025_06_02_TWO_USER_UPLOADED_OKX_L2",
-            "asof_utc":"2026-10-19","probe_clocks_utc":PROBES,"outcomes_opened":False,
+            "asof_utc":"2026-10-19","probe_clocks_utc":PROBES,"historical_quote_outcomes_opened":True,
+            "funding_outcomes_opened":False,
             "futures_trade_opened":False,"historical_contract_lot_verified":False,
             "funding_cashflows_verified":False,"live_go":False,"venue_spread_not_arbitrage":True,
             "source_only_cases":{}}
