@@ -1,0 +1,25 @@
+name: CONVEX V06 Exactly Two Original Paper Stop References
+on:
+  push:
+    branches: [research/convex-okx-l2-exit-bid-v06-2026-10-19]
+    paths: [.github/workflows/convex-v06-two-original-stop-references.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-2023-original-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore locked historical results from original Actions run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/locked/SOL /tmp/locked/BNB
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-SOLUSDT-RESEARCH --dir /tmp/locked/SOL
+          gh run download 38432883246 --repo joseluisvieira28-oss/Laboratorio --name CONVEX-8ALT-COMMON-3YEAR-BNBUSDT-RESEARCH --dir /tmp/locked/BNB
+      - name: Exact two original stop threshold receipts, no new source or market calls
+        run: python -m research.convex_okx_l2_v06.original_2_trade_stop_reference /tmp/locked/SOL /tmp/locked/BNB
