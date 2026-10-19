@@ -182,8 +182,8 @@ def episode_for_day(linear,inverse,day):
         net+=sum((sign*N*r for _,r in events),ZERO)
         reversed_events+=sum(1 for _,r in events if (r<0 and sign>0) or (r>0 and sign<0))
     proxy_bps=net/N*Decimal(10000)
-    output.update(status="RATE_ONLY_CONSTANT_NOTIONAL_PROXY",
-      strategy_position=f"SHORT_{short}_LONG_{'INVERSE' if short=='LINEAR' else 'LINEAR'}",
+    output.update({"status":"RATE_ONLY_CONSTANT_NOTIONAL_PROXY",
+      "strategy_position":f"SHORT_{short}_LONG_{'INVERSE' if short=='LINEAR' else 'LINEAR'}",
       "source_settlement_count":realized_counts,
       "reversal_or_negative_cashflow_settlements":reversed_events,
       "constant_notional_rate_only_proxy_USD":str(net),
@@ -193,7 +193,7 @@ def episode_for_day(linear,inverse,day):
       "proxy_clears_30bps":proxy_bps>BASE_HURDLE_BPS,
       "proxy_clears_50bps":proxy_bps>STRESS_HURDLE_BPS,
       "is_actual_inverse_or_linear_cashflow":False,
-      "fills_exits_margin_fx_confirmed":False)
+      "fills_exits_margin_fx_confirmed":False})
     return output
 
 def evaluate(linear,inverse):
