@@ -67,6 +67,25 @@ class DashboardTests(unittest.TestCase):
             self.assertEqual(state["mexc_execution"]["standing_operator_authority"]["active"],False)
             self.assertEqual(state["mexc_execution"]["standing_operator_authority"]["routes"],{})
 
+    def test_v38_prevents_fake_reactivation_on_retirement_flag_deletion(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            registry,status,events=self._paths(root)
+            registry.write_text(json.dumps({
+                "registry_version":"3.8",
+                "focus_strategy_ids":["OPTIONS-SPOTPERP-001-V2.1"],
+                "candidates":[{"strategy_id":"OPTIONS-SPOTPERP-001-V2.1",
+                               "micro_live_allowed_now":True,
+                               "shadow_allowed":True}]
+            }),encoding="utf-8")
+            state=build_control_room_state(
+                status_path=str(status),notification_path=str(events),registry_path=str(registry)
+            )
+            self.assertEqual(state["system"]["health"],"REGISTRY_DESYNC")
+            self.assertFalse(state["registry"]["ok"])
+            self.assertEqual(state["bots"],[])
+            self.assertFalse(state["mexc_execution"]["standing_operator_authority"]["active"])
+
     def test_retirement_rejects_stale_candidates_in_same_registry(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
