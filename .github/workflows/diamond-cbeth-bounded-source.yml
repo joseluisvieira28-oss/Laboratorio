@@ -1,0 +1,25 @@
+name: Diamond cbETH bounded source and integrity
+on:
+  push:
+    branches: [research/diamond-cbeth-source-adjudication-2026-10-20]
+    paths: [research/cbeth_redemption_basis_001/BOUNDED_SOURCE_EXECUTION_2026_10_20.md]
+permissions:
+  contents: read
+jobs:
+  necessary-source:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --package-lock=false ethers@6.15.0
+      - run: node --test research/cbeth_redemption_basis_001/test_bounded_anchor.mjs
+      - run: node research/cbeth_redemption_basis_001/bounded_anchor_source.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diamond-cbeth-necessary-source
+          path: receipts/diamond_cbeth_20261020/
+          if-no-files-found: error
