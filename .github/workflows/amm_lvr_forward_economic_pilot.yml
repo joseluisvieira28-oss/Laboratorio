@@ -1,0 +1,26 @@
+name: AMM-LVR-CROSSVENUE-001 Non-Adjudicating Synthetic Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  engineering-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute non-adjudicating synthetic engineering sweep
+        run: python labs/amm-lvr-crossvenue-001/forward_economic_engine_v0_1.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AMM-LVR-CROSSVENUE-001-NONADJUDICATING-DIAGNOSTIC
+          path: |
+            labs/amm-lvr-crossvenue-001/evidence/forward_economic_sweep_v0_1.json
+            labs/amm-lvr-crossvenue-001/evidence/forward_economic_sweep_v0_1_summary.json
