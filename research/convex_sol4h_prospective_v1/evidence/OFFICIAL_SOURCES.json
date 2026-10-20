@@ -1,0 +1,103 @@
+{
+  "as_of_utc": "2026-10-20",
+  "sources": [
+    {
+      "url": "https://www.mexc.com/announcements/article/updates-to-api-futures-trading-fees-jun-1-2026-17827791535742",
+      "source_type": "official announcement",
+      "facts": [
+        "Effective 2026-06-01 08:00 UTC table: API maker 0.06%, taker 0.08%.",
+        "API schedule distinct from web/app and promotions.",
+        "Article example below table still uses prior rates; freeze uses newer effective table conservatively.",
+        "Not a certification of this person's account fees or absence of later changes."
+      ]
+    },
+    {
+      "url": "https://www.mexc.com/api-docs/futures/integration-guide",
+      "source_type": "official API documentation",
+      "facts": [
+        "Documents https://api.mexc.com base and signed authentication for private requests.",
+        "This work uses anonymous allowlisted public GET only."
+      ]
+    },
+    {
+      "url": "https://www.mexc.com/api-docs/futures/market-endpoints/get-contract-info",
+      "source_type": "official API documentation",
+      "facts": [
+        "Current contract metadata route detail/country; legacy docs also expose detail.",
+        "Metadata documents linear asset/settlement, contractSize, minVol, volUnit, priceUnit, maxVol, market price protection, stopOnlyFair and public fee fields.",
+        "Schema and example are not actual SOL/BNB current spec observations or user access proof."
+      ]
+    },
+    {
+      "url": "https://www.mexc.com/api-docs/futures/market-endpoints/get-contract-order-book-depth",
+      "source_type": "official API documentation",
+      "facts": [
+        "Depth includes asks/bids, version and timestamp.",
+        "Level second field treated as contracts, third as order count; quantity must be multiplied by contractSize.",
+        "Displayed resting quantity is not a guaranteed fill or continuity receipt."
+      ]
+    },
+    {
+      "url": "https://www.mexc.io/api-docs/futures/market-endpoints/get-funding-rate-history",
+      "source_type": "official API documentation",
+      "facts": [
+        "Settled history schema lists fundingRate, settleTime and collectCycle.",
+        "Does not document settlement fairPrice in this history schema; exact settlement value unverified.",
+        "No history endpoint was queried here to avoid protected-period data."
+      ]
+    },
+    {
+      "url": "https://www.mexc.com/api-docs/futures/market-endpoints/get-funding-rate",
+      "source_type": "official API documentation",
+      "facts": [
+        "Current rate response includes rate/cycle/next settlement, current fairPrice and timestamp.",
+        "Current/predicted rate and current fair price do not certify a later settled cashflow."
+      ]
+    },
+    {
+      "url": "https://www.mexc.co/support/article/mexc-futures-calculation-guide-312060306409668608",
+      "source_type": "official calculation guide",
+      "facts": [
+        "Linear USDT PnL = quantity in base times price change.",
+        "Funding uses settlement fair price times contracts times contractSize times rate.",
+        "Margin equals position value divided by leverage; margin is not a loss budget."
+      ]
+    },
+    {
+      "url": "https://www.mexc.co/support/article/mexc-futures-take-profit-and-stop-loss-faq-350096811661177856",
+      "source_type": "official FAQ",
+      "facts": [
+        "Triggered market stops execute at available prices and can slip.",
+        "Limit stops may remain unfilled; changes cannot cancel an already-triggered order.",
+        "Reading documentation does not certify broker stop acknowledgment or amendments."
+      ]
+    },
+    {
+      "url": "https://www.mexc.com/support/article/faq-on-guaranteed-stop-loss-322438261656865792",
+      "source_type": "official FAQ",
+      "facts": [
+        "Paid guaranteed-SL feature limited by market/region/account and last-price trigger.",
+        "FAQ also discloses triggering/execution failures in extreme conditions.",
+        "Not assumed available, free or used in this experiment."
+      ]
+    },
+    {
+      "url": "https://www.mexc.com/terms",
+      "source_type": "official user agreement updated 2026-10-13",
+      "facts": [
+        "Switzerland absent from the enumerated prohibited list read on this date.",
+        "The list is nonexclusive and product/region restrictions may apply.",
+        "Access for a Swiss resident remains plausible only, not verified account/API/product entitlement, regulatory endorsement or legal opinion."
+      ]
+    }
+  ],
+  "observed_vs_modeled": "All entries above describe official documentation, NOT live market observations. Actual request receipts are separate.",
+  "remaining_unknowns": [
+    "MEXC point-in-time SOL/BNB specification unless live source succeeds",
+    "signal-time post-formation book/size/latency",
+    "exact full holding-period settled funding valuation",
+    "per-account fees and service entitlement",
+    "native stop/amendment acceptance",
+    "independent future expectancy and tail losses"
+  ]
+}
