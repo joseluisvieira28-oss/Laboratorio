@@ -1,0 +1,35 @@
+name: Structural Funding Cheap Falsifier (Research Only)
+on:
+  push:
+    branches:
+      - research/structural-edge-mission-2026-10-20
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: structural-funding-2026-10-20
+  cancel-in-progress: false
+jobs:
+  one_frozen_source_snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+      - name: Python runtime
+        run: python3 --version
+      - name: Hermetic integrity/economics tests
+        run: |
+          cd research/structural_edge
+          python3 -m unittest -v test_funding_probe.py
+      - name: One public-source snapshot - no keys - no orders
+        run: |
+          python3 research/structural_edge/funding_probe.py --out source_receipt
+      - name: Persist public market bytes and derived receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frozen-structural-funding-source-receipt
+          path: source_receipt/
+          if-no-files-found: warn
+          retention-days: 30
