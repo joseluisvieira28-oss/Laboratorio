@@ -65,6 +65,29 @@ class WindowsResilientBootstrapTests(unittest.TestCase):
         self.assertFalse(state["required_strategy_present"])
         self.assertEqual(payload["operator_retirement"]["live_trading_authority"], "NONE")
 
+    def test_no_autoreturn_if_retirement_metadata_removed(self):
+        baseline=json.loads(Path(self._registry_path()).read_text(encoding="utf-8"))
+        # Any attempt to reintroduce legacy motors, even with old registry flags,
+        # must fail before any worker is started by this retired executable.
+        baseline.pop("operator_retirement")
+        baseline["focus_strategy_ids"]=["OPTIONS-SPOTPERP-001-V2.1"]
+        baseline["candidates"]=[{"strategy_id":"OPTIONS-SPOTPERP-001-V2.1",
+                                  "micro_live_allowed_now":True,"shadow_allowed":True}]
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/"registry.json"
+            p.write_text(json.dumps(baseline),encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError,"ECONOMIC_HARDSTOP_NO_AUTORETURN"):
+                entry._verify_registry_file(str(p))
+
+    def test_no_registry_version_downgrade_in_retired_build(self):
+        baseline=json.loads(Path(self._registry_path()).read_text(encoding="utf-8"))
+        baseline["registry_version"]="3.7"
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/"registry.json"
+            p.write_text(json.dumps(baseline),encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError,"ECONOMIC_HARDSTOP_REGISTRY_VERSION_MISMATCH"):
+                entry._verify_registry_file(str(p))
+
     def test_duplicate_node_is_rejected_before_any_collector_or_dashboard(self):
         with (
             patch.object(entry, "_acquire_single_instance_lock", return_value=(False, "DUPLICATE_LOCAL_NODE")),

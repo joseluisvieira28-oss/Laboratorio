@@ -90,6 +90,13 @@ def _verify_registry_file(registry_path: str) -> tuple[dict, dict]:
         if isinstance(item, dict) and item.get("strategy_id")
     }
     retired = (payload.get("operator_retirement") or {}).get("mode") == "ZERO_ACTIVE_FISHING_CANDIDATES"
+    # Economic hard-stop: this ZERO-PALHA binary is intentionally irreversible.
+    # Removing the retirement field must NOT reactivate the legacy eight-motor path.
+    # A different independently reviewed release is required for any reactivation.
+    if not retired:
+        raise RuntimeError("ECONOMIC_HARDSTOP_NO_AUTORETURN: retired build cannot load active registry")
+    if payload.get("registry_version") != "3.8":
+        raise RuntimeError("ECONOMIC_HARDSTOP_REGISTRY_VERSION_MISMATCH")
     if retired:
         if candidates or payload.get("focus_strategy_ids") != []:
             raise RuntimeError("retired radar contains active strategies or focus IDs")
