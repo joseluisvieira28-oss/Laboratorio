@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-20",
+  "inputs": {
+    "hypothetical_only": true,
+    "width_points": 1,
+    "multiplier": 100,
+    "short_bid": 0.9,
+    "short_ask": 1,
+    "long_bid": 0.5,
+    "long_ask": 0.6,
+    "commission_per_leg_minimum": 1,
+    "OCC_per_contract": 0.025,
+    "CAT_per_contract": 0.0003,
+    "ORF_assumed_per_contract": 0.04,
+    "SEC_assumed_sell_value_rate": 0.0000206,
+    "OPRA_assumed_nonprofessional_monthly": 1.5,
+    "manual_FX_two_minimums": 4,
+    "research_subtotal_not_all_in": 1100,
+    "amortization_hypothetical_trades": 120,
+    "exchange_scenarios": [
+      -0.3,
+      0.07,
+      0.5
+    ]
+  },
+  "formulas": {
+    "credit": "100*(short_bid-long_ask)",
+    "mid_indication": "100*((short_bid+short_ask)/2-(long_bid+long_ask)/2)",
+    "entry_fee": "2+2*(exchange+OCC+CAT+ORF)+100*short_bid*SEC",
+    "net_payoff": "100*(credit_points-max(Ks-X,0)+max(Kl-X,0))-costs",
+    "research_cost_per_hypothetical_trade": "1100/120",
+    "CHF_PnL": "USD cashflows each converted at applicable CHF per USD rate; no current FX rate assumed"
+  },
+  "outputs": [
+    {
+      "exchange": -0.3,
+      "entry_fee": 1.5324540000000002,
+      "expiration_best_before_FX_and_data": 28.467546,
+      "expiration_max_loss_before_FX_and_data": 71.532454,
+      "entry_plus_monthly_OPRA_manual_FX": 7.032454,
+      "entry_plus_OPRA_manual_FX_research": 16.199120666666666,
+      "friction_versus_mid_including_research": 26.199120666666666
+    },
+    {
+      "exchange": 0.07,
+      "entry_fee": 2.2724539999999998,
+      "expiration_best_before_FX_and_data": 27.727546,
+      "expiration_max_loss_before_FX_and_data": 72.272454,
+      "entry_plus_monthly_OPRA_manual_FX": 7.772454,
+      "entry_plus_OPRA_manual_FX_research": 16.939120666666668,
+      "friction_versus_mid_including_research": 26.939120666666668
+    },
+    {
+      "exchange": 0.5,
+      "entry_fee": 3.132454,
+      "expiration_best_before_FX_and_data": 26.867546,
+      "expiration_max_loss_before_FX_and_data": 73.132454,
+      "entry_plus_monthly_OPRA_manual_FX": 8.632454,
+      "entry_plus_OPRA_manual_FX_research": 17.799120666666667,
+      "friction_versus_mid_including_research": 27.799120666666667
+    }
+  ],
+  "illustrative_IID_mean_95_halfwidth_USD": 8.946135105917714,
+  "checks": [
+    "credit=30; midpoint indication=40; entry haircut=10",
+    "best payoff + maximum loss = 100 in each fee scenario",
+    "JSON uses unrounded numbers; memo rounds only displayed aggregates"
+  ],
+  "not_confirmed": [
+    "ORF actual rate",
+    "SEC applicability/rounding to XSP",
+    "exchange/rebate eligibility for complex orders",
+    "fills, quote age, slippage",
+    "historical fee schedules",
+    "full XSP coverage and settlement archive",
+    "all-in license/taxes/data/subscriptions",
+    "funding/opportunity costs and personal taxes"
+  ]
+}
