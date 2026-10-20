@@ -1,0 +1,94 @@
+{
+  "document_type": "MEV_001_PRE_SOURCE_FREEZE_V01",
+  "lab_id": "MACRO-EXPECTATION-VIOLATION-001",
+  "short_id": "MEV-001",
+  "version": "0.1",
+  "frozen_at_utc": "2026-09-27T14:35:00Z",
+  "status": "FROZEN_PRE_SOURCE__TARGETS_LOCKED",
+  "primary_edge_family": "MACRO",
+  "secondary_edge_family": "LEADLAG",
+  "mechanism": "scheduled macro shock -> traditional-market directional agreement -> crypto opposite-direction response -> test persistence of crypto-side violation",
+  "novelty": {
+    "mrcr_h02": "different: crypto microstructure acceptance/rejection without traditional-market reference",
+    "absorption_failed_auction_001": "different: extreme crypto aggressor-flow auction response, not macro-conditioned",
+    "macro_transmission_001": "different: daily Nasdaq+2Y rule and next-day BTC, not event-time response violation",
+    "cmm_pr_001": "different: daily fair-value residual mean reversion, not scheduled-event transmission failure"
+  },
+  "target_policy": {
+    "calendar_year": 2027,
+    "mode": "PROSPECTIVE_ONLY",
+    "historical_backtest_promotion": false,
+    "target_observation_open": false,
+    "outcomes_open": false
+  },
+  "event_scope": {
+    "families": [
+      "US_CPI",
+      "US_EMPLOYMENT_SITUATION",
+      "FOMC_STATEMENT"
+    ],
+    "t0_authority": "official BLS/Federal Reserve scheduled release timestamp",
+    "decision_clock_seconds": 180,
+    "future_horizon_seconds": 900
+  },
+  "traditional_reference": {
+    "required_channels": [
+      "CME_NASDAQ_100_FUTURES",
+      "CME_US_2Y_TREASURY_FUTURES"
+    ],
+    "direction_semantics": {
+      "risk_on": "Nasdaq futures price up AND 2Y Treasury futures price up",
+      "risk_off": "Nasdaq futures price down AND 2Y Treasury futures price down",
+      "otherwise": "ABSTAIN"
+    },
+    "exact_contract_resolution": "UNARMED_PENDING_SOURCE_PASS",
+    "materiality_rule": "UNARMED_PENDING_SOURCE_PASS",
+    "materiality_selection_boundary": "source semantics only; must freeze before any 2027 target observation"
+  },
+  "crypto_scope": {
+    "assets": [
+      "BTC",
+      "ETH"
+    ],
+    "venues": [
+      "BINANCE_SPOT",
+      "COINBASE_ADVANCED_SPOT"
+    ],
+    "cross_venue_direction_agreement_required": true,
+    "price_level_merge_allowed": false,
+    "violation_concept": "valid material crypto response opposite valid traditional direction at decision time"
+  },
+  "source_gate": {
+    "required": true,
+    "requirements": [
+      "exchange/source timestamp semantics documented",
+      "collector arrival timestamp preserved",
+      "decision-time reconstruction possible at <=60s granularity and preferably tick/top-of-book",
+      "no >=10 minute delayed-only feed for the 180-second decision state",
+      "machine-use terms compatible with automated scientific collection",
+      "deterministic symbol/contract identity and roll mapping",
+      "raw payload or bar bytes hashable",
+      "2027 prospective capture can be made fail-closed"
+    ]
+  },
+  "contamination": {
+    "news_shock_v02": "outcome contaminated",
+    "msm_h01_2026": "maximum contamination",
+    "macro_transmission_001": "terminal prior daily mechanism; no rescue",
+    "cmm_pr_001": "terminal prior residual mechanism; no rescue",
+    "historical_internal_outcomes_allowed_for_threshold_selection": false,
+    "promotion_credit_inherited": false
+  },
+  "prohibited": {
+    "paid_data_purchase": true,
+    "live_trading": true,
+    "paper_trading": true,
+    "orders": true,
+    "exchange_mutation": true,
+    "wallet_action": true,
+    "render_deployment": true,
+    "main_merge": true,
+    "post_outcome_tuning": true
+  },
+  "next_authorized_action": "SOURCE_FEASIBILITY_ONLY"
+}

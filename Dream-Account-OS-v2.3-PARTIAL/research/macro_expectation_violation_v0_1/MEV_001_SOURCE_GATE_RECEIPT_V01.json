@@ -1,0 +1,67 @@
+{
+  "document_type": "MEV_001_SOURCE_GATE_RECEIPT_V01",
+  "lab_id": "MACRO-EXPECTATION-VIOLATION-001",
+  "evidence_date": "2026-09-27",
+  "verdict": "SOURCE_BLOCKED_NO_AUTHORIZED_INTRAMINUTE_TRADFI_PATH",
+  "scientific_verdict": "UNRESOLVED",
+  "economic_outcomes_opened": false,
+  "target_observation_open": false,
+  "promotion_credit": "NONE",
+  "checks": [
+    {
+      "source": "CME_PUBLIC_DELAYED_QUOTES",
+      "status": "FAIL",
+      "reason": "quotes delayed at least 10 minutes; incompatible with T0+180s state"
+    },
+    {
+      "source": "CME_REALTIME_FUTURES_OPTIONS_API",
+      "status": "TECHNICALLY_SUITABLE_NOT_AUTHORIZED",
+      "reason": "commercial/pay-for-data access; paid data not authorized"
+    },
+    {
+      "source": "US_TREASURY_DAILY_2Y_YIELD",
+      "status": "FAIL",
+      "reason": "daily approximately 15:30 ET indicative curve, not intraminute event path"
+    },
+    {
+      "source": "YAHOO_CME_FUTURES",
+      "status": "FAIL",
+      "reason": "CME quotes documented as 10-minute delayed"
+    },
+    {
+      "source": "CBOE_DELAYED_QUOTES",
+      "status": "FAIL",
+      "reason": "automated extraction prohibited; not valid collector route"
+    },
+    {
+      "source": "NASDAQ_DATA_LINK",
+      "status": "NOT_ESTABLISHED",
+      "reason": "no no-cost permission-clean NQ+2Y futures path established"
+    },
+    {
+      "source": "CME_DATAMINE",
+      "status": "TECHNICALLY_RELEVANT_NOT_AUTHORIZED",
+      "reason": "historical high-resolution data is entitlement/purchase based; no authorized free prospective real-time path"
+    },
+    {
+      "source": "DATABENTO_CME",
+      "status": "TECHNICALLY_SUITABLE_NOT_AUTHORIZED",
+      "reason": "licensed CME vendor with paid live access; no standing authorized zero-cost live entitlement established"
+    }
+  ],
+  "reopening_triggers": [
+    "authorized intraminute CME NQ + 2Y Treasury futures source with timestamp and machine-use rights",
+    "genuinely free/public equivalent with event-time timestamp integrity and automated-use permission",
+    "separate paid-data operational authority without scientific mutation"
+  ],
+  "prohibited_actions": [
+    "open 2027 targets",
+    "open outcomes",
+    "historical proxy rescue",
+    "scrape delayed websites",
+    "paid-data purchase",
+    "live trading",
+    "main merge"
+  ],
+  "exhaustion_decision": "No currently authorized zero-cost route established satisfying NQ + 2Y futures, <=60s reconstruction, T0+180s availability, timestamp provenance, machine-use permission and deterministic contract identity. Further source hunting is anti-zombie absent an objective reopening trigger."
+}
