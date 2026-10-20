@@ -99,6 +99,41 @@ def source_get(payload):
         if len(raw)>8_000_000: raise ValueError("SOURCE_TOO_LARGE")
         return raw
 
+def collect_paginated(start):
+    end=start+CHUNK-1
+    cursor=start
+    pieces=[]
+    page_sha=[]
+    previous=start-1
+    for page in range(200):
+        body=query_payload(start)
+        body["fromBlock"]=cursor
+        chunk=source_get(body)
+        rows=chunk.splitlines()
+        if not rows:
+            raise ValueError("EMPTY_PAGE")
+        nums=[]
+        for line in rows:
+            record=json.loads(line)
+            h=record.get("header",{})
+            if not isinstance(h,dict) or "number" not in h:
+                raise ValueError("BAD_PAGE_HEADER")
+            n=int(h["number"])
+            if n < cursor or n > end or n <= previous:
+                raise ValueError("PAGE_REGRESSION_OR_OUTSIDE_FROZEN_WINDOW")
+            nums.append(n)
+            previous=n
+        next_cursor=nums[-1]+1
+        if next_cursor <= cursor:
+            raise ValueError("CURSOR_STALLED")
+        pieces.append(chunk if chunk.endswith(b"\n") else chunk+b"\n")
+        page_sha.append(hashlib.sha256(chunk).hexdigest())
+        if next_cursor > end:
+            return b"".join(pieces),page_sha
+        cursor=next_cursor
+        time.sleep(0.04)
+    raise ValueError("PAGINATION_PAGE_CAP_200_SOURCE_BLOCKED")
+
 def run(output_path="source_receipt"):
     out=pathlib.Path(output_path)
     out.mkdir(parents=True,exist_ok=True)
@@ -111,10 +146,12 @@ def run(output_path="source_receipt"):
         start=FIRST+i*CHUNK
         entry={"from_block":start,"to_block":start+CHUNK-1}
         try:
-            body=source_get(query_payload(start))
+            body,page_sha=collect_paginated(start)
             sha=hashlib.sha256(body).hexdigest()
             (out/f"chunk_{i}.ndjson").write_bytes(body)
             entry.update(parse_bytes(body,start))
+            entry["page_count"]=len(page_sha)
+            entry["page_sha256"]=page_sha
             entry["source_sha256"]=sha
             entry["status"]="SOURCE_PASS"
         except (ValueError,KeyError,TypeError,OverflowError,HTTPError,URLError,TimeoutError, OSError) as exc:
