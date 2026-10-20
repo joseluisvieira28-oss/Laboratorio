@@ -1,4 +1,4 @@
-# Bounded necessary-source execution â€” frozen before RPC observations
+# Bounded necessary-source execution — frozen before RPC observations
 
 Parent: PR #128, commit 41909a1ac0f86166e7fac4a3deb9f9c9a120b35d.
 This is a source transport gate, NOT a new trading family or a change to the
