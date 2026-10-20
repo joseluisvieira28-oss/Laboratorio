@@ -1,0 +1,35 @@
+name: OKX Spot Perp Single-Venue Carry — One Frozen Source Test
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+    paths:
+      - 'research/okx_carry_20261020/**'
+      - '.github/workflows/okx-carry-falsifier-20261020.yml'
+permissions:
+  contents: read
+concurrency:
+  group: okx-carry-one-shot-20261020
+  cancel-in-progress: false
+jobs:
+  research_public_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read-only checkout
+        uses: actions/checkout@v4
+      - name: Local synthetic integrity tests first
+        run: |
+          cd research/okx_carry_20261020
+          python3 -m unittest -v test_one_shot_source.py
+      - name: One immutable after-freeze public snapshot - no keys or orders
+        run: |
+          python3 research/okx_carry_20261020/one_shot_source.py --out okx_carry_source_receipt
+      - name: Archive public source receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: okx-carry-source-one-shot
+          path: okx_carry_source_receipt/
+          retention-days: 30
+          if-no-files-found: warn
