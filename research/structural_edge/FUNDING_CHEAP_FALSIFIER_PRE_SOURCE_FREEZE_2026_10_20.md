@@ -9,7 +9,7 @@
 **Predefined source checks:**
 - full successful API status/schema, positive/uncrossed bid/ask top and positive sizes; OKX book ts and Bybit exchange response server time max age 30s vs UTC runner; six books acquired within 30s; no fallback sources;
 - estimated/current funding rates available on BOTH venues, same future settlement timestamp within 2 minutes; both instruments must be 8h funding interval (OKX next − prev = 8h, Bybit fundingInterval=480 minutes);
-- publish raw JSON only as private action artifact with SHA256, not public repository; derived sanitized receipt may contain prices/rates/times; tamper trace.
+- archive unredacted public market HTTP bytes as GitHub Actions artifacts (public repository; artifact may be accessible to repository viewers) with SHA256, not as committed repository files; derived sanitized receipt may contain prices/rates/times; tamper trace.
 - if any source fails, mark that pair SOURCE_BLOCKED; never interpret empty source as zero funding or no economic opportunity.
 - ONE observation only. No repeating until passing thresholds; no polling or selection of more favorable hours.
 
