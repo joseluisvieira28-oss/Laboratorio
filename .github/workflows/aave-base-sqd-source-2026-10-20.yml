@@ -1,0 +1,32 @@
+name: Aave Base SQD Frozen Source Gate V01
+on:
+  push:
+    branches:
+      - research/aave-base-sqd-bonus-2026-10-20
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: aave-base-sqd-source-freeze-v01
+  cancel-in-progress: false
+jobs:
+  source_gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Frozen synthetic tests
+        run: |
+          cd research/aave_base_sqd
+          python3 -m unittest -v test_source_census.py
+      - name: Official SQD Portal Base query read-only
+        run: |
+          python3 research/aave_base_sqd/source_census.py --out source_receipt
+      - name: Keep raw receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aave-base-sqd-frozen-source-census
+          path: source_receipt/
+          if-no-files-found: warn
+          retention-days: 30
