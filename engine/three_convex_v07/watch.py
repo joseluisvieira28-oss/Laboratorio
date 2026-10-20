@@ -23,6 +23,11 @@ from engine.three_convex_v07.feed import (
 )
 from engine.three_convex_v07.telegram import TelegramBot,message_for,TelegramHalt
 
+from engine.three_convex_v07.observer_io import drain, add_receipt_column, instance_lock
+
+from engine.three_convex_v07.coverage import Coverage
+from engine.three_convex_v05.signals import PERIODS, SYMBOLS
+
 STATUS="V07_TELEGRAM_PUBLIC_SIGNALS_AND_AUTH_MEXC_READONLY"
 ALLOWED_EVENT_TYPES={
     "SYSTEM_ONLINE","MEXC_ACCOUNT_FLAT_READ","MEXC_PROTECTION_UNVERIFIED",
@@ -37,6 +42,15 @@ def utc(ms):
 class WatchHalt(ValueError):pass
 
 
+class ObserverTransport(FuturesV06Transport):
+    """Reject exchange writes at the watcher boundary, regardless of tickets."""
+    def _exchange(self,method,path,params=None,*,ticket=None):
+        if method != "GET" or ticket is not None:
+            raise WatchHalt("OBSERVER_EXCHANGE_WRITE_FORBIDDEN")
+        return super()._exchange(method,path,params)
+
+
+
 class DurableQueue:
     def __init__(self,dir):
         self.dir=Path(dir)
@@ -47,6 +61,7 @@ class DurableQueue:
         self.db.execute("CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         self.db.execute("CREATE TABLE IF NOT EXISTS outbox (id TEXT PRIMARY KEY, message TEXT NOT NULL, sent_at_ms INTEGER, added_ms INTEGER NOT NULL)")
         self.db.commit()
+        add_receipt_column(self.db,"outbox")
 
     def state(self,key):
         row=self.db.execute("SELECT value FROM kv WHERE key=?",(key,)).fetchone()
@@ -68,18 +83,7 @@ class DurableQueue:
                             (event_id,msg,now_ms))
 
     def drain(self,telegram,now_ms,*,max_count=6):
-        rows=self.db.execute("SELECT id,message FROM outbox WHERE sent_at_ms IS NULL ORDER BY added_ms,id LIMIT ?",
-                             (max_count,)).fetchall()
-        n=0
-        for key,message in rows:
-            # Crash after Telegram HTTP ACK, before durable DB commit can
-            # produce one duplicated notification; NEVER a duplicated ORDER.
-            telegram.send(message)
-            with self.db:
-                self.db.execute("UPDATE outbox SET sent_at_ms=? WHERE id=? AND sent_at_ms IS NULL",
-                                (now_ms,key))
-            n+=1
-        return n
+        return drain(self.db,"outbox","sent_at_ms",telegram.send,now_ms,max_count,"added_ms,id")
 
     def pending_count(self):
         return self.db.execute("SELECT COUNT(*) FROM outbox WHERE sent_at_ms IS NULL").fetchone()[0]
@@ -89,7 +93,7 @@ class DurableQueue:
 
 
 def cycle(queue,telegram,*,account_client,public_clock=clock_ms,
-          feed=fetch_complete,now_ms=None):
+          feed=fetch_complete,now_ms=None,completion_clock=None,local_clock=None):
     now_ms=int(time.time()*1000) if now_ms is None else now_ms
     if type(now_ms) is not int:raise WatchHalt("NON_INTEGER_SYSTEM_CLOCK")
     activation=queue.state("activation_ms")
@@ -101,6 +105,9 @@ def cycle(queue,telegram,*,account_client,public_clock=clock_ms,
         activation_ms=int(activation)
     except (TypeError,ValueError):
         raise WatchHalt("CORRUPT_ACTIVATION_TIME")
+    completion_clock=completion_clock or public_clock
+    local_clock=local_clock or (lambda:now_ms)
+    coverage=Coverage(queue.db)
     # Authenticated private reads; never infer zero positions from errors.
     report=account_inspect(account_client)
     checked=utc(now_ms)
@@ -120,48 +127,40 @@ def cycle(queue,telegram,*,account_client,public_clock=clock_ms,
                       {"kind":"MEXC_ACCOUNT_FLAT_READ",
                        "checked_at_utc":checked},now_ms)
 
-    # Current public Binance 5m feed (not original archive parity-proven).
-    try:
-        server=public_clock()
-        if abs(server-now_ms)>5_000:
-            raise FeedHalt("CLOCK_MISMATCH")
-        observations=[]
-        for symbol in ("SOL_USDT","BNB_USDT"):
+    source_status={};latencies={}
+    for symbol in ("SOL_USDT","BNB_USDT"):
+        try:
+            server=public_clock()
+            if abs(server-local_clock())>5_000:
+                raise FeedHalt("CLOCK_MISMATCH")
             bars=feed(symbol,server,queue.dir/"market_cache")
-            observations+=fresh_signals(symbol,bars,server,activation_ms)
-        # Both market histories must validate BEFORE notifying either signal.
-        simultaneous={}
-        for s in observations:
-            simultaneous.setdefault((s["symbol"],s["signal_close_ms"]),[]).append(s)
-        for (symbol,close),group in simultaneous.items():
-            if symbol=="SOL_USDT" and len(group)>1:
-                # Do not portray two same-side SOL lanes as simultaneously
-                # executable independent physical positions.
-                queue.enqueue("BLOCKED_SOL_COLLISION:"+str(close),
-                              {"kind":"MEXC_SOURCE_BLOCKED","checked_at_utc":utc(server),
-                               "reason":"TWO_SOL_LONG_LANES_COLLIDE_NO_TRADING"},
-                              now_ms)
-                continue
-            for s in group:
+            completed=completion_clock()
+            if type(completed) is not int or completed<server:
+                raise FeedHalt("NONMONOTONIC_SOURCE_CLOCK")
+            observations=fresh_signals(symbol,bars,completed,activation_ms)
+            for s in observations:
                 queue.enqueue("SIGNAL:"+s["signal_id"],{
-                    "kind":"V5_SIGNAL_NOT_ORDER",
-                    "lane":s["lane"],"symbol":s["symbol"],
-                    "close_utc":utc(s["signal_close_ms"]),
-                    "signal_id":s["signal_id"],
+                    "kind":"V5_SIGNAL_NOT_ORDER","lane":s["lane"],"symbol":s["symbol"],
+                    "close_utc":utc(s["signal_close_ms"]),"signal_id":s["signal_id"],
                 },now_ms)
-        source_ok=True
-    except (FeedHalt,ValueError,TypeError,OSError) as exc:
-        # No history replay/fake market data. Never show raw untrusted URLs.
-        source_ok=False
-        queue.enqueue("BINANCE_SOURCE_BLOCKED:"+str(now_ms//900_000),
-                      {"kind":"MEXC_SOURCE_BLOCKED","checked_at_utc":checked,
-                       "reason":"PUBLIC_BINANCE_5M_SOURCE_BLOCKED:"+type(exc).__name__},now_ms)
-    delivered=queue.drain(telegram,now_ms)
+            source_status[symbol]=True;latencies[symbol]=completed-server
+            for lane,n in PERIODS.items():
+                if SYMBOLS[lane]==symbol:coverage.record(lane,n,bars,completed,activation_ms,observations)
+        except (FeedHalt,ValueError,TypeError,OSError) as exc:
+            source_status[symbol]=False
+            for lane,n in PERIODS.items():
+                if SYMBOLS[lane]==symbol:coverage.record(lane,n,[],now_ms,activation_ms,[],error=exc)
+            queue.enqueue("BINANCE_SOURCE_BLOCKED:"+symbol+":"+str(now_ms//900_000),
+                          {"kind":"MEXC_SOURCE_BLOCKED","checked_at_utc":checked,
+                           "reason":"PUBLIC_BINANCE_5M_SOURCE_BLOCKED:"+symbol+":"+type(exc).__name__},now_ms)
+    source_ok=all(source_status.values())
+    delivered=queue.drain(telegram,completion_clock())
     return {
         "status":STATUS,"checked_at_utc":checked,
         "account_snapshot_status":report.get("status"),
         "account_flat_in_authenticated_snapshot":report.get("broker_account_flat_observed_once",False),
-        "v5_public_source_ok":source_ok,
+        "v5_public_source_ok":source_ok,"source_status":source_status,
+        "collection_elapsed_ms":latencies,"coverage":coverage.summary(),
         "telegram_sent_this_cycle":delivered,
         "telegram_outbox_pending":queue.pending_count(),
         "real_order_submission_enabled":False,
@@ -172,38 +171,51 @@ def cycle(queue,telegram,*,account_client,public_clock=clock_ms,
 
 def main(argv=None):
     p=argparse.ArgumentParser()
-    p.add_argument("--data-dir",type=Path,required=True)
+    p.add_argument("--data-dir",type=Path)
     p.add_argument("--once",action="store_true")
+    p.add_argument("--self-test",action="store_true")
     args=p.parse_args(argv)
+    if args.self_test:
+        from engine.convex_observer_audit.packaged_selftest import run
+        return run("V07",DurableQueue)
+    if args.data_dir is None:p.error("--data-dir is required unless --self-test")
     try:
         t=TelegramBot(os.environ.get("TELEGRAM_BOT_TOKEN",""),
                       os.environ.get("TELEGRAM_CHAT_ID",""))
-        client=FuturesV06Transport(PrivateKey(
+        client=ObserverTransport(PrivateKey(
             os.environ.get("MEXC_API_KEY",""),os.environ.get("MEXC_API_SECRET","")))
-        q=DurableQueue(args.data_dir)
-        while True:
-            try:
-                info=cycle(q,t,account_client=client)
-                print(json.dumps(info,sort_keys=True),flush=True)
-                path=args.data_dir/"V07_WATCHER_STATUS.json"
-                tmp=path.with_suffix(".tmp")
-                with tmp.open("w",encoding="utf8") as f:
-                    json.dump(info,f,sort_keys=True,indent=2)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(tmp,path)
-            except (TelegramHalt,sqlite3.Error,WatchHalt) as exc:
-                print(json.dumps({"status":"NO_TRADE_MONITOR_BLOCKED",
-                                  "reason_type":type(exc).__name__,
-                                  "real_order_submission_enabled":False}),flush=True)
-                if args.once:return 2
-            if args.once:return 0
-            time.sleep(60)
+        with instance_lock(args.data_dir):
+            return run_loop(args,t,client)
     except Exception as exc:
         print(json.dumps({"status":"V07_INITIALIZATION_BLOCKED",
                           "error_type":type(exc).__name__,
                           "trading_authority":"NONE"}),flush=True)
         return 2
+
+
+def run_loop(args,t,client):
+    q=DurableQueue(args.data_dir)
+    while True:
+        try:
+            info=cycle(q,t,account_client=client,local_clock=lambda:int(time.time()*1000))
+            print(json.dumps(info,sort_keys=True),flush=True)
+            path=args.data_dir/"V07_WATCHER_STATUS.json"
+            tmp=path.with_suffix(".tmp")
+            with tmp.open("w",encoding="utf8") as f:
+                json.dump(info,f,sort_keys=True,indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp,path)
+        except (TelegramHalt,sqlite3.Error,WatchHalt) as exc:
+            failure={"status":"NO_TRADE_MONITOR_BLOCKED","checked_at_utc":utc(int(time.time()*1000)),
+                     "reason_type":type(exc).__name__,"real_order_submission_enabled":False,
+                     "telegram_outbox_pending":q.pending_count()}
+            from engine.three_convex_v07.feed import _save_json_atomic
+            _save_json_atomic(args.data_dir/"V07_WATCHER_STATUS.json",failure)
+            print(json.dumps(failure),flush=True)
+            if args.once:return 2
+        if args.once:return 0
+        time.sleep(60)
 
 
 if __name__=="__main__":

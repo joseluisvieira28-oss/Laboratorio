@@ -16,6 +16,7 @@ from engine.three_convex_v07.feed import FeedHalt,clock_ms
 from engine.three_convex_v07.telegram import TelegramBot,TelegramHalt
 from engine.three_convex_v12.public_feed import fetch,atomic_save
 from engine.three_convex_v12.lanes import ASSETS,LANES,decide,message_for_signal
+from engine.three_convex_v07.observer_io import add_receipt_column
 
 SYMBOLS=("BNB_USDT","SOL_USDT","DOGE_USDT")
 MAX_SIGNAL_AGE_MS=180000
@@ -74,6 +75,7 @@ class Outbox:
             id TEXT PRIMARY KEY, message TEXT NOT NULL, close_ms INTEGER NOT NULL,
             sent_ms INTEGER, expired_ms INTEGER)""")
         self.db.commit()
+        add_receipt_column(self.db,"notices")
     def activation(self,now):
         with self.db:
             self.db.execute("INSERT OR IGNORE INTO kv(key,value) VALUES('activation_ms',?)",(str(now),))
@@ -101,8 +103,9 @@ class Outbox:
                 continue
             # A crash between Telegram ACK and SQLite commit MAY duplicate a notice;
             # exactly-once Telegram delivery cannot be proven.
-            send(msg)
-            with self.db:self.db.execute("UPDATE notices SET sent_ms=? WHERE id=? AND sent_ms IS NULL",(now,id))
+            receipt=send(msg)
+            receipt=receipt if type(receipt) is int and receipt>0 else None
+            with self.db:self.db.execute("UPDATE notices SET sent_ms=?,telegram_message_id=? WHERE id=? AND sent_ms IS NULL",(now,receipt,id))
             delivered+=1
         return delivered,expired
     def pending(self):
