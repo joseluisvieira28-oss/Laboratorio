@@ -82,3 +82,26 @@ Estados de saída distintos: REJECTED_MECHANISM, SOURCE_BLOCKED, FORWARD_INSUFFI
 Este documento é uma **decisão de prioridade e governance**, não backtest novo, nem G4, nem prova de edge. Mantém um cemitério exato e um único próximo marco económico verificável. Um verdadeiro "diamante" terá: pagador identificado + fonte credível + surplus líquido exequível + resultado prospectivo independente robusto + segurança operacional. Qualquer elo não demonstrado mantém NO LIVE GO.
 
 **Veredito em 2026-10-20: ZERO ESTRATÉGIAS DE LUCRO LÍQUIDO INDEPENDENTE COMPROVADO. PRIORIDADE IMEDIATA: G3 HYPERLIQUID E ECONOMIA DO PAGADOR, NÃO MAIS INDICADORES.**
+
+
+## 6. 20 Oct 2026 — NEW SOURCE EVIDENCE & RESOURCE ALLOCATION UPDATE (does not rewrite original freeze)
+The initial payer-first prioritization above was written before new 20 Oct experiments. Evidence obtained independently in draft PR #259 legitimately updates *resource choice*, NOT strategy economic rules nor outcomes.
+
+### Aave Base SQD direct keeper bonus
+Official Aave Base liquidation event physically observed on SQD archive: run 39385990791, raw artifact 12246944010; 21 NDJSON source lines contained 1 LiquidationCall and partial block window. Exact original 100,000-block census incomplete owing bounded pagination. One preregistered source-only technical pagination amendment tried in run 39386546174 but first new request failed HTTP 529. Thus SOURCE_BLOCKED for complete reliable low-cost source, **not NO_EDGE**. No gross bonus, gas, net PnL or entrant accessibility proven. The repeat workflows were disabled; economically unjustified to build keeper bot. Closeout in PR #259 and audits/AAVE_BASE_SQD_FINAL_SOURCE_CLOSEOUT_2026_10_20.md on its branch.
+
+### Priority shift: BTC-OPTIONS-VRP-001 existing scientific track
+**BEST DOCUMENTED HISTORICAL ECONOMIC PHENOMENON to evaluate NEXT, NOT best proven automated strategy.** Reuse PR #163, don't create indicator clone.
+- Known historic V2 closeout: 192 weekly BTC 2021–2024 observations, VRP positive ~74.5%, mean IV−realized vol ~+10.43 volatility points, bootstrap/HAC conservative bounds positive **for VRP phenomenon only**.
+- Potential payer: counterparties purchasing option convexity/tail insurance from short-vol providers. But *premium receipt is not profit*: hedging/gaps/tail losses can swamp.
+- Deribit public BTC_USDC linear options 0.01 call+put short-pair source-only margin estimate ~301 USDC **before dynamic hedge capital**. Brokerage-specific tiers not validated.
+- Historic execution source remains inadequate: 0/52 same-strike SELL/SELL monthly pairs in frozen 2025 sample and no defensible exact 7-day paired source; direct weekly economic test UNDERPOWERED_PRE. Never interpret historical IV−RV as transferable cash PnL.
+- **One justified next gate** is low-cost read-only EXISTING prospective executable BBO/size source-bank viability + capital/tail-risk budget from official specifications, without looking at settlement outcomes, changing 36-cohort sample constraints, or fabricating market orders. If no execution coverage or collateral feasibility, STOP. Do not fund trading.
+
+### Other source-backed tracks
+- Hyperliquid RW-HL-EXITFLOW #172 continues its already-frozen G3 source quality Oct10–23; outcome sealed; no resource-heavy clones. Recheck Oct24.
+- Lido withdrawal-queue pressure remains source-pass prospective-only; waiting for queue is not guaranteed liquidity arbitrage and requires capital, smart-contract/gas and redemption timing. No independent net edge.
+- Coinbase cbETH redemption basis #128 is still prereg source-only without executed source gate; access-gated underlying redemption. Not equal to realizable direct cashflow.
+- Funding Hunter V04 / LICP / frozen Compound child stay terminal. Do not resurrect.
+
+**Final resource decision 2026-10-20:** No capital allocated to any Crypto Lab trading system. Of scientific engineering time, allocate one bounded source/accessibility review to the existing BTC Options VRP V2. All other new bot engineering OFF until sourced economic surplus and independent fill/stop feasibility. Do not tell the operator there is a 'true diamond' when evidence stops at a robust historical VRP phenomenon. Zero financial return has been demonstrated in actual tradable form.
