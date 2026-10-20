@@ -220,6 +220,14 @@ def build_control_room_state(
         focus_ids = [str(c.get("strategy_id")) for c in candidates if isinstance(c, dict)]
     focus_id_set = {str(x) for x in focus_ids}
     retired_registry_clean = (not candidates and not focus_ids) if zero_retirement else True
+    # A v3.8 zero-palha package never permits a missing retirement declaration
+    # to silently promote legacy metadata back to an active dashboard.
+    promotion_hardstop = str(registry.get("registry_version")) == "3.8" and not zero_retirement
+    if promotion_hardstop:
+        retired_registry_clean = False
+        candidates = []
+        focus_ids = []
+        focus_id_set = set()
     if zero_retirement and not retired_registry_clean:
         # Never display a mismatched active list under a retired authority.
         candidates = []
@@ -357,8 +365,9 @@ def build_control_room_state(
     }
     registry_ok = (bool(registry.get("registry_version"))
                    and len(focus) == len(focus_id_set)
-                   and retired_registry_clean)
-    if zero_retirement:
+                   and retired_registry_clean
+                   and not promotion_hardstop)
+    if zero_retirement or promotion_hardstop:
         # A cached/legacy standing authority can remain on disk. Do not
         # misrepresent it as a new operational capability of this radar.
         mexc["standing_operator_authority"]["radar_scope"] = "RETIRED_EXCLUSIONS_ONLY"
