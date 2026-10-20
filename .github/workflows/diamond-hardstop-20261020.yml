@@ -1,0 +1,31 @@
+name: DIAMOND Hardstop — Radar zero-promotion regressions
+on:
+  push:
+    branches:
+      - audit/diamond-economic-hardstop-radar-2026-10-20
+  pull_request:
+    branches:
+      - cleanup/radar-zero-palha-retire-all-eight-2026-10-13
+permissions:
+  contents: read
+jobs:
+  zero_promotion_no_autoreturn:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: crypto_edge_radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install offline/runtime dependencies, no exchange
+        run: python -m pip install -e .
+      - name: Run adversarial registry and dashboard hardstop checks
+        run: python -m unittest tests.test_registry_partition tests.test_dashboard tests.test_windows_resilient_bootstrap -v
+      - name: Compile exactly the modified runtime
+        run: python -m py_compile windows_node_entry.py radar/dashboard.py
