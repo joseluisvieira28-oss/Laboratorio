@@ -23,22 +23,23 @@ class WatcherTests(unittest.TestCase):
             self.assertEqual(q.flush(sent.append,4000000),0)
             self.assertEqual(len(sent),1)
             q.db.close()
-    def test_no_partial_notifications_on_late_source_failure(self):
+    def test_healthy_source_notifications_survive_later_source_failure(self):
         with tempfile.TemporaryDirectory() as d:
             q=Outbox(d)
             sent=[]
-            with patch("engine.three_convex_v11.watcher.experimental_signals",return_value=[
+            with patch("engine.three_convex_v11.watcher.experimental_signals",side_effect=lambda symbol,*a: [
                 {"lane":"SOL_CONVEX_4H_EXPERIMENTAL","symbol":"SOL_USDT",
                 "signal_close_ms":300000,
                 "signal_id":"SOL_CONVEX_4H_EXPERIMENTAL:300000"}
-            ]):
+            ] if symbol=="SOL_USDT" else []):
                 def fail_on_bnb(symbol,now,path):
                     if symbol=="BNB_USDT": raise FeedHalt("FAILED_SECOND_SOURCE")
                     return []
-                with self.assertRaises(FeedHalt):
-                    cycle(q,sent.append,now_ms=302000,server_ms=302000,fetch=fail_on_bnb)
+                report=cycle(q,sent.append,now_ms=302000,server_ms=302000,fetch=fail_on_bnb)
+            self.assertFalse(report["sources_ok"])
+            self.assertTrue(report["source_status"]["SOL_USDT"])
             self.assertEqual(q.pending(),0)
-            self.assertEqual(sent,[])
+            self.assertEqual(len(sent),1)
             q.db.close()
     def test_failed_telegram_preserves_queue(self):
         with tempfile.TemporaryDirectory() as d:
