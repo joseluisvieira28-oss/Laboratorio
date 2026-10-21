@@ -1,0 +1,115 @@
+name: LCOD-001 full-census 4-group source scale V0.1
+
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_full_census_group_v01.py'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_4GROUP_SCALE_FREEZE_V0.1.md'
+      - '.github/workflows/lcod-001-full-census-4group-v01.yml'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_4GROUP_TRIGGER.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  group:
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ['0123','4567','89ab','cdef']
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen source group
+        env:
+          LCOD_GROUP: ${{ matrix.group }}
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_full_census_group_v01.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-full-census-group-${{ matrix.group }}
+          path: artifacts/lcod_full_census_group_${{ matrix.group }}_v01.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: group
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lcod-full-census-group-*
+          path: artifacts/groups
+          merge-multiple: true
+      - name: Aggregate source receipts
+        run: |
+          python - <<'PY'
+          import glob,json
+          from datetime import datetime,timezone
+          from pathlib import Path
+          files=sorted(glob.glob("artifacts/groups/*.json"))
+          groups=[json.load(open(p)) for p in files]
+          expected={"0123","4567","89ab","cdef"}
+          got={g.get("group_prefixes") for g in groups}
+          group_pass=all(g.get("classification")=="GROUP_SOURCE_PREFLIGHT_PASS" for g in groups)
+          census_counts={g.get("full_index_borrowers") for g in groups}
+          total_indexed=sum(int(g.get("group_indexed_borrowers") or 0) for g in groups)
+          debt=sum(int(g.get("debt_bearing_borrowers") or 0) for g in groups)
+          eligible=sum(int(g.get("eligible_borrowers") or 0) for g in groups)
+          read_errors=sum(len(g.get("read_errors") or []) for g in groups)
+          census_errors=sum(len(g.get("census_errors") or []) for g in groups)
+          complete_groups=(got==expected)
+          same_census=len(census_counts)==1
+          union_matches=bool(same_census and census_counts and total_indexed==next(iter(census_counts)))
+          ok=group_pass and complete_groups and same_census and union_matches and read_errors==0 and census_errors==0
+          out={
+            "lab_id":"LIQUIDATION-CONVEXITY-ORACLE-DISTANCE-001",
+            "stage":"FULL_CENSUS_4GROUP_SOURCE_SCALE_V0.1",
+            "captured_at_utc":datetime.now(timezone.utc).isoformat(),
+            "classification":"FULL_CENSUS_SOURCE_PASS" if ok else "FULL_CENSUS_SOURCE_BLOCKED",
+            "group_classifications":{g.get("group_prefixes"):g.get("classification") for g in groups},
+            "group_eligible_coverage":{g.get("group_prefixes"):g.get("eligible_coverage") for g in groups},
+            "full_index_borrower_counts":sorted(x for x in census_counts if x is not None),
+            "group_indexed_borrowers_total":total_indexed,
+            "debt_bearing_borrowers_total":debt,
+            "eligible_borrowers_total":eligible,
+            "eligible_coverage_overall":(eligible/debt if debt else 0.0),
+            "read_error_count":read_errors,
+            "census_error_count":census_errors,
+            "all_expected_groups_present":complete_groups,
+            "union_matches_census":union_matches,
+            "curve_computed":False,
+            "market_returns_opened":False,
+            "liquidation_outcomes_opened":False,
+            "pnl_opened":False,
+            "mutation":False,
+          }
+          Path("artifacts").mkdir(exist_ok=True)
+          Path("artifacts/lcod_full_census_4group_aggregate_v01.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist aggregate receipt
+        run: |
+          cp artifacts/lcod_full_census_4group_aggregate_v01.json research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_4GROUP_AGGREGATE_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_4GROUP_AGGREGATE_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "LCOD-001: record full-census four-group source aggregate [skip ci]"
+          git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-full-census-4group-aggregate-v01
+          path: artifacts/lcod_full_census_4group_aggregate_v01.json
+          if-no-files-found: error

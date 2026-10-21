@@ -1,0 +1,100 @@
+name: LCOD-001 fresh-price full-census recon V0.2
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_full_census_group_v02.py'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_FRESH_PRICE_RECON_FREEZE_V0.2.md'
+      - '.github/workflows/lcod-001-full-census-fresh-price-v02.yml'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_V02_TRIGGER.txt'
+permissions:
+  contents: write
+jobs:
+  group:
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ['0123','4567','89ab','cdef']
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Run frozen fresh-price reconciliation group
+        env:
+          LCOD_GROUP: ${{ matrix.group }}
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_full_census_group_v02.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-full-census-v02-${{ matrix.group }}
+          path: artifacts/lcod_full_census_group_${{ matrix.group }}_v02.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: group
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lcod-full-census-v02-*
+          path: artifacts/groups
+          merge-multiple: true
+      - name: Aggregate V0.2 receipts
+        run: |
+          python - <<'PY'
+          import glob,json
+          from datetime import datetime,timezone
+          from pathlib import Path
+          groups=[json.load(open(p)) for p in sorted(glob.glob("artifacts/groups/*.json"))]
+          expected={"0123","4567","89ab","cdef"}
+          got={g.get("group_prefixes") for g in groups}
+          census={g.get("full_index_borrowers") for g in groups}
+          total=sum(int(g.get("group_indexed_borrowers") or 0) for g in groups)
+          debt=sum(int(g.get("debt_bearing_borrowers") or 0) for g in groups)
+          eligible=sum(int(g.get("eligible_borrowers") or 0) for g in groups)
+          ok=(got==expected and len(census)==1 and census and total==next(iter(census))
+              and all(g.get("classification")=="GROUP_FRESH_PRICE_RECON_PASS" for g in groups)
+              and all(not g.get("census_errors") for g in groups)
+              and all(not g.get("read_errors") for g in groups))
+          out={
+            "lab_id":"LIQUIDATION-CONVEXITY-ORACLE-DISTANCE-001",
+            "stage":"FULL_CENSUS_FRESH_PRICE_RECON_V0.2",
+            "captured_at_utc":datetime.now(timezone.utc).isoformat(),
+            "classification":"FULL_CENSUS_FRESH_PRICE_RECON_PASS" if ok else "FULL_CENSUS_FRESH_PRICE_RECON_BLOCKED",
+            "group_classifications":{g.get("group_prefixes"):g.get("classification") for g in groups},
+            "group_eligible_coverage":{g.get("group_prefixes"):g.get("eligible_coverage") for g in groups},
+            "full_index_borrower_counts":sorted(x for x in census if x is not None),
+            "group_indexed_borrowers_total":total,
+            "debt_bearing_borrowers_total":debt,
+            "eligible_borrowers_total":eligible,
+            "eligible_coverage_overall":eligible/debt if debt else 0.0,
+            "canonical_snapshot_claim":False,
+            "curve_computed":False,
+            "market_returns_opened":False,
+            "liquidation_outcomes_opened":False,
+            "pnl_opened":False,
+            "mutation":False
+          }
+          Path("artifacts/lcod_full_census_fresh_price_v02_aggregate.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Persist aggregate
+        run: |
+          cp artifacts/lcod_full_census_fresh_price_v02_aggregate.json research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_FRESH_PRICE_V02_AGGREGATE_RECEIPT.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/liquidation_convexity_oracle_distance_001/LCOD_FULL_CENSUS_FRESH_PRICE_V02_AGGREGATE_RECEIPT.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "LCOD-001: record fresh-price full-census reconciliation V0.2 [skip ci]"
+          git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-full-census-v02-aggregate
+          path: artifacts/lcod_full_census_fresh_price_v02_aggregate.json
+          if-no-files-found: error

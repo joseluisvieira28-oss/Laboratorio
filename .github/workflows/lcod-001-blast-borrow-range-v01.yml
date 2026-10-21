@@ -1,0 +1,39 @@
+name: LCOD-001 Blast Borrow range capability V0.1
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_BLAST_BORROW_RANGE_FREEZE_V0.1.md'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_blast_borrow_range_capability_v01.py'
+      - '.github/workflows/lcod-001-blast-borrow-range-v01.yml'
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python research/liquidation_convexity_oracle_distance_001/lcod_blast_borrow_range_capability_v01.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f artifacts/lcod_blast_borrow_range_capability_v01.json ]; then
+            cp artifacts/lcod_blast_borrow_range_capability_v01.json research/liquidation_convexity_oracle_distance_001/LCOD_BLAST_BORROW_RANGE_CAPABILITY_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/liquidation_convexity_oracle_distance_001/LCOD_BLAST_BORROW_RANGE_CAPABILITY_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "LCOD-001: record Blast Borrow range capability [skip ci]"
+              git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-blast-borrow-range-v01
+          path: artifacts/lcod_blast_borrow_range_capability_v01.json
+          if-no-files-found: error
