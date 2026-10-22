@@ -10,3 +10,4 @@ Decision: select only an economically and operationally distinct route with an a
 No new market outcomes, protected holdouts, account endpoints, wallets, signed requests, orders, paid APIs, requester-pays downloads, deployment, scheduler or main merge. No activation of dormant lineages. Public documentation and GitHub research evidence only. Existing publications may describe older account or paid-source checks; those are provenance only and confer no present authorization.
 
 Verification to follow: locally verify evidence Git blob hashes, SHA256 manifest, branch references and transparent arithmetic from published summaries. This does not reproduce raw source backtests or verify original artifact bytes. Preserve canonical class distinctions: negative exact MVE, sample failure, source failure, validated mechanism with execution failure, and active/unadjudicated research.
+
