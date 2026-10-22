@@ -36,7 +36,7 @@ def simulate(rows,year,c,mode):
         assert cash>=-1e-9 and units>=0
         wealth=cash+units*r["close"]
         # Cash flow at start of day: remove external flow from performance denominator.
-        if prev is not None: index*=wealth/(prev+contribution)
+        if prev is not None and prev+contribution>0: index*=wealth/(prev+contribution)
         elif contribution: index=wealth/contribution
         peak=max(peak,index); mdd=min(mdd,index/peak-1); prev=wealth
     last=[x for x in rows if x["date"].year==year][-1]
