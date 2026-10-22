@@ -1,0 +1,99 @@
+{
+  "audit_id": "DIAMOND_OR_ILLUSION_V2_20261021",
+  "status": "RETROSPECTIVE_ADVERSARIAL_PLAN_NOT_NEW_STRATEGY_PREREGISTRATION",
+  "outcomes_previously_known": true,
+  "families": {
+    "ETF": "49 directional 7-day OOS trades; 50 opportunities including flat",
+    "OPTIONS": "363 BTCUSDT daily OOS trades with frozen V2.1 weights",
+    "LICP": "4 closed forward episodes, kept separate"
+  },
+  "holdout_firewall": {
+    "no_ETF_2026_outcome_prices": true,
+    "market_data_allowlist_years": [
+      2024,
+      2025
+    ],
+    "private_2026_execution_receipts": "fee/funding/cashflow audit only; never derive ETF outcomes",
+    "live_quotes": "forbidden to avoid incidental ETF holdout outcome exposure",
+    "current_contract_metadata": "public specifications only; no price/ticker"
+  },
+  "fixed_diagnostics": {
+    "top_trade_removals": [
+      1,
+      3,
+      5
+    ],
+    "regimes": {
+      "trend": "entry-known prior daily close vs SMA200; above/below",
+      "volatility": "prior-known RV20 vs expanding median of prior RV20; high/low",
+      "subsets": "all symbols/sides/regimes retained, never trade filters"
+    },
+    "delay_minutes": [
+      0,
+      1,
+      5,
+      15,
+      60
+    ],
+    "delay_modes": [
+      "entry_only",
+      "exit_only",
+      "both"
+    ],
+    "costs_bps_roundtrip": [
+      0,
+      4,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      24,
+      32
+    ],
+    "maker_taker_scenarios": {
+      "maker_maker": 12,
+      "maker_taker": 14,
+      "taker_taker": 16
+    },
+    "funding_spread_slippage_sensitivity_bps": [
+      0,
+      1,
+      2,
+      5,
+      10
+    ],
+    "capital_usdt": [
+      100,
+      250,
+      500,
+      1000
+    ],
+    "bootstrap": {
+      "seed": 20261021,
+      "replications": 20000,
+      "circular_block_lengths": [
+        1,
+        4,
+        8
+      ],
+      "role": "descriptive percentile intervals, not posterior edge probability"
+    },
+    "loss_run": {
+      "iid": "exact DP for at-least-one run within same observed sample horizon",
+      "dependent": "circular block resampling, block4; empirical conditional model only"
+    },
+    "cashflow_mapping": "separate signed simple returns minus fees on entry and exit notionals; retain original log model unchanged"
+  },
+  "adjudication": {
+    "SURVIVES": "independent confirmatory net evidence with reliable costs, executable mapping and controlled risk; not established by descriptive resampling",
+    "FRAGILE": "positive frozen model, material concentration/cost/regime dependence",
+    "INSUFFICIENT": "unidentified quantities stay missing",
+    "NO_GO_route": "nonpositive point estimate under evidenced route costs, or failed existing hard economic gate; never overwrite old scientific result"
+  },
+  "risk_envelope": "no capital risk budget supplied; report unit exposure and transparent scaling sensitivities, do not claim losses controlled",
+  "execution_hypothesis": "new prospective shadow protocol only; no live orders, no guaranteed maker fills",
+  "main_immutable": true
+}
