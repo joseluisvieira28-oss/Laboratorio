@@ -2,6 +2,8 @@ import copy, datetime as dt, io, json, tempfile, unittest, zipfile
 from pathlib import Path
 import numpy as np
 import replay as r
+import source_audit
+from unittest.mock import patch
 
 def fixture(mutate=None,extra=False):
     start=r.stamp(dt.datetime(2022,1,1,tzinfo=r.UTC)); step=86_400_000
@@ -45,6 +47,19 @@ class ArchiveTests(unittest.TestCase):
     def test_missing_cache(self):
         with tempfile.TemporaryDirectory() as p:
             with self.assertRaisesRegex(r.GateError,'MISSING_ARCHIVE'):r.load_archives(Path(p))
+    def test_source_auditor_reports_exact_gap_without_returns(self):
+        raw,ch,name=fixture(mutate=lambda rows:rows.pop(3))
+        with tempfile.TemporaryDirectory() as p:
+            f=Path(p)/r.cache_name('spot',name);f.write_bytes(raw);Path(str(f)+'.CHECKSUM').write_bytes(ch)
+            inventory=[('spot','BTCUSDT','1d',2022,1,name,'https://data.binance.vision/'+name)]
+            with patch.object(r,'inventory',return_value=iter(inventory)):result=source_audit.audit(Path(p))
+            self.assertEqual(result['status'],'FAIL_CLOSED');self.assertEqual(result['checksum_matches'],1)
+            self.assertEqual(result['manifest'][0]['missing_open_utc'],['2022-01-04T00:00:00+00:00'])
+            self.assertNotIn('results',result)
+    def test_source_auditor_missing_bytes(self):
+        with tempfile.TemporaryDirectory() as p:
+            with patch.object(r,'inventory',return_value=iter([next(r.inventory())])):result=source_audit.audit(Path(p))
+            self.assertEqual(result['failed'],1);self.assertEqual(result['checksum_matches'],0)
 class ScienceTests(unittest.TestCase):
     def synthetic(self):
         candles={}

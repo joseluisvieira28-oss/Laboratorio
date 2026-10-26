@@ -48,7 +48,8 @@ candles, not continuous exchange uptime or regional/account eligibility.
 Python 3.12, numpy 2.3.5. No authenticated APIs or credentials are required.
 
 ```
-python -m unittest -v test_replay
+python -m unittest -v test_replay test_end_to_end
+python source_audit.py --cache archives --receipt source_audit.json
 python replay.py --fetch --cache archives --out results-new
 python audit.py --cache archives --out results-new
 ```
