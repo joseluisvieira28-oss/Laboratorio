@@ -1,0 +1,56 @@
+{
+  "version": "0.2",
+  "name": "Fusion Multi-Asset V0.2 Source Recovery",
+  "reference_commit": "ac6e9d22328c2b91a46b7b16bfdcb9a577aa6d6d",
+  "classification": "Exploratory discovery, not OOS; edge not certified. Known gaps and recovery plan precede freeze; NOT independent preregistration.",
+  "inherited_protocol_blob": "4daf7c1f9c382a7ff75b18b45061ef309e5ef979",
+  "inheritance": "All strategy, timing, costs, baseline, diagnostics and bootstrap definitions of reference protocol.json and replay.py are frozen unchanged. V0.1 files immutable.",
+  "assets": [
+    "SOLUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "LINKUSDT"
+  ],
+  "exposed_reference": "AVAXUSDT",
+  "period": "2022-01-01 inclusive to 2024-01-01 exclusive; warmup 2021-12-01",
+  "signal": "sign(close[D-1]/close[D-21]-1); BTCUSDT spot 20D filter, asset USD-M trend. Fusion requires equal nonzero signals; baseline nonzero asset signal.",
+  "entry": "USD-M H1 open 01:00 UTC",
+  "exit": "USD-M H1 open 02:00 UTC",
+  "cost_bps": [
+    0,
+    4,
+    8,
+    14,
+    20
+  ],
+  "statistics": "Asset/year/direction; top 1/3/5 winners removed; calendar correlation; leave-one-out; paired year-stratified moving-block bootstrap L30 10000 seed271; Holm25; baseline comparison; denominator all 730 days.",
+  "source_primary": "Exact original 319 Binance Vision monthly ZIPs plus sibling SHA256 CHECKSUM; validate entire set before economics.",
+  "recovery": {
+    "symbols": [
+      "SOLUSDT",
+      "XRPUSDT"
+    ],
+    "dates": [
+      "2022-02-26",
+      "2022-02-27",
+      "2022-02-28",
+      "2022-04-01",
+      "2022-04-02"
+    ],
+    "intervals": [
+      "1d",
+      "1h"
+    ],
+    "daily_zips": 20,
+    "d1_candles": 10,
+    "h1_candles": 240,
+    "rule": "Only absent exact timestamps may be inserted from official Binance Vision daily ZIP + CHECKSUM. Never replace any existing monthly row. Any overlap, duplicate, unexpected missing row, changed monthly hash versus reference audit, invalid checksum or extra source blocks economics.",
+    "api": "Public Binance USD-M /fapi/v1/klines: exact numeric equality of all first 11 fields; capture response and request parameters, SHA256; timestamps exact UTC grid.",
+    "aggregation": "For all ten asset-days daily OHLCV must equal aggregation of 24 hourly rows using Decimal.",
+    "provenance": "Retain per-row monthly/daily origin and prove symmetric difference between original and recovered datasets is exactly whitelist 250 rows."
+  },
+  "gate": "Fail closed on any inconsistency or unavailable evidence; no economic calculation or reading until integral source gate PASS. Record exit code, hashes, tests and evidence. Historical recovery reports are unverified inputs until revalidated.",
+  "freeze": "This file must be committed before reading or calculating economic results; subsequent changes require separate experiment, never outcome tuning.",
+  "forbidden": "2024–2026, interpolation, excluding dates/assets, post-outcome tuning, orders, live/paper trading, accounts/private APIs/wallets, deployments, expenses, main or PR271/272 mutation or merge."
+}
