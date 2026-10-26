@@ -1,0 +1,104 @@
+//@version=6
+indicator("Crypto Lab - Fusion Radar VISUAL V0.3.2", overlay=true)
+
+// RESEARCH ONLY. No PnL, orders, investment decisions, or 2024-26 holdout outcomes.
+showPanel = input.bool(true, "Mostrar painel", group="Visual")
+showMarks = input.bool(true, "Marcar 01 UTC no ativo do grafico", group="Visual")
+showAlerts = input.bool(true, "Alertas de nova concordancia", group="Alertas")
+
+btcSym = input.symbol("BINANCE:BTCUSDT", "BTC Spot", group="Fontes")
+avSym = input.symbol("BINANCE:AVAXUSDT.P", "AVAX Futures", group="Fontes")
+soSym = input.symbol("BINANCE:SOLUSDT.P", "SOL Futures", group="Fontes")
+etSym = input.symbol("BINANCE:ETHUSDT.P", "ETH Futures", group="Fontes")
+bnSym = input.symbol("BINANCE:BNBUSDT.P", "BNB Futures", group="Fontes")
+xrSym = input.symbol("BINANCE:XRPUSDT.P", "XRP Futures", group="Fontes")
+liSym = input.symbol("BINANCE:LINKUSDT.P", "LINK Futures", group="Fontes")
+
+// Last completed daily close versus close 20 daily bars earlier. 99 = unavailable.
+f_dir() =>
+    na(close[1]) or na(close[21]) ? 99 : close[1] > close[21] ? 1 : close[1] < close[21] ? -1 : 0
+
+f_prevDir() =>
+    na(close[2]) or na(close[22]) ? 99 : close[2] > close[22] ? 1 : close[2] < close[22] ? -1 : 0
+
+[btc, btcOld] = request.security(btcSym, "1D", [f_dir(), f_prevDir()], lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+[av, avOld] = request.security(avSym, "1D", [f_dir(), f_prevDir()], lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+[so, soOld] = request.security(soSym, "1D", [f_dir(), f_prevDir()], lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+[et, etOld] = request.security(etSym, "1D", [f_dir(), f_prevDir()], lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+[bn, bnOld] = request.security(bnSym, "1D", [f_dir(), f_prevDir()], lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+[xr, xrOld] = request.security(xrSym, "1D", [f_dir(), f_prevDir()], lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+[li, liOld] = request.security(liSym, "1D", [f_dir(), f_prevDir()], lookahead=barmerge.lookahead_on, ignore_invalid_symbol=true)
+
+f_state(int b, int a) =>
+    na(b) or na(a) or b == 99 or a == 99 ? 99 : b == a and b != 0 ? b : 0
+
+f_dirText(int d) =>
+    na(d) or d == 99 ? "SEM DADOS" : d == 1 ? "ALTA" : d == -1 ? "BAIXA" : "LATERAL"
+
+f_sigText(int d) =>
+    d == 1 ? "F+" : d == -1 ? "F-" : d == 99 or na(d) ? "SEM DADOS" : "NEUTRO"
+
+f_dirColor(int d) =>
+    d == 1 ? color.lime : d == -1 ? color.rgb(255, 106, 106) : color.silver
+
+f_cellBg(int state) =>
+    state == 1 ? color.new(color.green, 72) : state == -1 ? color.new(color.red, 72) : color.rgb(31, 40, 54)
+
+f_row(table t, int index, string label, int b, int a) =>
+    int state = f_state(b, a)
+    color bg = color.rgb(18, 26, 39)
+    table.cell(t, 0, index, label, text_color=color.white, bgcolor=bg, text_size=size.tiny)
+    table.cell(t, 1, index, f_dirText(b), text_color=f_dirColor(b), bgcolor=bg, text_size=size.tiny)
+    table.cell(t, 2, index, f_dirText(a), text_color=f_dirColor(a), bgcolor=bg, text_size=size.tiny)
+    table.cell(t, 3, index, f_sigText(state), text_color=color.white, bgcolor=f_cellBg(state), text_size=size.tiny)
+    table.cell(t, 4, index, "VISUAL", text_color=color.rgb(255, 202, 106), bgcolor=bg, text_size=size.tiny)
+
+var table panel = table.new(position.top_right, 5, 8, border_width=1, frame_width=1, frame_color=color.rgb(48, 61, 79))
+if barstate.islast
+    if showPanel
+        color head = color.rgb(35, 51, 75)
+        table.cell(panel, 0, 0, "MOEDA", text_color=color.white, bgcolor=head, text_size=size.tiny)
+        table.cell(panel, 1, 0, "BTC20", text_color=color.white, bgcolor=head, text_size=size.tiny)
+        table.cell(panel, 2, 0, "ALT20", text_color=color.white, bgcolor=head, text_size=size.tiny)
+        table.cell(panel, 3, 0, "FUSION", text_color=color.white, bgcolor=head, text_size=size.tiny)
+        table.cell(panel, 4, 0, "EVIDENCIA", text_color=color.white, bgcolor=head, text_size=size.tiny)
+        f_row(panel, 1, "AVAX", btc, av)
+        f_row(panel, 2, "SOL", btc, so)
+        f_row(panel, 3, "ETH", btc, et)
+        f_row(panel, 4, "BNB", btc, bn)
+        f_row(panel, 5, "XRP", btc, xr)
+        f_row(panel, 6, "LINK", btc, li)
+        color foot = color.rgb(35, 40, 54)
+        table.cell(panel, 0, 7, "LAB 2022-23", text_color=color.yellow, bgcolor=foot, text_size=size.tiny)
+        table.cell(panel, 1, 7, "SOURCE", text_color=color.yellow, bgcolor=foot, text_size=size.tiny)
+        table.cell(panel, 2, 7, "INCOMP.", text_color=color.yellow, bgcolor=foot, text_size=size.tiny)
+        table.cell(panel, 3, 7, "SEM PNL", text_color=color.yellow, bgcolor=foot, text_size=size.tiny)
+        table.cell(panel, 4, 7, "NO GO", text_color=color.yellow, bgcolor=foot, text_size=size.tiny)
+    else
+        table.clear(panel, 0, 0, 4, 7)
+
+// Marks only on the charted asset. Never plot marks for another currency.
+int chartState = syminfo.tickerid == avSym ? f_state(btc, av) : syminfo.tickerid == soSym ? f_state(btc, so) : syminfo.tickerid == etSym ? f_state(btc, et) : syminfo.tickerid == bnSym ? f_state(btc, bn) : syminfo.tickerid == xrSym ? f_state(btc, xr) : syminfo.tickerid == liSym ? f_state(btc, li) : 99
+bool correctTf = timeframe.in_seconds() == 3600
+bool entryClock = correctTf and hour(time, "Etc/UTC") == 1
+plotshape(showMarks and entryClock and chartState == 1 ? low : na, title="Fusion F+ visual", style=shape.triangleup, location=location.absolute, color=color.lime, size=size.tiny)
+plotshape(showMarks and entryClock and chartState == -1 ? high : na, title="Fusion F- visual", style=shape.triangledown, location=location.absolute, color=color.red, size=size.tiny)
+
+f_newUp(int state, int previous) =>
+    showAlerts and entryClock and state == 1 and previous != 1 and previous != 99 and not na(previous)
+
+f_newDown(int state, int previous) =>
+    showAlerts and entryClock and state == -1 and previous != -1 and previous != 99 and not na(previous)
+
+alertcondition(f_newUp(f_state(btc, av), f_state(btcOld, avOld)), title="AVAX novo F+", message="Fusion VISUAL: nova concordancia positiva AVAX20/BTC20")
+alertcondition(f_newDown(f_state(btc, av), f_state(btcOld, avOld)), title="AVAX novo F-", message="Fusion VISUAL: nova concordancia negativa AVAX20/BTC20")
+alertcondition(f_newUp(f_state(btc, so), f_state(btcOld, soOld)), title="SOL novo F+", message="Fusion VISUAL: nova concordancia positiva SOL20/BTC20")
+alertcondition(f_newDown(f_state(btc, so), f_state(btcOld, soOld)), title="SOL novo F-", message="Fusion VISUAL: nova concordancia negativa SOL20/BTC20")
+alertcondition(f_newUp(f_state(btc, et), f_state(btcOld, etOld)), title="ETH novo F+", message="Fusion VISUAL: nova concordancia positiva ETH20/BTC20")
+alertcondition(f_newDown(f_state(btc, et), f_state(btcOld, etOld)), title="ETH novo F-", message="Fusion VISUAL: nova concordancia negativa ETH20/BTC20")
+alertcondition(f_newUp(f_state(btc, bn), f_state(btcOld, bnOld)), title="BNB novo F+", message="Fusion VISUAL: nova concordancia positiva BNB20/BTC20")
+alertcondition(f_newDown(f_state(btc, bn), f_state(btcOld, bnOld)), title="BNB novo F-", message="Fusion VISUAL: nova concordancia negativa BNB20/BTC20")
+alertcondition(f_newUp(f_state(btc, xr), f_state(btcOld, xrOld)), title="XRP novo F+", message="Fusion VISUAL: nova concordancia positiva XRP20/BTC20")
+alertcondition(f_newDown(f_state(btc, xr), f_state(btcOld, xrOld)), title="XRP novo F-", message="Fusion VISUAL: nova concordancia negativa XRP20/BTC20")
+alertcondition(f_newUp(f_state(btc, li), f_state(btcOld, liOld)), title="LINK novo F+", message="Fusion VISUAL: nova concordancia positiva LINK20/BTC20")
+alertcondition(f_newDown(f_state(btc, li), f_state(btcOld, liOld)), title="LINK novo F-", message="Fusion VISUAL: nova concordancia negativa LINK20/BTC20")
