@@ -88,10 +88,18 @@ def get_zip(url,token):
     if len(raw)>MAX_ZIP:raise RuntimeError("GITHUB_ARCHIVE_TOO_LARGE")
     return raw
 
-def verify_remote(decision_path,run_id,artifact_id,token,repo=REPO):
+def verify_remote(decision_path,run_id,artifact_id,token,repo=REPO,allow_synthetic=False):
     if repo!=REPO or not token:raise ValueError("WRONG_REPOSITORY_OR_MISSING_GITHUB_TOKEN")
     decision_bytes=pathlib.Path(decision_path).read_bytes()
     obj=json.loads(decision_bytes)
+    if allow_synthetic:
+        if obj.get("synthetic_fixture") is not True:
+            raise ValueError("TEST_ONLY_MODE_REQUIRES_SYNTHETIC_FIXTURE")
+    else:
+        if obj.get("synthetic_fixture") is True:
+            raise ValueError("SYNTHETIC_RECEIPT_CANNOT_BE_PROMOTED")
+        from nvda_event10m_forecast_v01 import slot
+        slot(int((obj.get("forecast") or {}).get("decision_ts_ms",0)))
     meta=get_json(f"{API}/repos/{REPO}/actions/artifacts/{artifact_id}",token)
     created,digest_zip=verify_metadata(meta,obj,run_id,artifact_id)
     run=get_json(f"{API}/repos/{REPO}/actions/runs/{run_id}",token)
@@ -102,7 +110,7 @@ def verify_remote(decision_path,run_id,artifact_id,token,repo=REPO):
     d=int(obj["forecast"]["decision_ts_ms"])
     target=int(obj["forecast"]["expiry_target_ms"])
     return {
-      "anchor_protocol":"GITHUB_API_ZIP_BYTE_CUSTODY_V07",
+      "anchor_protocol":"GITHUB_API_ZIP_BYTE_CUSTODY_V07_SYNTHETIC_TEST_ONLY" if allow_synthetic else "GITHUB_API_ZIP_BYTE_CUSTODY_V07",
       "decision_canonical_sha256":digest(obj),
       "decision_exact_bytes_sha256":artifact_file_hash,
       "published_ms":created,
@@ -110,7 +118,7 @@ def verify_remote(decision_path,run_id,artifact_id,token,repo=REPO):
       "github_artifact_id":artifact_id,"github_artifact_digest_sha256":digest_zip,
       "github_workflow_run_id":run_id,"github_repository":REPO,
       "custody_independently_authenticated":True,
-      "status":"SERVER_ARCHIVE_AND_PRE_EXPIRY_TIME_VERIFIED"
+      "status":"SYNTHETIC_CUSTODY_TEST_ONLY" if allow_synthetic else "SERVER_ARCHIVE_AND_PRE_EXPIRY_TIME_VERIFIED"
     }
 
 def main():
@@ -119,9 +127,10 @@ def main():
     p.add_argument("--artifact-id",type=int,required=True)
     p.add_argument("--run-id",type=int,required=True)
     p.add_argument("--output",required=True)
+    p.add_argument("--synthetic-test-only",action="store_true")
     args=p.parse_args()
     anchor=verify_remote(args.decision,args.run_id,args.artifact_id,
-                         os.environ.get("GITHUB_TOKEN",""))
+                         os.environ.get("GITHUB_TOKEN",""),allow_synthetic=args.synthetic_test_only)
     path=pathlib.Path(args.output);path.parent.mkdir(parents=True,exist_ok=True)
     path.write_text(json.dumps(anchor,indent=2,sort_keys=True)+"\n")
     print(json.dumps({k:v for k,v in anchor.items() if "sha256" not in k},indent=2))

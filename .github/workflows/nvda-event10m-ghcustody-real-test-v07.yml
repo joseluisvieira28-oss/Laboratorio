@@ -1,0 +1,59 @@
+name: NVIDIA Event10m V0.7 REAL GitHub Artifact Custody Test (SYNTHETIC ONLY)
+on:
+  push:
+    branches:
+      - research/nvda-event10m-paper-custody-v07-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-ghcustody-real-test-v07.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  synthetic-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Produce SYNTHETIC paper decision (NOT real model or market event)
+        run: |
+          python - <<'PY'
+          import json,time,pathlib
+          now=int(time.time()*1000)
+          x={"study":"NVIDIA_EVENT10M_INTEGRATED_V05",
+             "status":"PAPER_FORECAST_UNANCHORED_NOT_EVENT_FUTURES_EXECUTION",
+             "synthetic_fixture":True,
+             "forecast":{"study":"NVIDIA_EVENT10M_CASH_REF_V01",
+               "candidate":"UP","asset":"NVIDIA_USDT","horizon_min":10,
+               "decision_ts_ms":now,"expiry_target_ms":now+600000}}
+          p=pathlib.Path("artifacts/nvda_event10m_integrated_v05")
+          p.mkdir(parents=True,exist_ok=True)
+          (p/"decision.json").write_text(json.dumps(x,sort_keys=True,indent=2)+"\n")
+          print("SYNTHETIC_NOT_REAL_MARKET_DECISION",now)
+          PY
+      - name: Publish synthetic fixture before artificial expiry
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-event10m-preoutcome-decision
+          path: artifacts/nvda_event10m_integrated_v05/decision.json
+          compression-level: 0
+          if-no-files-found: error
+      - name: Verify REAL GitHub metadata and archive bytes (never market outcome)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python research/mexc_event_direction_v01/nvda_event10m_anchor_v07.py \
+            --decision artifacts/nvda_event10m_integrated_v05/decision.json \
+            --artifact-id "$ARTIFACT_ID" \
+            --run-id "$RUN_ID" \
+            --output artifacts/nvda_event10m_custody_v07/synthetic_anchor.json \
+            --synthetic-test-only
+      - name: Preserve synthetic-only verifier receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-event10m-synthetic-server-custody-test
+          path: artifacts/nvda_event10m_custody_v07/synthetic_anchor.json
+          if-no-files-found: warn
