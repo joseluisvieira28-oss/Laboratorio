@@ -1,0 +1,23 @@
+name: Event Futures New Assets Historical Proxy V0.2
+on:
+  push:
+    branches:
+      - research/event-futures-multiasset-historical-v02-2026-10-29
+    paths:
+      - .github/workflows/event-futures-multiasset-historical-v02.yml
+permissions:
+  contents: read
+jobs:
+  discovery-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit five exact previously hashed MEXC INDEX sources, compute frozen 80 cells
+        run: python research/mexc_event_direction_v01/multiasset_historical_v02.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-futures-multiasset-historical-v02
+          path: artifacts/event_futures_multiasset_v02/report.json
+          if-no-files-found: warn
