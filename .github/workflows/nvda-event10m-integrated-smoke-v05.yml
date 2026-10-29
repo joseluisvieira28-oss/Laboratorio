@@ -19,7 +19,7 @@ jobs:
           python -m playwright install chromium
       - name: Validate strict required-minute parsing (no trading)
         run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_nvda_integrated_source_v05.py' -v
-      - name: Source-only independent source diagnostic with fail-closed receipts, no model
+      - name: Capture product then a fresh stream tick and audit all as-of source clocks, no model
         run: python research/mexc_event_direction_v01/nvda_event10m_integrated_v05.py --source-smoke
       - if: always()
         uses: actions/upload-artifact@v4

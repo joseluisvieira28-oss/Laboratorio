@@ -81,8 +81,12 @@ async def collect(mode):
       "event_order_openprice_parity_proven":False,
       "source_receipts":[]}
     try:
-        results=await asyncio.gather(asyncio.to_thread(cash),asyncio.to_thread(mexc),
-                                     exact_product(),event_index(),return_exceptions=True)
+        # The product detail is captured LAST among HTTP legs; after it completes,
+        # subscribe for a NEW public index tick so it cannot be stale from page startup.
+        first=await asyncio.gather(asyncio.to_thread(cash),asyncio.to_thread(mexc),
+                                   exact_product(),return_exceptions=True)
+        fresh_tick=await event_index() if not any(isinstance(v,BaseException) for v in first) else RuntimeError("PRIOR_SOURCE_EXCEPTION")
+        results=[*first,fresh_tick]
         for source_name,v in zip(("yahoo_cash_1m","mexc_index_1m","event_detail","event_ws_tick"),results):
             if isinstance(v,BaseException):
                 report.setdefault("source_failures",[]).append({
@@ -101,6 +105,26 @@ async def collect(mode):
             raise RuntimeError("EVENT_PRODUCT_OR_TICK_SOURCE_BLOCKED")
         # --source-smoke is permanently nonpredictive, and cannot open outcomes.
         if mode=="source-smoke":
+            # A proof of same-instant readiness, separate from product/source existence.
+            t=ms()
+            source_gates={}
+            for name,pkt in (("cash",cash_pack),("index",index_pack)):
+                expected={t//60000*60000-4*60000,t//60000*60000-60000}
+                seen={x["start_ms"] for x in pkt["bars"]}
+                source_gates[name]=(
+                    pkt["received_ms"]<=t and t-pkt["received_ms"]<=90000 and
+                    expected==seen and all(x["received_ms"]<=t and
+                        x["start_ms"]+60000<=x["received_ms"] for x in pkt["bars"]))
+            source_gates["product"]=(
+                prod["response_received_ms"]<=t and
+                t-prod["response_received_ms"]<=10000)
+            source_gates["event_tick"]=(
+                idx["received_ms"]<=t and t-idx["received_ms"]<=2000 and
+                isinstance(idx.get("server_ts"),int) and
+                0<=idx["received_ms"]-idx["server_ts"]<=5000)
+            report["asof_source_gates"]=source_gates
+            report["asof_source_ready_at_ms"]=t
+            report["asof_all_gates_pass"]=all(source_gates.values())
             report["status"]="FOUR_PUBLIC_SOURCES_PRESENT__NO_MODEL_NO_OUTCOME"
             return report
         decision_ms=ms()
