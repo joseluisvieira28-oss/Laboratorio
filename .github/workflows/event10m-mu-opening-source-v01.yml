@@ -1,0 +1,24 @@
+name: EVENT-10M MU Opening Source Gate V0.1
+on:
+  push:
+    branches:
+      - research/event10m-mu-open-source-v01-2026-10-29
+    paths:
+      - .github/workflows/event10m-mu-opening-source-v01.yml
+permissions:
+  contents: read
+jobs:
+  only-public-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fixed historical MU opening stock-vs-index 1m coverage source gate
+        run: python research/mexc_event_direction_v01/event10m_mu_source_v01.py
+      - name: Preserve receipt when blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-mu-opening-source-v01
+          path: artifacts/event10m_mu_source_v01/receipt.json
+          if-no-files-found: warn
