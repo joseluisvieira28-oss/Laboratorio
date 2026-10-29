@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Audit frozen source hashes and run two-day ten-minute disagreement proxy
+      - name: Audit prevalidated canonical source hashes and run unchanged historical ten-minute disagreement proxy
         run: python research/mexc_event_direction_v01/event10m_mu_divergence_v02.py
       - if: always()
         uses: actions/upload-artifact@v4

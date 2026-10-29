@@ -9,11 +9,16 @@ import event10m_mu_source_v01 as parent
 OUT=Path("artifacts/event10m_mu_divergence_v02")
 UTC=dt.timezone.utc
 NY=ZoneInfo("America/New_York")
-SHA_Y="9bbdf96057afe5d3b79a6dfa873d3b42e8b790ff7d8515c9cc32ed5e619b0efb"
-SHA_M={"2026-10-26":"69e65cd0839b1f4159a1f7f4ed24db028e23c2979be9d3e573d25cbcf64e372e",
-       "2026-10-27":"8895ef6740917cf4960ba4fd478db61e0dec0cce56873dc90e45401113394fa9"}
+SHA_Y="aea2418b3308cec57eb1480fcf847ab9e4b82f2f9091b72a8eb14770dfcb6c5d"
+SHA_M={"2026-10-26":"a950a8fef646d3773cd415e13a10c55d2e35cbef608bcfa1b02752aa149c884a",
+       "2026-10-27":"a93f2e96071080ff7769aea2665353a28509623a099928181b4af2341b1c00a3"}
 PAYOUT=(0.80,0.85)
 SIDES=("MU_SIGN","ALWAYS_UP","ALWAYS_DOWN","MEXC_MOMENTUM")
+
+def canonical(series):
+    # Exactly the same representation as pre-outcome V0.2.1 source gate.
+    return hashlib.sha256(json.dumps(sorted(series.items()),
+                          separators=(",",":"),ensure_ascii=True).encode()).hexdigest()
 
 def data(stock):
     if stock:
@@ -23,30 +28,34 @@ def data(stock):
         url="https://query1.finance.yahoo.com/v8/finance/chart/MU?"+urllib.parse.urlencode(
              {"period1":start,"period2":end,"interval":"1m","includePrePost":"false"})
         raw=parent.download(url,3500000)
-        digest=hashlib.sha256(raw).hexdigest()
-        if digest!=SHA_Y:raise ValueError("YAHOO_RAW_SHA_CHANGED "+digest)
         result=json.loads(raw)["chart"]["result"][0]
         timestamps=result["timestamp"]
         closes=result["indicators"]["quote"][0]["close"]
         if len(timestamps)!=len(closes):raise ValueError("STOCK_SOURCE_MISALIGNED")
-        return {int(t):float(v) for t,v in zip(timestamps,closes)
+        series={int(t):float(v) for t,v in zip(timestamps,closes)
                 if v is not None and math.isfinite(float(v)) and float(v)>0}
+        digest=canonical(series)
+        if digest!=SHA_Y:raise ValueError("YAHOO_CANONICAL_SHA_CHANGED "+digest)
+        return series
     out={}
     for day in parent.DAYS:
         a=parent.seconds(parent.midnight(day));import urllib.parse
         url="https://contract.mexc.com/api/v1/contract/kline/index_price/MUSTOCK_USDT?"+urllib.parse.urlencode(
            {"interval":"Min1","start":a,"end":a+86400-60})
         raw=parent.download(url)
-        digest=hashlib.sha256(raw).hexdigest()
-        if digest!=SHA_M[day.isoformat()]:raise ValueError("MEXC_RAW_SHA_CHANGED "+day.isoformat()+" "+digest)
         d=json.loads(raw)["data"]
         ts=d["time"];prices=d["open"]
         if len(ts)!=len(prices) or not ts:raise ValueError("INDEX_SOURCE_SCHEMA")
+        daily={}
         for t,p in zip(ts,prices):
             t=int(t);p=float(p)
-            if t in out or not math.isfinite(p) or p<=0 or not a<=t<a+86400:
+            if t in daily or t in out or not math.isfinite(p) or p<=0 or not a<=t<a+86400:
                 raise ValueError("INDEX_SOURCE_INVALID")
-            out[t]=p
+            daily[t]=p
+        digest=canonical(daily)
+        if digest!=SHA_M[day.isoformat()]:
+            raise ValueError("MEXC_CANONICAL_SHA_CHANGED "+day.isoformat()+" "+digest)
+        out.update(daily)
     return out
 def direction(x,y):return 1 if x>y else -1 if x<y else 0
 def times(day):
