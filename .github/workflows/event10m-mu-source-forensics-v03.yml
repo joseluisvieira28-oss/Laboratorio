@@ -1,0 +1,23 @@
+name: EVENT10M MU Opening Source Forensics V0.3
+on:
+  push:
+    branches:
+      - research/event10m-mu-source-forensics-v03-2026-10-29
+    paths:
+      - .github/workflows/event10m-mu-source-forensics-v03.yml
+permissions:
+  contents: read
+jobs:
+  source-forensics-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Forensic repeated Yahoo query1/query2 and MEXC source minute integrity without outcomes
+        run: python research/mexc_event_direction_v01/event10m_mu_source_forensics_v03.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-mu-source-forensics-v03
+          path: artifacts/event10m_mu_source_forensics_v03/receipt.json
+          if-no-files-found: warn
