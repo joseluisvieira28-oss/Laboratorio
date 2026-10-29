@@ -1,0 +1,6 @@
+# NVDA CASH REAL-TIME FRESHNESS SMOKE — V0.2 SOURCE ONLY
+Frozen 2026-10-29 prior to first freshness read. This is NOT any outcome study.
+Single public anonymous source GET for current Yahoo Finance NVDA 1m cash equity range=1d and one MEXC standard-futures NVIDIA_USDT index Min1 range last 20m, exactly when a GitHub Action push-triggered run executes.
+Only if New York cash regular market time is 09:40–15:50 ET. All book/transaction/order/account/private routes prohibited.
+Use ONLY latest 1m candle whose bar start + 60s is <= runner receipt UTC minus 5sec to avoid current in-progress bars. Require both sources <=120 sec stale relative to the close of last complete candle, with nonnegative clock lag. Preserve all metadata and hashes and exact as-observed retrieval UTC. Yahoo may be delayed/undocumented; this test cannot prove official primary-exchange custody or precise intraminute information availability. A PASS is one momentary freshness sample, not repeatable low-latency source certification.
+If stale/missing: fail CLOSED; no economic tests, provider substitutions or model adjustment allowed. No price returns, EV, forecasts or historical outcomes. Existing October 5–30 NVIDIA 1m V0.6 forward remains CLOSED, prior cashopen no-survivor remains unchanged. No execution, main merge or protected September holdout.
