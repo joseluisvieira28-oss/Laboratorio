@@ -20,19 +20,29 @@ def fetch(url):
 def extract_prices(times,prices,received_ms,symbol,digest):
     if not isinstance(times,list) or not isinstance(prices,list) or len(times)!=len(prices):
         raise RuntimeError("BAR_SOURCE_SCHEMA")
-    bars=[]
-    seen=set()
+    # Only two bars are feature inputs. Do not fail because unrelated old daily
+    # Yahoo rows contain null/zero (no model information from these).
+    boundary=received_ms//60000*60000
+    needed={boundary-4*60000,boundary-60000}
+    found={}
     for t,p in zip(times,prices):
-        if t is None or p is None:continue
-        t=int(t)*1000;p=float(p)
-        if t%60000!=0 or not(math.isfinite(p) and p>0):
-            raise RuntimeError("BAR_SOURCE_INTEGRITY")
-        if t in seen:raise RuntimeError("BAR_DUPLICATION")
-        seen.add(t)
-        if t+60000<=received_ms-1000:
-            bars.append({"start_ms":t,"close":p,"received_ms":received_ms})
-    if len(bars)<5:raise RuntimeError("BAR_COVERAGE_BLOCKED")
-    return {"symbol":symbol,"sha256":digest,"received_ms":received_ms,"bars":bars}
+        if t is None:continue
+        try: t=int(t)*1000
+        except (TypeError,ValueError):continue
+        if t not in needed:continue
+        if t in found:raise RuntimeError("DUPLICATE_CAUSAL_FEATURE_BAR")
+        if p is None:raise RuntimeError("NULL_CAUSAL_FEATURE_BAR")
+        try:p=float(p)
+        except (TypeError,ValueError):raise RuntimeError("BAD_CAUSAL_FEATURE_BAR")
+        if t%60000 or not(math.isfinite(p) and p>0):
+            raise RuntimeError("BAD_CAUSAL_FEATURE_BAR")
+        if t+60000>received_ms-1000:
+            raise RuntimeError("UNFINISHED_CAUSAL_FEATURE_BAR")
+        found[t]={"start_ms":t,"close":p,"received_ms":received_ms}
+    if set(found)!=needed:raise RuntimeError("MISSING_CAUSAL_FEATURE_BAR")
+    return {"symbol":symbol,"sha256":digest,"received_ms":received_ms,
+            "bars":[found[t] for t in sorted(found)]}
+
 def cash():
     url="https://query1.finance.yahoo.com/v8/finance/chart/NVDA?"+urllib.parse.urlencode(
        {"range":"1d","interval":"1m","includePrePost":"false"})
