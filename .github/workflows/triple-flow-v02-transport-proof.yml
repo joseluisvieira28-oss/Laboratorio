@@ -1,0 +1,30 @@
+name: Triple Flow V0.2 Source Transport Proof
+on:
+  push:
+    branches:
+      - research/triple-flow-v02-transport-continuity-2026-10-29
+    paths:
+      - .github/workflows/triple-flow-v02-transport-proof.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit previously frozen receipt boundary under V0.2 provider semantics
+        run: python research/mexc_event_direction_v01/v02/receipt_boundary_v02.py
+      - name: Install public websocket client
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Source guard synthetic tests only
+        run: python research/mexc_event_direction_v01/v02/bybit_transport_source_v02.py --self-test
+      - name: Capture Bybit PUBLIC transport heartbeats and message quality for 95 seconds
+        run: python research/mexc_event_direction_v01/v02/bybit_transport_source_v02.py
+      - name: Preserve both receipts whether pass or blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triple-flow-v02-source-transport-proof
+          path: artifacts/triple_flow_v02/
+          if-no-files-found: warn

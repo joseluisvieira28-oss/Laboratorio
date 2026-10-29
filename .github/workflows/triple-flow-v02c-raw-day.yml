@@ -1,0 +1,23 @@
+name: Triple Flow V0.2c Tardis Raw Full Day Audit
+on:
+  push:
+    branches:
+      - research/triple-flow-v02-transport-continuity-2026-10-29
+    paths:
+      - .github/workflows/triple-flow-v02c-raw-day.yml
+permissions:
+  contents: read
+jobs:
+  only-public-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test all 1440 April 1 minute raw source receipts with no outcome reads
+        run: python research/mexc_event_direction_v01/v02/tardis_raw_day_v02c.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triple-flow-v02c-raw-day
+          path: artifacts/triple_flow_v02c/whole_day_receipt.json
+          if-no-files-found: warn
