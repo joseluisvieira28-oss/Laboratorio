@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Offline synthetic parity guards (before historical source reads)
         run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_nvda_oct01_02_historical_v01.py' -v
-      - name: Read exactly previous source hashes and evaluate all 24 frozen slots
+      - name: Read frozen double-validated canonical required-bar hashes; then evaluate same 24 slots
         run: python research/mexc_event_direction_v01/nvda_oct01_02_historical_proxy_v01.py
       - if: always()
         uses: actions/upload-artifact@v4

@@ -6,13 +6,21 @@ production date guard). No real order, no real Event Futures payout/settlement.
 """
 import collections,datetime as dt,hashlib,json,math,pathlib
 import nvda_oct01_02_source_gate_v01 as sg
+import nvda_oct01_02_canonical_source_v01a as can
 
 OUT=pathlib.Path("artifacts/nvda_event10m_oct01_02")
 DAYS=sg.DAYS
-EXPECTED_SHA={
+PREVIOUS_RAW_SOURCE_SHA={
  "YAHOO":"b7ce782e2f37675191ecd5a0938be9fdd7f3ea1e2ec2517911d",
  "2026-10-01":"422a190f2b0b4e5b883a2b52ec88b75db63cb4f95805a5b86ef6c37cbf9eb34b",
- "2026-10-02":"f0829459f63a61efd5bfad8d3d1fc1f78a993d85da3dc73730fad77046736282",
+ "2026-10-02":"f0829459f63a61efd5bfad8d3d1fc1f78a993d85da3dc73730fad77046736282"
+}
+PINNED_CANONICAL_SHA={
+ "YAHOO":{
+   "2026-10-01":"723d89e7e3512438f55bc168dba6fd39bc3adf1d83870cbf4e7b77ce952a2b18",
+   "2026-10-02":"2a075f970b68d657193aa15a2864cbf2ea9581fe2ba5a990fef8c6ee843521cc"},
+ "2026-10-01":"062323b62013951e465967d4fc8e2147a5e8509231d1a56892a143e7098e3b91",
+ "2026-10-02":"d411b7fa75025b1c9488cf0ba87e79301bc80295d5ead4e00b6b7123e11a9203"
 }
 Q=(0.80,0.85)
 def positive(x):
@@ -24,8 +32,9 @@ def market_raw():
                                  "period2":int(sg.END.timestamp()),
                                  "interval":"1m","includePrePost":"false"}))
     cash_raw,receipt=sg.get(yahoo_url)
-    if receipt["response_sha256"]!=EXPECTED_SHA["YAHOO"]:
-        raise RuntimeError("YAHOO_RAW_HASH_CHANGED__NO_OUTCOMES_AUTHORIZED")
+    # Raw Yahoo payload contains changing metadata: preserve hash, but require
+    # the exact 48 frozen causal feature bars to match the earlier DOUBLE read.
+    receipt["raw_sha_matches_original_source_gate"]=(receipt["response_sha256"]==PREVIOUS_RAW_SOURCE_SHA["YAHOO"])
     chart=cash_raw.get("chart") or {}
     rows=chart.get("result") or []
     if chart.get("error") or len(rows)!=1 or (rows[0].get("meta") or {}).get("symbol")!="NVDA":
@@ -33,6 +42,12 @@ def market_raw():
     item=rows[0]
     quotes=(item.get("indicators") or {}).get("quote") or []
     if len(quotes)!=1:raise RuntimeError("YAHOO_CASH_SCHEMA")
+    cash_source={"time":item.get("timestamp"),"open":quotes[0].get("open"),"close":quotes[0].get("close")}
+    for source_day in DAYS:
+        _,needed_cash,_=sg.required(source_day)
+        actual_sha=can.canonical(cash_source,needed_cash)
+        if actual_sha!=PINNED_CANONICAL_SHA["YAHOO"][source_day]:
+            raise RuntimeError("YAHOO_REQUIRED_PRICES_CHANGED_"+source_day)
     cash=build_table(item.get("timestamp"),quotes[0].get("open"),quotes[0].get("close"))
     idx={}
     receipts={"YAHOO":receipt}
@@ -41,11 +56,14 @@ def market_raw():
         url=("https://contract.mexc.com/api/v1/contract/kline/index_price/NVIDIA_USDT?"+
             sg.urllib.parse.urlencode({"interval":"Min1","start":start,"end":end}))
         raw,rec=sg.get(url)
-        if rec["response_sha256"]!=EXPECTED_SHA[day]:
-            raise RuntimeError("MEXC_RAW_HASH_CHANGED__"+day)
+        rec["raw_sha_matches_original_source_gate"]=(rec["response_sha256"]==PREVIOUS_RAW_SOURCE_SHA[day])
         if raw.get("success") is not True or not isinstance(raw.get("data"),dict):
             raise RuntimeError("MEXC_INDEX_SOURCE_SCHEMA")
         d=raw["data"]
+        _,_,needed_index=sg.required(day)
+        actual_sha=can.canonical(d,needed_index)
+        if actual_sha!=PINNED_CANONICAL_SHA[day]:
+            raise RuntimeError("MEXC_REQUIRED_PRICE_BARS_CHANGED_"+day)
         idx[day]=build_table(d.get("time"),d.get("open"),d.get("close"))
         receipts[day]=rec
     return cash,idx,receipts
