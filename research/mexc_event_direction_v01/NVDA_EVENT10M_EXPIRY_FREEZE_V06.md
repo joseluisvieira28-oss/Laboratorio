@@ -1,0 +1,9 @@
+# NVIDIA Event10M V0.6 — Offline expiry verifier / STRICT EXTERNAL PRE-OUTCOME ANCHOR
+
+Frozen 29 Oct 2026, before any real November outcome.
+The standalone V0.5 source receipt builder may produce a **paper forecast** ONLY within the Nov2–Nov30 session slots, with all source conditions met. V0.5's output is not automatically trusted or publicly sealed.
+
+To open an expiry tick, a separate trusted GitHub Actions artifact or similar independently verifiable publisher must have anchored the exact SHA256 bytes of the original decision.json prior to target expiry; the anchor must contain original decision hash, GitHub artifact ID/digest, publishing UTC timestamp and independent verification receipt. THIS MODULE CANNOT AUTHENTICATE THE HOST ARTIFACT BY ITSELF: any caller-provided anchor is an unauthenticated CLAIM, and can only produce `SHADOW_MECHANICS_UNTRUSTED_ANCHOR` without external cross-verification. No economic promotion is possible.
+
+Only the first source-validated MEXC public index tick at/after exact decision+600000ms and <=5s after can resolve a SHADOW index return. Tick must have raw SHA256, server timestamp and local receipt timestamp with receipt>=server, server timestamp within expiry window, and packet source exact NVIDIA_USDT. Any missing, stale or pre-expiry tick => BLOCK; no interpolation, next-minute substitution, cross-venue source, candle OPEN settlement, or fake tie.
+WIN => contemporaneously observed direction q, LOSS => -1, TIE => 0. Product real Event Futures order openPrice/expiry settlement parity has NOT been proven, so scores are INDEX SHADOW ONLY, NOT realized Event Futures PnL. Abstentions are not resolved into wagers. No automatic source tick collector/scheduler is installed. No main merge, wallet/position/balance/order, private endpoint, spend or protected old forward read.

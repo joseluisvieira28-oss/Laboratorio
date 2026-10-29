@@ -1,0 +1,17 @@
+name: NVDA Event10m Offline Index Expiry Guard V0.6
+on:
+  push:
+    branches:
+      - research/nvda-cash-reference-event10m-source-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-expiry-offline-v06.yml
+permissions:
+  contents: read
+jobs:
+  synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove strict 10m shadow expiry and anchor rejection mechanics (SYNTHETIC)
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_nvda_event10m_expiry_shadow_v06.py' -v
