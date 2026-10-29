@@ -73,8 +73,14 @@ async def collect(mode):
     try:
         results=await asyncio.gather(asyncio.to_thread(cash),asyncio.to_thread(mexc),
                                      exact_product(),event_index(),return_exceptions=True)
-        for v in results:
-            if isinstance(v,BaseException):raise RuntimeError("PUBLIC_SOURCE_EXCEPTION_"+type(v).__name__)
+        for source_name,v in zip(("yahoo_cash_1m","mexc_index_1m","event_detail","event_ws_tick"),results):
+            if isinstance(v,BaseException):
+                report.setdefault("source_failures",[]).append({
+                    "source":source_name,
+                    "type":type(v).__name__,
+                    "reason":str(v)[:180]})
+        if report.get("source_failures"):
+            raise RuntimeError("PUBLIC_SOURCE_EXCEPTION_DIAGNOSTIC")
         cash_pack,cash_info=results[0]
         index_pack,index_info=results[1]
         prod,idx=results[2],results[3]
@@ -116,7 +122,7 @@ async def run(mode):
     print(json.dumps({"status":report["status"],"mode":mode,
       "source_receipts":report["source_receipts"],
       "signal_issued":report["signal_issued"],
-      "block_code":report.get("block_code")},indent=2),flush=True)
+      "block_code":report.get("block_code"),"source_failures":report.get("source_failures")},indent=2),flush=True)
     if report["status"]=="BLOCKED":raise SystemExit(2)
 if __name__=="__main__":
     p=argparse.ArgumentParser()
