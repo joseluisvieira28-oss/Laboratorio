@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - name: Only frozen April 1 raw-data minutes, no outcomes
+      - name: Only frozen April 1 raw-data minutes, empty-minute correction, no outcomes
         run: python research/mexc_event_direction_v01/v02/tardis_raw_disconnect_probe_v02b.py
       - if: always()
         uses: actions/upload-artifact@v4

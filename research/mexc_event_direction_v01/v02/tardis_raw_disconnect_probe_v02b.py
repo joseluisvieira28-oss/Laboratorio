@@ -5,6 +5,28 @@ from pathlib import Path
 OFFSETS=(0,1,360,720,1200,1439)
 BASE="https://api.tardis.dev/v1/data-feeds/bybit"
 OUT=Path("artifacts/triple_flow_v02b")
+def parse_lines(text):
+    # Empty HTTP/decoded body is NO DATA, not a disconnect marker.
+    # A truly empty line *inside* the raw NDJSON body is a disconnect marker.
+    lines=text.splitlines()
+    count=0
+    disconnect=0
+    for line in lines:
+        if not line.strip():
+            disconnect+=1
+            continue
+        first,sep,payload=line.partition(" ")
+        if not sep or not first.startswith("20"):
+            raise RuntimeError("RAW_LINE_FORMAT_UNVERIFIED")
+        obj=json.loads(payload)
+        if not isinstance(obj,dict):raise RuntimeError("UNEXPECTED_JSON")
+        topic=obj.get("topic","")
+        if topic and not topic.startswith("allLiquidation."):
+            raise RuntimeError("UNEXPECTED_TOPIC")
+        count+=1
+    return {"lines":len(lines),"disconnect_markers":disconnect,"valid_payloads":count,
+            "empty_response":len(text)==0}
+
 def query(offset):
     params={"from":"2026-04-01","offset":str(offset),"filters":json.dumps(
         [{"channel":"allLiquidation","symbols":["BTCUSDT","ETHUSDT"]}],
@@ -31,24 +53,7 @@ def query(offset):
         if len(data)>20_000_000:raise RuntimeError("DECOMPRESSED_LIMIT")
         text=data.decode("utf-8")
         rec["decoded_bytes"]=len(data)
-        for line in text.split("\n"):
-            rec["lines"]+=1
-            if not line.strip():
-                rec["disconnect_markers"]+=1
-                continue
-            # Raw feeds prepend collector-local ISO time, then original exchange JSON.
-            first,sep,payload=line.partition(" ")
-            if not sep or not first.startswith("20"):
-                raise RuntimeError("RAW_LINE_FORMAT_UNVERIFIED")
-            obj=json.loads(payload)
-            if not isinstance(obj,dict):raise RuntimeError("UNEXPECTED_JSON")
-            topic=obj.get("topic","")
-            if topic and not topic.startswith("allLiquidation."):
-                raise RuntimeError("UNEXPECTED_TOPIC")
-            rec["valid_payloads"]+=1
-        # trailing newline is a terminator and not a disconnect.
-        if text.endswith("\n"):rec["disconnect_markers"]-=1
-        rec["disconnect_markers"]=max(0,rec["disconnect_markers"])
+        rec.update(parse_lines(text))
         rec["gate"]="RAW_MINUTE_READABLE"
     except urllib.error.HTTPError as exc:
         rec["status"]=exc.code;rec["error"]="HTTP_"+str(exc.code)
@@ -58,6 +63,11 @@ def query(offset):
         rec["gate"]="RAW_SOURCE_UNVERIFIED"
     return rec
 if __name__=="__main__":
+    assert parse_lines("")["disconnect_markers"]==0
+    assert parse_lines("")["empty_response"] is True
+    assert parse_lines("\n")["disconnect_markers"]==1
+    assert parse_lines("\n")["empty_response"] is False
+    print("EMPTY_MINUTE_VS_DISCONNECT_SYNTHETIC_PASS")
     OUT.mkdir(exist_ok=True,parents=True)
     report={"study":"TRIPLE_FLOW_V02B_RAW_DISCONNECT_DISCOVERY",
             "prior_exposed_date":"2026-04-01",
