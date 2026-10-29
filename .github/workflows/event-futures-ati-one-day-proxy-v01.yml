@@ -1,0 +1,27 @@
+name: Event Futures ATI Historical Descriptive Proxy V0.1
+on:
+  push:
+    branches:
+      - research/event-futures-ati-one-day-proxy-2026-10-29
+    paths:
+      - .github/workflows/event-futures-ati-one-day-proxy-v01.yml
+permissions:
+  contents: read
+jobs:
+  source-and-descriptive-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reproduce exact publisher-hash-verified source evidence
+        run: python research/mexc_event_direction_v01/ati_source_gate_v01.py
+      - name: Score frozen one-day descriptive proxy and fixed baselines
+        run: python research/mexc_event_direction_v01/ati_one_day_proxy_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-futures-ati-one-day-proxy-v01
+          path: |
+            artifacts/event_futures_ati_source_v01/receipt.json
+            artifacts/event_futures_ati_proxy_v01/report.json
+          if-no-files-found: warn
