@@ -1,0 +1,7 @@
+# EVENT-10M MU V0.2.1 SOURCE-CANONICALIZATION ADDENDUM (PRE-OUTCOME)
+
+2026-10-29. Initial V0.2 run #40905998844 failed BEFORE retrieving MEXC outcomes due YAHOO_RAW_SHA_CHANGED; Yahoo API embeds variable metadata in its overall JSON body. Do not disable integrity, discard original failure, or silently replace raw SHA.
+
+NEW independent source-only probe: re-read exactly the already frozen Oct26–27 historical MU 1m Yahoo close and MEXC MUSTOCK_USDT Min1 index open, twice each, canonicalize strictly sorted (integer exchange minute start, price floating value) pairs, independently hash canonical JSON bytes. Preserve both raw response SHA256 plus both canonical digests; demand canonical digest equality across repeated reads. Require >=55/60 aligned minutes at the 09:30–10:30 America/New_York session opening each day; publisher time offsets defined by IANA zoneinfo. Do not calculate any market return, prediction, 10-minute outcome or economic result. Fail-closed on source errors/gaps/drift.
+
+This is a SOURCE fidelity correction before any V0.2 economic results, not post-outcome feature tuning. A later separate freeze must bind each canonical SHA256; unchanged directional model and q scenarios may run ONLY if they match those pre-outcome digests. Source Yahoo is unofficial/delayed, no real-time as-of proof. Nasdaq-listed MU only; exclude NVIDIA, SPCX, MLI, September protected holdout, account, orders, fees, main merge and live.
