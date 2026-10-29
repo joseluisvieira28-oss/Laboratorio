@@ -1,0 +1,30 @@
+name: NVIDIA Event10m V0.7 Paper Operator Blueprint Offline CI
+on:
+  push:
+    branches:
+      - research/nvda-event10m-paper-custody-v07-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-paper-operator-blueprint-ci.yml
+permissions:
+  contents: read
+jobs:
+  offline-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit test GitHub artifact UTC second precision before opening ANY outcome
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_nvda_event10m_artifact_clock_v07.py' -v
+      - name: Verify operator blueprint cannot schedule itself from this branch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          x=Path('.github/workflows/nvda-event10m-one-shot-operator-v07.yml').read_text()
+          assert 'workflow_dispatch' in x
+          assert '  schedule:' not in x
+          assert 'if: steps.decision_type.outputs.qualified' in x
+          assert 'actions: read' in x
+          assert 'nvda_event10m_anchor_v07.py' in x
+          assert 'nvda_event10m_custody_expiry_v07.py' in x
+          print('DORMANT_BLUEPRINT_GUARDS_PASS')
+          PY

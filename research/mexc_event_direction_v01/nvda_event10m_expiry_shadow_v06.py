@@ -26,7 +26,7 @@ def settle(decision,anchor,expiry_tick):
     check(model.get("asset")=="NVIDIA_USDT" and model.get("horizon_min")==10,"WRONG_ASSET_OR_HORIZON")
     check(anchor.get("decision_canonical_sha256")==digest(decision),
           "ANCHOR_DECISION_HASH_MISMATCH")
-    check(type(anchor.get("published_ms")) is int and d<=anchor["published_ms"]<target,
+    check(type(anchor.get("published_ms")) is int and d-1000<=anchor["published_ms"]<target,
           "NO_PRE_OUTCOME_PUBLISH_TIME")
     check(type(anchor.get("github_artifact_id")) is int and anchor["github_artifact_id"]>0,
           "ANCHOR_ID_MISSING")
