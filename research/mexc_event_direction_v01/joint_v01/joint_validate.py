@@ -14,10 +14,18 @@ def validate(pair):
     url=f'https://datasets.tardis.dev/v1/bybit/{kind}/2026/04/01/{sym}.csv.gz'
     path=ROOT/f'{sym}_{kind}.csv.gz'
     sha=hashlib.sha256(); md5=hashlib.md5(); total=0
+    if path.exists():
+        with path.open('rb') as old:
+            while block:=old.read(1048576):
+                total+=len(block);sha.update(block);md5.update(block)
     started=time.monotonic();expected_size=None
-    with path.open('wb') as out:
+    if total:
+        with urllib.request.urlopen(urllib.request.Request(url,headers={'Range':'bytes=0-0'}),timeout=15) as r:
+            headers=dict(r.headers);expected_size=int(headers['Content-Range'].split('/')[-1])
+        if total>expected_size:raise ValueError('Cached source exceeds publisher size')
+    with path.open('ab') as out:
         while expected_size is None or total<expected_size:
-            if time.monotonic()-started>120: raise TimeoutError('120s per-file transfer cap')
+            if time.monotonic()-started>240: raise TimeoutError('240s per-file transfer cap')
             req=urllib.request.Request(url,headers={'Range':f'bytes={total}-{total+1048575}'})
             with urllib.request.urlopen(req,timeout=15) as r:
                 headers=dict(r.headers)
@@ -60,7 +68,7 @@ def validate(pair):
 
 if __name__=='__main__':
     receipts=[];errors=[]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         futures={pool.submit(validate,(s,k)):(s,k) for s in ('BTCUSDT','ETHUSDT') for k in KINDS}
         for f in concurrent.futures.as_completed(futures):
             try:receipts.append(f.result())
