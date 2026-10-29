@@ -1,0 +1,8 @@
+# NVDA STOCK REFERENCE vs MEXC 10-MIN EVENT FUTURES: SOURCE V0.1
+Frozen 2026-10-29 before any new observation. SOURCE ONLY.
+Old MEXC NVIDIA CASHOPEN V0.2 2/5/15/30m futures-consensus study concluded NO_DISCOVERY_CANDIDATE. Old NVDA REGSESSION V0.5 1m 64/92 discovery candidate is awaiting frozen V0.6 October 05–30 forward; do not read it before Oct 31. Do not rescue or tune those older studies.
+Distinct source question: is PUBLIC actual cash-equity NVDA one-minute data available alongside MEXC NVIDIA_USDT index around U.S. open? Yahoo Finance chart is an unofficial, sometimes delayed cash-equity proxy, NOT a certified time-of-receipt NASDAQ feed. Source feasibility cannot prove information existed at decision time or predictability.
+FROZEN exact dates: 2026-10-01 and 2026-10-02, already-open prior NVDA discovery. No September 2026 protected holdout; no Oct05–30 forward access.
+Yahoo public unauthenticated GET query1.finance.yahoo.com/v8/finance/chart/NVDA, 1m, period1=Oct1 UTC, period2=Oct3 UTC, includePrePost=false. Require at least 25 valid unique 1m rows each date from 13:30–14:15 UTC.
+MEXC public standard futures index Min1 NVIDIA_USDT GET for each date 13:20–14:20 UTC. Require at least 50 valid unique 1m timestamps, positive open/close, no missing data fabrication.
+Store raw SHA256, response URL, UTC retrieval, status, counts. NO market returns, correlations, predictive signals, payout, economic study, trading, balances, orders, wallets, API keys, main merge, spend. SOURCE_PASS still DOES NOT prove exact Event Futures executed price, cash availability timestamp, or alpha. SOURCE_BLOCKED => stop; no provider substitution.

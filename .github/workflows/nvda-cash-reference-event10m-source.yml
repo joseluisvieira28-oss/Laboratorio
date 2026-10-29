@@ -1,0 +1,24 @@
+name: NVDA Cash Reference Event10m Source Gate
+on:
+  push:
+    branches:
+      - research/nvda-cash-reference-event10m-source-2026-10-29
+    paths:
+      - .github/workflows/nvda-cash-reference-event10m-source.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Only Oct1-2 public 1m cash-equity source coverage and MEXC index source coverage
+        run: python research/mexc_event_direction_v01/nvda_cash_ref_source_v01.py
+      - name: Preserve source receipt regardless of result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-cash-reference-source-v01
+          path: artifacts/nvda_cash_ref_event10m_source_v01/receipt.json
+          if-no-files-found: warn
