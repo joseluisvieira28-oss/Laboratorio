@@ -155,6 +155,8 @@ async def run(mode):
     output.write_text(data)
     print(json.dumps({"status":report["status"],"mode":mode,
       "source_receipts":report["source_receipts"],
+      "asof_source_gates":report.get("asof_source_gates"),
+      "asof_all_gates_pass":report.get("asof_all_gates_pass"),
       "signal_issued":report["signal_issued"],
       "block_code":report.get("block_code"),"source_failures":report.get("source_failures")},indent=2),flush=True)
     if report["status"]=="BLOCKED":raise SystemExit(2)
