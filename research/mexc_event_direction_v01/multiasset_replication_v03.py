@@ -20,7 +20,7 @@ def regular(t,h):
     minutes=d.hour*60+d.minute
     return d.weekday()<5 and 570<=minutes and minutes+h<=960
 assert regular(int(dt.datetime(2026,10,23,14,0,tzinfo=dt.timezone.utc).timestamp()),10)
-assert not regular(int(dt.datetime(2026,10,26,14,0,tzinfo=dt.timezone.utc).timestamp()),10)
+assert not regular(int(dt.datetime(2026,10,26,13,0,tzinfo=dt.timezone.utc).timestamp()),10)
 assert regular(int(dt.datetime(2026,10,26,14,30,tzinfo=dt.timezone.utc).timestamp()),10)
 parent.regular=regular
 parent.START=START

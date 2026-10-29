@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Replay all 80 frozen cells on Oct 26/27, public MEXC index only
+      - name: Replay 80 frozen cells with US DST guard corrected before any price source read
         run: python research/mexc_event_direction_v01/multiasset_replication_v03.py
       - if: always()
         uses: actions/upload-artifact@v4

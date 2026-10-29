@@ -1,0 +1,5 @@
+# FROZEN SCIENTIFIC ADDENDUM — US DST calendar correction before any outcomes
+
+Dated 2026-10-29. Previous run #40899093330 failed on a **synthetic clock assertion at module import**, before any MEXC source GET or price outcomes. The pre-freeze narrative incorrectly stated the US switched daylight saving time on 2026-10-25; that date refers to Europe. New York DST does not end until 2026-11-01 in 2026. Therefore October 22, 23, 26 and 27 2026 all use America/New_York EDT (UTC-4); US reference market session is **13:30–20:00 UTC for both windows**.
+
+The actual session function already used zoneinfo America/New_York and local 09:30–16:00. Only the incorrect assertion that UTC 14:00 October 26 is outside the session is replaced by the correct UTC 13:00 assertion. The scientific rule, asset list, date window, horizon, price labels, payout assumptions and all-cell requirement are UNCHANGED. This errata is committed prior to first new October 26/27 price GET. Keep original freeze on record for transparent correction; no revision to PR V0.2 outcomes or economic re-selection.
