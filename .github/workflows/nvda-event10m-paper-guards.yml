@@ -1,0 +1,17 @@
+name: NVIDIA Event10m Prospective Paper-Rule Synthetic Guards
+on:
+  push:
+    branches:
+      - research/nvda-cash-reference-event10m-source-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-paper-guards.yml
+permissions:
+  contents: read
+jobs:
+  offline-synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deterministic future-dated read-only paper rule with synthetic inputs
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_nvda_event10m_forecast_v01.py' -v

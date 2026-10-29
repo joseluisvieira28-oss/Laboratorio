@@ -1,0 +1,23 @@
+name: NVDA Cash Source V0.3 Four As-of Freshness Receipts
+on:
+  push:
+    branches:
+      - research/nvda-cash-reference-event10m-source-2026-10-29
+    paths:
+      - .github/workflows/nvda-cash-ref-v03-multi-fresh.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Four public 1m freshness observations, 20s apart, without outcomes
+        run: python research/mexc_event_direction_v01/nvda_cash_ref_multifresh_v03.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-cash-source-four-asof-receipts-v03
+          path: artifacts/nvda_cash_ref_event10m_fresh_v03/four_sample_receipt.json
+          if-no-files-found: warn

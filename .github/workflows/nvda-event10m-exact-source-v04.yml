@@ -1,0 +1,27 @@
+name: NVIDIA Event10m V0.4 Exact Product and Public Index Source
+on:
+  push:
+    branches:
+      - research/nvda-cash-reference-event10m-source-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-exact-source-v04.yml
+permissions:
+  contents: read
+jobs:
+  read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser and public WS dependencies
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0 websockets==15.0.1
+          python -m playwright install chromium
+      - name: Probe NVIDIA_USDT Event Futures anonymous 10m payout and public index tick only
+        run: python research/mexc_event_direction_v01/nvda_event10m_exact_source_v04.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-event10m-exact-product-index-source-v04
+          path: artifacts/nvda_event10m_exact_source_v04/receipt.json
+          if-no-files-found: warn

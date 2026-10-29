@@ -1,0 +1,23 @@
+name: NVDA Event10m Public Reference Freshness V0.2
+on:
+  push:
+    branches:
+      - research/nvda-cash-reference-event10m-source-2026-10-29
+    paths:
+      - .github/workflows/nvda-cash-reference-event10m-fresh-v02.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Public 1m as-of freshness only; no outcomes
+        run: python research/mexc_event_direction_v01/nvda_cash_ref_fresh_v02.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-cash-source-freshness-v02
+          path: artifacts/nvda_cash_ref_event10m_fresh_v02/freshness_receipt.json
+          if-no-files-found: warn
