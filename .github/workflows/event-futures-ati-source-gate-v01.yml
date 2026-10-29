@@ -1,0 +1,25 @@
+name: Event Futures Historical Aggressor Source V0.1
+on:
+  push:
+    branches:
+      - research/event-futures-ati-source-gate-2026-10-29
+    paths:
+      - .github/workflows/event-futures-ati-source-gate-v01.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source-only synthetic guards
+        run: python research/mexc_event_direction_v01/ati_source_gate_v01.py --self-test
+      - name: Verify public April 1 BTC ETH archive hashes and trades
+        run: python research/mexc_event_direction_v01/ati_source_gate_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-futures-ati-source-gate-v01
+          path: artifacts/event_futures_ati_source_v01/
+          if-no-files-found: warn
