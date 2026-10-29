@@ -1,0 +1,23 @@
+name: Event Futures Multiasset V0.3 Frozen Historical Replication
+on:
+  push:
+    branches:
+      - research/event-futures-multiasset-replication-v03-2026-10-29
+    paths:
+      - .github/workflows/event-futures-multiasset-replication-v03.yml
+permissions:
+  contents: read
+jobs:
+  all-cell-replication:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replay 80 frozen cells with US DST guard corrected before any price source read
+        run: python research/mexc_event_direction_v01/multiasset_replication_v03.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-futures-multiasset-replication-v03
+          path: artifacts/event_futures_multiasset_v03/replication.json
+          if-no-files-found: warn
