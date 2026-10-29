@@ -1,0 +1,27 @@
+name: NVIDIA Event10m V0.5 Four Source Integrated Smoke
+on:
+  push:
+    branches:
+      - research/nvda-cash-reference-event10m-source-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-integrated-smoke-v05.yml
+permissions:
+  contents: read
+jobs:
+  source-only-no-signals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install read-only capture tools
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0 websockets==15.0.1
+          python -m playwright install chromium
+      - name: Source-only simultaneous capture (never calls forecast)
+        run: python research/mexc_event_direction_v01/nvda_event10m_integrated_v05.py --source-smoke
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-event10m-integrated-four-source-v05
+          path: artifacts/nvda_event10m_integrated_v05/source_smoke.json
+          if-no-files-found: warn
