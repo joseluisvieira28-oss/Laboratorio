@@ -88,7 +88,7 @@ def get_zip(url,token):
     if len(raw)>MAX_ZIP:raise RuntimeError("GITHUB_ARCHIVE_TOO_LARGE")
     return raw
 
-def verify_remote(decision_path,run_id,artifact_id,token,repo=REPO,allow_synthetic=False):
+def verify_remote(decision_path,run_id,artifact_id,token,repo=REPO,allow_synthetic=False,archive_path=None):
     if repo!=REPO or not token:raise ValueError("WRONG_REPOSITORY_OR_MISSING_GITHUB_TOKEN")
     decision_bytes=pathlib.Path(decision_path).read_bytes()
     obj=json.loads(decision_bytes)
@@ -105,7 +105,10 @@ def verify_remote(decision_path,run_id,artifact_id,token,repo=REPO,allow_synthet
     run=get_json(f"{API}/repos/{REPO}/actions/runs/{run_id}",token)
     if run.get("id")!=run_id or run.get("repository",{}).get("full_name")!=REPO:
         raise ValueError("SERVER_WORKFLOW_RUN_REPO_MISMATCH")
-    raw=get_zip(f"{API}/repos/{REPO}/actions/artifacts/{artifact_id}/zip",token)
+    # GitHub Actions curls and follows its presigned archive redirect; the
+    # verifier then checks GitHub's independent API-reported archive digest.
+    raw=pathlib.Path(archive_path).read_bytes() if archive_path else get_zip(
+        f"{API}/repos/{REPO}/actions/artifacts/{artifact_id}/zip",token)
     artifact_file_hash=verify_zip(raw,digest_zip,decision_bytes)
     d=int(obj["forecast"]["decision_ts_ms"])
     target=int(obj["forecast"]["expiry_target_ms"])
@@ -128,9 +131,11 @@ def main():
     p.add_argument("--run-id",type=int,required=True)
     p.add_argument("--output",required=True)
     p.add_argument("--synthetic-test-only",action="store_true")
+    p.add_argument("--archive-path")
     args=p.parse_args()
     anchor=verify_remote(args.decision,args.run_id,args.artifact_id,
-                         os.environ.get("GITHUB_TOKEN",""),allow_synthetic=args.synthetic_test_only)
+                         os.environ.get("GITHUB_TOKEN",""),allow_synthetic=args.synthetic_test_only,
+                         archive_path=args.archive_path)
     path=pathlib.Path(args.output);path.parent.mkdir(parents=True,exist_ok=True)
     path.write_text(json.dumps(anchor,indent=2,sort_keys=True)+"\n")
     print(json.dumps({k:v for k,v in anchor.items() if "sha256" not in k},indent=2))
