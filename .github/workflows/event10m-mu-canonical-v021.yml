@@ -1,0 +1,23 @@
+name: EVENT-10M MU Source Canonical Gate V0.2.1
+on:
+  push:
+    branches:
+      - research/event10m-mu-divergence-pilot-v02-2026-10-29
+    paths:
+      - .github/workflows/event10m-mu-canonical-v021.yml
+permissions:
+  contents: read
+jobs:
+  only-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare repeated raw and canonical MU/index source hashes; no market outcome
+        run: python research/mexc_event_direction_v01/event10m_mu_canonical_v021.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-mu-canonical-source-v021
+          path: artifacts/event10m_mu_canonical_v021/receipt.json
+          if-no-files-found: warn
