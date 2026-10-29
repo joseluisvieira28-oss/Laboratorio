@@ -1,0 +1,113 @@
+name: MEXC Event Futures Historical Index Proxy V0.1
+on:
+  push:
+    branches:
+      - research/event-futures-direction-source-first-2026-10-29
+    paths:
+      - .github/workflows/event-futures-historical-proxy-v01.yml
+permissions:
+  contents: read
+jobs:
+  research-only:
+    name: READ-ONLY historical proxy / no live trading
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out immutable research branch
+        uses: actions/checkout@v4
+      - name: Query public historical index and score frozen baselines (not live PnL)
+        shell: bash
+        run: |
+          mkdir -p artifacts/mexc_hist_proxy_v01
+          python - <<'PY'
+          import urllib.request, json, time, hashlib, math, pathlib, datetime
+          out=pathlib.Path('artifacts/mexc_hist_proxy_v01')
+          # Historical timeframe was previously explored by existing V0.4; not OOS.
+          start=int(datetime.datetime(2026,4,1,tzinfo=datetime.timezone.utc).timestamp())
+          end=int(datetime.datetime(2026,4,15,tzinfo=datetime.timezone.utc).timestamp())
+          warmup=start-86400
+          symbols=['BTC_USDT','ETH_USDT']
+          horizons=[10,30,60]
+          strategies=['UP_ALWAYS','ROC3_CONT','ROC3_REV']
+          q_scenarios=[0.4,0.8,0.85]
+          report={'lab':'EVENT_FUTURES_HIST_INDEX_PROXY_V01','asof_study':'2026-10-29',
+                  'window_utc':['2026-04-01','2026-04-15_exclusive'],
+                  'fixed_history_previously_exposed':True,'protected_2026_09_accessed':False,
+                  'source':'MEXC_PUBLIC_STANDARD_FUTURES_INDEX_MIN5',
+                  'execution':'NONE','payout_history_available':False,
+                  'economic_verdict':'HISTORICAL_PROXY_ONLY_NOT_EVENT_FUTURES_EDGE',
+                  'cells':[],'raw_sha256':{},'source_status':'STARTING'}
+          try:
+            for symbol in symbols:
+              points={};proof=[]
+              for begin in range(warmup,end,4*86400):
+                finish=min(begin+4*86400-300,end-300)
+                url=(f'https://contract.mexc.com/api/v1/contract/kline/index_price/{symbol}'
+                     f'?interval=Min5&start={begin}&end={finish}')
+                req=urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'CryptoLab-HistoricalReadOnly-V01'})
+                with urllib.request.urlopen(req,timeout=30) as response:
+                  if response.status != 200:raise RuntimeError('SOURCE_HTTP_STATUS_NOT_200')
+                  b=response.read(2_000_001)
+                if len(b)>2_000_000:raise RuntimeError('OVERSIZE_RESPONSE')
+                obj=json.loads(b)
+                d=obj.get('data')
+                if obj.get('success') is not True or not isinstance(d,dict):raise RuntimeError('INVALID_SOURCE_SCHEMA')
+                times=d.get('time');opens=d.get('open');closes=d.get('close')
+                if not all(isinstance(x,list) for x in (times,opens,closes)):raise RuntimeError('MISSING_KLINE_ARRAY')
+                if len(times)==0 or len(times)>2000 or len(set(map(len,[times,opens,closes])))!=1:raise RuntimeError('INVALID_ROW_COUNT')
+                for t,o,c in zip(times,opens,closes):
+                  t=int(t);o=float(o);c=float(c)
+                  if not (begin<=t<=finish and t%300==0 and math.isfinite(o) and math.isfinite(c) and o>0 and c>0):
+                    raise RuntimeError('INVALID_KLINE_VALUE')
+                  v=(o,c)
+                  if t in points and points[t]!=v:raise RuntimeError('CONFLICTING_KLINE_BYTES')
+                  points[t]=v
+                proof.append({'start':begin,'end':finish,'raw_sha256':hashlib.sha256(b).hexdigest(),
+                              'rows':len(times)})
+                time.sleep(0.35)
+              report['raw_sha256'][symbol]=proof
+              report.setdefault('observed_rows',{})[symbol]=len(points)
+              # No interpolation; require 90% of expected period for usable proxy.
+              expected=(end-warmup)//300
+              if len(points)<0.90*expected:raise RuntimeError('SOURCE_COVERAGE_INSUFFICIENT')
+              for horizon in horizons:
+                k=horizon//5
+                for strategy in strategies:
+                  w=l=tie=miss=0
+                  for t in range(start,end-horizon*60,k*300):
+                    needed=[t-900,t-600,t-300,t,t+horizon*60]
+                    if not all(z in points for z in needed):
+                      miss+=1;continue
+                    prev3=points[t-900][1];prev1=points[t-300][1]
+                    if strategy=='UP_ALWAYS':direction=1
+                    elif prev3==prev1:continue
+                    else:
+                      direction=1 if prev1>prev3 else -1
+                      if strategy=='ROC3_REV':direction*=-1
+                    p0=points[t][0];p1=points[t+horizon*60][0]
+                    if p0==p1:tie+=1
+                    elif (p1-p0)*direction>0:w+=1
+                    else:l+=1
+                  n=w+l+tie
+                  report['cells'].append({'symbol':symbol,'horizon_min':horizon,
+                       'strategy':strategy,'N':n,'wins':w,'losses':l,'ties':tie,
+                       'missing':miss,'accuracy_ex_ties':w/(w+l) if w+l else None,
+                       'hypothetical_equal_side_payout_EV':{
+                         str(q):round((w*q-l)/n,6) if n else None for q in q_scenarios}})
+            report['source_status']='PASS_HISTORICAL_INDEX_PROXY'
+          except Exception as exc:
+            report['source_status']='SOURCE_BLOCKED'
+            report['source_error']=str(exc)
+            (out/'report.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
+            print(json.dumps(report,indent=2))
+            raise
+          (out/'report.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(report,indent=2))
+          PY
+      - name: Preserve report even if source is blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-futures-historical-index-proxy-v01
+          path: artifacts/mexc_hist_proxy_v01/report.json
+          if-no-files-found: warn
