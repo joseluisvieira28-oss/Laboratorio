@@ -1,0 +1,48 @@
+name: EVENT-10M Fair Value Static No-Arb V0.1
+on:
+  push:
+    branches:
+      - research/event10m-fair-value-noarb-v01-2026-10-29
+    paths:
+      - .github/workflows/event10m-fair-value-noarb-v01.yml
+permissions:
+  contents: read
+jobs:
+  source-payout-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install existing validated public browser collector dependencies
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Static math tests, no market outcomes
+        run: |
+          python -m py_compile research/mexc_event_direction_v01/fair_value_noarb_v01.py
+          python -c "import sys;sys.path.insert(0,'research/mexc_event_direction_v01');import fair_value_noarb_v01 as m;m.tests();print('MATH_TESTS_PASS')"
+      - name: Source observation 1 (existing V0.12 public browser collector)
+        run: |
+          python research/mexc_event_futures/prospective_product_collector_v012.py
+          mkdir -p artifacts/mexc_event_fair_value_v01
+          cp artifacts/mexc_event_futures/v012/prospective_snapshot_v012.json artifacts/mexc_event_fair_value_v01/public_snapshot_1.json
+      - name: Source observation 2 (new fresh browser, no account)
+        run: |
+          sleep 5
+          python research/mexc_event_futures/prospective_product_collector_v012.py
+          cp artifacts/mexc_event_futures/v012/prospective_snapshot_v012.json artifacts/mexc_event_fair_value_v01/public_snapshot_2.json
+      - name: Deterministic two-sided BTC ETH 10-minute arbitrage arithmetic
+        run: python research/mexc_event_direction_v01/fair_value_noarb_v01.py
+      - name: Preserve exact public source evidence and computed no-arb receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-fair-value-noarb-v01
+          path: |
+            artifacts/mexc_event_fair_value_v01/public_snapshot_1.json
+            artifacts/mexc_event_fair_value_v01/public_snapshot_2.json
+            artifacts/mexc_event_fair_value_v01/fair_value_receipt.json
+          if-no-files-found: warn
