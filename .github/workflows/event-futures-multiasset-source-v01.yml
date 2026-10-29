@@ -1,0 +1,32 @@
+name: Event Futures Multiasset Public Source V0.1
+on:
+  push:
+    branches:
+      - research/event-futures-multiasset-scope-2026-10-29
+    paths:
+      - .github/workflows/event-futures-multiasset-source-v01.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install anonymous browser dependency
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install chromium
+      - name: Capture exact public Event Futures products and payouts with no login
+        run: python research/mexc_event_futures/prospective_product_collector_v012.py
+      - name: Validate current product identities and historical public index availability only
+        run: python research/mexc_event_direction_v01/multiasset_source_v01.py
+      - name: Preserve evidence always
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-futures-multiasset-public-source-v01
+          path: |
+            artifacts/event_futures_multiasset_v01/source_gate.json
+            artifacts/mexc_event_futures/v012/prospective_snapshot_v012.json
+          if-no-files-found: warn
