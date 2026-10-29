@@ -81,12 +81,14 @@ async def collect(mode):
       "event_order_openprice_parity_proven":False,
       "source_receipts":[]}
     try:
-        # The product detail is captured LAST among HTTP legs; after it completes,
-        # subscribe for a NEW public index tick so it cannot be stale from page startup.
-        first=await asyncio.gather(asyncio.to_thread(cash),asyncio.to_thread(mexc),
-                                   exact_product(),return_exceptions=True)
-        fresh_tick=await event_index() if not any(isinstance(v,BaseException) for v in first) else RuntimeError("PRIOR_SOURCE_EXCEPTION")
-        results=[*first,fresh_tick]
+        # Browser startup may cross a minute boundary. Capture the product first.
+        # Then collect the 1m cash/index features and fresh WS tick together,
+        # so all are relative to the SAME actual decision-minute boundary.
+        prod_first=await exact_product()
+        latest=await asyncio.gather(asyncio.to_thread(cash),
+                                    asyncio.to_thread(mexc),
+                                    event_index(),return_exceptions=True)
+        results=[latest[0],latest[1],prod_first,latest[2]]
         for source_name,v in zip(("yahoo_cash_1m","mexc_index_1m","event_detail","event_ws_tick"),results):
             if isinstance(v,BaseException):
                 report.setdefault("source_failures",[]).append({

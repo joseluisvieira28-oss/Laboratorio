@@ -19,7 +19,7 @@ jobs:
           python -m playwright install chromium
       - name: Validate strict required-minute parsing (no trading)
         run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_nvda_integrated_source_v05.py' -v
-      - name: Print all four source age gates as evidence, still no model
+      - name: Correct startup minute crossing with fresh HTTP plus WS after product, no model
         run: python research/mexc_event_direction_v01/nvda_event10m_integrated_v05.py --source-smoke
       - if: always()
         uses: actions/upload-artifact@v4
