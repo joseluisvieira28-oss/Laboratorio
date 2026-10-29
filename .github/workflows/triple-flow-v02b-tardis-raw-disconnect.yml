@@ -1,0 +1,23 @@
+name: Triple Flow V0.2b Tardis Public Raw Disconnect Probe
+on:
+  push:
+    branches:
+      - research/triple-flow-v02-transport-continuity-2026-10-29
+    paths:
+      - .github/workflows/triple-flow-v02b-tardis-raw-disconnect.yml
+permissions:
+  contents: read
+jobs:
+  raw-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Only frozen April 1 raw-data minutes, no outcomes
+        run: python research/mexc_event_direction_v01/v02/tardis_raw_disconnect_probe_v02b.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triple-flow-v02b-raw-disconnect-probe
+          path: artifacts/triple_flow_v02b/
+          if-no-files-found: warn
