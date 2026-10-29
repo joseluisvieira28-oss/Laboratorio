@@ -1,0 +1,23 @@
+name: NVIDIA Event10m Oct01-02 Source-Only Gate
+on:
+  push:
+    branches:
+      - research/nvda-event10m-oct01-02-frozen-replay-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-oct01-02-source-only.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit historical timestamps and source hashes (NO outcomes)
+        run: python research/mexc_event_direction_v01/nvda_oct01_02_source_gate_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-event10m-oct01-02-source-only-v01
+          path: artifacts/nvda_event10m_oct01_02/source_only_receipt.json
+          if-no-files-found: warn
