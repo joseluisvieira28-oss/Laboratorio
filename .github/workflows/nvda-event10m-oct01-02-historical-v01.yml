@@ -1,0 +1,25 @@
+name: NVIDIA Event10m Oct01-02 Frozen Historical Proxy Outcome V0.1
+on:
+  push:
+    branches:
+      - research/nvda-event10m-oct01-02-frozen-replay-2026-10-29
+    paths:
+      - .github/workflows/nvda-event10m-oct01-02-historical-v01.yml
+permissions:
+  contents: read
+jobs:
+  frozen-24-slots-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline synthetic parity guards (before historical source reads)
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_nvda_oct01_02_historical_v01.py' -v
+      - name: Read exactly previous source hashes and evaluate all 24 frozen slots
+        run: python research/mexc_event_direction_v01/nvda_oct01_02_historical_proxy_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvda-event10m-oct01-02-historical-proxy-v01
+          path: artifacts/nvda_event10m_oct01_02/historical_proxy_report.json
+          if-no-files-found: warn
