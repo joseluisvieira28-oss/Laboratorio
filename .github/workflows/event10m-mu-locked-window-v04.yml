@@ -1,0 +1,23 @@
+name: EVENT10M MU Frozen Opening Window V0.4
+on:
+  push:
+    branches:
+      - research/event10m-mu-window-pilot-v04-2026-10-29
+    paths:
+      - .github/workflows/event10m-mu-locked-window-v04.yml
+permissions:
+  contents: read
+jobs:
+  ten-minute-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check exact two independent pre-outcome opening source hashes before ten frozen outcome slots
+        run: python research/mexc_event_direction_v01/event10m_mu_window_pilot_v04.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-mu-frozen-window-v04
+          path: artifacts/event10m_mu_window_pilot_v04/report.json
+          if-no-files-found: warn
