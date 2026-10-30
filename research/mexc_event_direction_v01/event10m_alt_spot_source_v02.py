@@ -50,7 +50,7 @@ def main():
     for sym in SYMS:
         market={}
         for venue in ("BYBIT_SPOT_PUBLIC_DEPTH","OKX_SPOT_PUBLIC_DEPTH","MEXC_FUTURES_DEPTH"):
-            market[venue]=all(any(z["provider"]==venue and z["symbol"]==sym and
+            market[venue]=all(any(z.get("provider",z.get("venue"))==venue and z["symbol"]==sym and
                         z["status"] in ("SPOT_BOOK_PRESENT","ORDER_BOOK_PRESENT")
                         for z in shot["books"]) for shot in (a,b))
         market["independent_external_and_mexc"]=market["MEXC_FUTURES_DEPTH"] and (
@@ -61,7 +61,7 @@ def main():
         gates[s]["independent_external_and_mexc"] for s in SYMS) else "ONE_OR_MORE_ASSETS_BLOCKED"
     (OUT/"source_receipt.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
     text={"study":result["study"],"gate":result["gate"],"per_asset_source_gates":gates,
-      "shots":[{"shot":x["shot"],"books":[{"provider":v["provider"],
+      "shots":[{"shot":x["shot"],"books":[{"provider":v.get("provider",v.get("venue")),
        "symbol":v["symbol"],"status":v["status"],"error":v.get("error"),
        "server_age_ms":v.get("server_age_ms"),
        "top5_imbalance":(v.get("stats") or {}).get("top5_signed_imbalance")}
