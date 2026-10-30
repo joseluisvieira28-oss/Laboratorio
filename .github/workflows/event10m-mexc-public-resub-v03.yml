@@ -1,0 +1,33 @@
+name: EVENT10M MEXC Public Index Re-Subscription Transport V03
+on:
+  push:
+    branches:
+      - research/event10m-mexc-index-resub-v03-2026-10-30
+    paths:
+      - .github/workflows/event10m-mexc-public-resub-v03.yml
+permissions:
+  contents: read
+jobs:
+  public-source-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install public websocket runtime
+        run: python -m pip install 'websockets>=12,<16'
+      - name: Verify as-of price and public source parsers unchanged
+        run: |
+          python -m py_compile research/mexc_event_direction_v01/event10m_mexc_public_resub_v03.py
+          python -c "import sys;sys.path.insert(0,'research/mexc_event_direction_v01');import event10m_mexc_public_resub_v03 as x;x.test_parsers();x.parity_tests();print('ASOF_TESTS_PASS')"
+      - name: Single 180-second public indexed feed recovery with fixed 40-second subscription refresh
+        run: python research/mexc_event_direction_v01/event10m_mexc_public_resub_v03.py
+      - name: Preserve raw read-only market receipts even if failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-mexc-public-resub-v03
+          path: artifacts/event10m_mexc_public_resub_v03/source_receipt.json
+          if-no-files-found: warn
