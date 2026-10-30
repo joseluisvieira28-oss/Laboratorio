@@ -1,0 +1,31 @@
+name: PMR002 Polymarket Liquidity Reward Public Book Competition V01
+on:
+  push:
+    branches:
+      - research/pmr002-maker-book-competition-v01-2026-10-30
+    paths:
+      - .github/workflows/pmr002-public-book-competition-v01.yml
+permissions:
+  contents: read
+jobs:
+  bounded-source-reward-competition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and synthetic fail-closed source and book tests
+        run: |
+          python -m py_compile research/poly_maker_incentive/pmr002_book_competition_gate.py
+          python -c "import sys; sys.path.insert(0,'research/poly_maker_incentive'); import pmr002_book_competition_gate as m; m.self_tests(); print('PMR002_UNIT_TESTS_PASS')"
+      - name: Single 3 market x 2 token x 3 round GET-only public source competition gate
+        run: python research/poly_maker_incentive/pmr002_book_competition_gate.py
+      - if: always()
+        name: Preserve raw public Gamma and CLOB books plus receipt on any failure
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmr002-public-book-competition-v01
+          path: artifacts/pmr002_public_book_competition_v01/
+          if-no-files-found: warn
