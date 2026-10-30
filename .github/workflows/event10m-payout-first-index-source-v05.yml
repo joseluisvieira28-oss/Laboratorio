@@ -1,0 +1,35 @@
+name: EVENT10M Public Exact Payout First-Next Index V0.5
+on:
+  push:
+    branches:
+      - research/event10m-payout-index-source-v05-2026-10-30
+    paths:
+      - .github/workflows/event10m-payout-first-index-source-v05.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install public browser and websocket requirements
+        run: |
+          python -m pip install playwright 'websockets>=12,<16'
+          python -m playwright install --with-deps chromium
+      - name: Test payout and public-index source parsing without prices
+        run: |
+          python -m py_compile research/mexc_event_direction_v01/event10m_payout_index_source_v05.py
+          python -c "import sys;sys.path.insert(0,'research/mexc_event_direction_v01');import event10m_payout_index_source_v05 as a;a.tests();print('STRICT_PARSER_TESTS_PASS')"
+      - name: Bounded joint real public payout and first-after-index source gate, no outcomes
+        run: python research/mexc_event_direction_v01/event10m_payout_index_source_v05.py
+      - if: always()
+        name: Preserve source receipts and blocked cases
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-payout-index-source-v05
+          path: artifacts/event10m_payout_index_source_v05/receipt.json
+          if-no-files-found: warn
