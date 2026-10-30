@@ -50,6 +50,7 @@ def validate(one,opened):
         require(first is not None,"NO_FIRST_INDEX_"+sym)
         require(sha(first.get("raw_sha256")) and sha(dec.get("decision_raw_sha256")),"INDEX_RAW_HASH")
         require(dec["decision_raw_sha256"]==first["raw_sha256"],"DECISION_NOT_FIRST_INDEX")
+        require(isinstance(first.get("source_ts"),int) and abs(first["source_ts"]-first["utc_ms"])<=5000,"DECISION_SOURCE_CLOCK_STALE")
         require(close(dec["decision_index"],first["public_index"]),"DECISION_PRICE_CHANGED")
         require(dec["decision_local_monotonic_ns"]==first["monotonic_ns"],"DECISION_TIME_CHANGED")
         rec=p["received"]["monotonic_ns"]
@@ -76,6 +77,7 @@ def validate(one,opened):
         late=final["monotonic_ns"]-dec["expiry_target_mono_ns"]
         require(0<=late<=5_000_000_000 and abs(float(ex["lateness_ms"])-late/1e6)<=0.00051,"FIRST_EXPIRY_TOO_LATE")
         require(sha(final["raw_sha256"]) and final["public_index"]>0,"BAD_EXPIRY_HASH_OR_PRICE")
+        require(isinstance(final.get("source_ts"),int) and abs(final["source_ts"]-final["utc_ms"])<=5000,"EXPIRY_SOURCE_CLOCK_STALE")
         a=float(dec["decision_index"]);b=float(final["public_index"])
         require(ex["always_up"]==baseline("UP",a,b,qu),"NEGATIVE_UP_WRONG")
         require(ex["always_down"]==baseline("DOWN",a,b,qd),"NEGATIVE_DOWN_WRONG")
