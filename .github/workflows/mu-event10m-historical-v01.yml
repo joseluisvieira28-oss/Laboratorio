@@ -1,0 +1,25 @@
+name: MU MUSTOCK Event10m Frozen 24-Slot Proxy Discovery V0.1
+on:
+  push:
+    branches:
+      - research/event10m-mu-cash-transfer-source-2026-10-30
+    paths:
+      - .github/workflows/mu-event10m-historical-v01.yml
+permissions:
+  contents: read
+jobs:
+  discovery-proxy-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit checks with synthetic data before any real price read
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_mu_cash_transfer_historical_v01.py' -v
+      - name: Compare source bars against previously frozen canonical hashes, then score all 24
+        run: python research/mexc_event_direction_v01/mu_cash_transfer_historical_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mu-mustock-event10m-two-day-historical-v01
+          path: artifacts/mu_event10m_transfer_v01/historical_discovery.json
+          if-no-files-found: warn
