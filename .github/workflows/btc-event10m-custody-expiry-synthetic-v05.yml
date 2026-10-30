@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install public WebSocket module for import only
         run: python -m pip install --disable-pip-version-check websockets==15.0.1
-      - name: Verify independently reproducible decision and exact eight source bytes
+      - name: Syntax-checked independent decision and exact eight raw source bytes
         run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_custody_v05.py' -v
       - name: Verify index-shadow expiry without any market network calls
         run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_public_expiry_v05.py' -v

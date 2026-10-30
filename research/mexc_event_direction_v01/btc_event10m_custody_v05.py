@@ -16,8 +16,8 @@ FILES={"okx_book_0.json","okx_book_1.json","okx_book_2.json",
 def hash_bytes(raw):return hashlib.sha256(raw).hexdigest()
 def parse_utc(s):return int(dt.datetime.fromisoformat(s.replace("Z","+00:00")).timestamp()*1000)
 def validate_decision(obj):
-    if obj.get("study")!="BTC_EVENT10M_V05_FROZEN_PROSPECTIVE_PAPER_ONLY" or
-       obj.get("status") not in ("PAPER_FORECAST_UNANCHORED","ABSTAIN_PREEXPIRY")):
+    if (obj.get("study")!="BTC_EVENT10M_V05_FROZEN_PROSPECTIVE_PAPER_ONLY" or
+        obj.get("status") not in ("PAPER_FORECAST_UNANCHORED","ABSTAIN_PREEXPIRY")):
         raise ValueError("NOT_A_REAL_BTC_FROZEN_PAPER_DECISION")
     if obj.get("synthetic_fixture") is True:raise ValueError("SYNTHETIC_CANNOT_BE_PROMOTED")
     f=obj.get("forecast") or {};data=obj.get("source_receipt") or {}
