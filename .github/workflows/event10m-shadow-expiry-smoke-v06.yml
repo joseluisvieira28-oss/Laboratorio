@@ -1,0 +1,36 @@
+name: EVENT10M First Forward 10m Shadow Expiry Smoke V06
+on:
+  push:
+    branches:
+      - research/event10m-shadow-expiry-smoke-v06-2026-10-30
+    paths:
+      - .github/workflows/event10m-shadow-expiry-smoke-v06.yml
+permissions:
+  contents: read
+jobs:
+  fixed-ten-minute-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install known public market data and browser dependencies
+        run: |
+          python -m pip install playwright 'websockets>=12,<16'
+          python -m playwright install --with-deps chromium
+      - name: Validate source parsers and frozen no-lookahead negative-control direction mechanics
+        run: |
+          python -m py_compile research/mexc_event_direction_v01/event10m_shadow_expiry_smoke_v06.py
+          python -c "import sys;sys.path.insert(0,'research/mexc_event_direction_v01');import event10m_shadow_expiry_smoke_v06 as x;x.tests();x.unit_tests_v06();print('SHADOW_NEGATIVE_CONTROL_TESTS_PASS')"
+      - name: Exactly one payout-anchored public shadow decision per BTC and ETH and ten-minute forward expiry
+        run: python research/mexc_event_direction_v01/event10m_shadow_expiry_smoke_v06.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-shadow-expiry-smoke-v06
+          path: |
+            artifacts/event10m_shadow_expiry_smoke_v06/receipt.json
+            artifacts/event10m_shadow_expiry_smoke_v06/opened_before_expiry.jsonl
+          if-no-files-found: warn
