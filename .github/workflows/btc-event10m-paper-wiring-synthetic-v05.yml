@@ -26,6 +26,6 @@ jobs:
           assert 'OUTSIDE_FROZEN_NOVEMBER_PAPER_WINDOW' in x
           assert 'PAPER_FORECAST_UNANCHORED' in x
           y=Path(".github/workflows/btc-event10m-paper-wiring-synthetic-v05.yml").read_text()
-          assert 'schedule:' not in y and 'workflow_dispatch:' not in y
+          assert all(not line.startswith('  schedule:') and not line.startswith('  workflow_dispatch:') for line in y.splitlines())
           print("FUTURE_ONLY_NOT_SCHEDULED_OFFLINE_GUARDS_PASS")
           PY
