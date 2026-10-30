@@ -1,0 +1,3 @@
+# V0.2 source-only Python dependency errata — 2026-10-30
+
+Initial source-only workflow [#41052892004](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/41052892004) failed during initial Python import: event10m_alt_spot_source_v02 imported the shared event10m_current_source_v01 module which imports playwright. GitHub Action had not installed playwright. **No external order book was fetched, no returns or outcomes read, no EV computed.** Pure technical workflow correction: install pinned playwright==1.56.0 as Python import dependency (this V0.2 script does not instantiate Playwright or browser), then repeat exact already frozen Bybit/OKX/MEXC public GET URLs and 2 snapshots. No changes to scientific source gates, thresholds, models or outcome policy.
