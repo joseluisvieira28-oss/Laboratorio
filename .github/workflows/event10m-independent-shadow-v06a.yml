@@ -1,0 +1,32 @@
+name: EVENT10M V06A Independent Frozen Shadow Artifact Audit
+on:
+  push:
+    branches:
+      - audit/event10m-shadow-expiry-v06a-independent-2026-10-30
+    paths:
+      - .github/workflows/event10m-independent-shadow-v06a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-evidence-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download only the original immutable V06 shadow artifact from completed CI
+        uses: actions/download-artifact@v4
+        with:
+          name: event10m-shadow-expiry-smoke-v06
+          run-id: 41044422560
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Verify pre-registered two-symbol shadow E2E without modifying source gates or outcomes
+        run: python research/mexc_event_direction_v01/event10m_shadow_independent_audit_v06a.py
+      - if: always()
+        name: Preserve independent audit fail-closed or pass receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-independent-shadow-audit-v06a
+          path: artifacts/event10m_v06a_independent_audit/receipt.json
+          if-no-files-found: warn
