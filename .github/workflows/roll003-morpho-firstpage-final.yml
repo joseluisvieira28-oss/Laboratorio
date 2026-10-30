@@ -1,0 +1,31 @@
+name: ROLL003 Final Morpho Midnight First Page Public Roll Incentive Falsifier
+on:
+  push:
+    branches:
+      - research/morpho-midnight-roll-firstpage-final-v03-2026-10-30
+    paths:
+      - .github/workflows/roll003-morpho-firstpage-final.yml
+permissions:
+  contents: read
+jobs:
+  final-source-falsifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify immutable markets and explicit incentive schema tests
+        run: |
+          python -m py_compile research/morpho_roll_keeper_001/roll003_final_firstpage.py
+          python -c "import sys;sys.path.insert(0,'research/morpho_roll_keeper_001');import roll003_final_firstpage as m;m.tests();print('ROLL003_TESTS_PASS')"
+      - name: One first-page only, fixed 12 market IDs, read-only Morpho transaction source
+        run: python research/morpho_roll_keeper_001/roll003_final_firstpage.py
+      - if: always()
+        name: Preserve original public Morpho HTTP packets and fail-closed verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: roll003-morpho-firstpage-only-final-source
+          path: artifacts/morpho_roll_final_firstpage_v03/
+          if-no-files-found: warn
