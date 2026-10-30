@@ -1,0 +1,31 @@
+name: Event10m Price Stream Gaps Offline Forensics V0.2a
+on:
+  push:
+    branches:
+      - audit/event10m-price-stream-gaps-v02a-2026-10-30
+    paths:
+      - .github/workflows/event10m-price-stream-gap-audit-v02a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  archive-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download ONLY frozen failed source evidence from earlier GitHub Actions run
+        uses: actions/download-artifact@v4
+        with:
+          name: event10m-crossvenue-price-parity-v02
+          run-id: 41032128118
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Audit price-feed continuity using original receipt times only
+        run: python research/mexc_event_direction_v01/event10m_price_gap_audit_v02a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-price-stream-gap-audit-v02a
+          path: artifacts/event10m_crossvenue_price_forensics_v02a/receipt.json
+          if-no-files-found: warn
