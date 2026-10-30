@@ -33,6 +33,10 @@ def decide(asset,decision_ms,pairs,product,index_tick):
             v=packet.get("imbalance")
             require(amount(v) and -1<=v<=1,"INVALID_ORDERBOOK_IMBALANCE")
             require(amount(packet.get("spread_bps")) and 0<packet["spread_bps"]<=10,"BAD_SPREAD")
+        if i==2:
+            require(decision_ms-okx["received_ms"]<=2000 and
+                    decision_ms-mexc["received_ms"]<=2000,
+                    "FINAL_BOOK_RECEIPT_OLDER_THAN_TWO_SECONDS")
         s_ts=okx.get("server_ms")
         require(type(s_ts) is int and 0<=okx["received_ms"]-s_ts<=2000,"SPOT_ASOF_CLOCK_MISSING")
         a=okx["imbalance"];b=mexc["imbalance"]

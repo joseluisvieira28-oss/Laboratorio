@@ -5,7 +5,7 @@ SHA="a"*64
 def setup(spot=.35,perp=-.4):
     d=int(dt.datetime(2026,11,2,12,0,30,tzinfo=dt.timezone.utc).timestamp()*1000)
     pairs=[]
-    for delta in (13000,8000,2000):
+    for delta in (13000,8000,1500):
         t=d-delta
         pairs.append({"asset":"BTC_USDT","received_ms":t,
           "okx_spot":{"venue":"OKX_SPOT","sha256":SHA,"imbalance":spot,

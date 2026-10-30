@@ -58,16 +58,25 @@ async def events():
             await page.goto(PAGE,wait_until="domcontentloaded",timeout=55000)
             try:await asyncio.wait_for(first.wait(),timeout=12)
             except asyncio.TimeoutError:pass
+            prev_received=0
             for shot in range(3):
-                # An explicit anonymous refetch ensures product rates are fresh.
+                # A new response object is obligatory for each advertised snapshot.
+                # Do not reuse a stale page-load response if the refresh fails.
+                before=len(seen)
                 data=await page.evaluate("""async()=>{const x=await fetch(
                   '/api/platform/futures/api/v1/event_contract/detail',
                   {method:'GET',credentials:'omit',cache:'no-store'});
                   return {status:x.status,ok:x.ok};
                 }""")
-                await asyncio.sleep(.6)
-                if not seen:raise RuntimeError("NO_PUBLIC_EVENT_DETAILS")
+                for _ in range(15):
+                    if len(seen)>before:break
+                    await asyncio.sleep(.1)
+                if len(seen)<=before:
+                    raise RuntimeError("NO_DISTINCT_FRESH_EVENT_RESPONSE")
                 receiver,url,raw,obj=seen[-1]
+                if receiver<=prev_received:
+                    raise RuntimeError("NON_MONOTONIC_EVENT_RECEIPT")
+                prev_received=receiver
                 allrows=[]
                 for prod in obj["data"]:
                     cycles=(prod.get("cycleConfigMap") or {}).get("MINUTE") or []
