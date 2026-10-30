@@ -1,0 +1,33 @@
+# CRYPTO LAB — 10m Event Futures current assets, payouts and independent order-book market source
+## Scientific SOURCE CLOSEOUT V0.1–V0.3 — 2026-10-30
+
+**Final verdict: BTC_AND_ETH_PRODUCT_ONLINE_IN_SNAPSHOTS / PUBLIC_INDEPENDENT_ORDERBOOK_SOURCE_PASS_FOR_BOTH / MEXC_EVENT_SETTLEMENT_PRICE_PARITY_NOT_PROVEN / PAPER_RULE_FROZEN / ZERO_REAL_FORECASTS / ZERO_MARKET_OUTCOMES / NO_ECONOMIC_EDGE_CERTIFIED / NO_LIVE_GO.**
+
+### Active MEXC Event Futures as-of — sampled, dynamic, not guaranteed
+- Original [three-snapshot public GET run #41052612511](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/41052612511) observed **12:05 UTC**. Exactly TWO 10-minute products ONLINE with positive payouts: BTC_USDT contractId 10, UP=0.80 DOWN=0.80; ETH_USDT contractId 11, UP=0.80 DOWN=0.80. All other captured 10m products not ONLINE at that instant. Source response raw SHA hashes in artifact 12975760534, sha256:f3608b1d3d63b3a71a9a94aafd4dc25f81e1d590a0b2f957f542bf2815c9c446.
+- Improved explicit monotonic *distinct* HTTP refresh GET source [run #41053629631](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/41053629631), **12:13 UTC**: exact 10m products ONLINE BTC_USDT qUP=0.80/qDOWN=0.80, ETH_USDT qUP=0.40/qDOWN=0.40. No other ONLINE 10m product observed. Original 80% ETH snapshot is now stale; the 40% change is directly observed source volatility, **not** a payout for any historical bet or a known schedule.
+- BTC win/loss unit payoff q0.8 requires >55.5556% non-tie win rate; ETH q0.4 requires >71.4286%. With a p=0.5 non-tie independent random prediction, q0.8 expected unit outcome -0.10, q0.4 expected -0.30. Two-sided quote at q0.8 and q0.8 implies sum implied break-even p 111.11% (11.11% overround before additional costs). Opposite-side *equal stake* 1+1 at q0.8 yields deterministic loss 0.2 units total if non-tie, not arbitrage. These math statements are illustrative, not actual market model results.
+- Do NOT apply qUP/qDOWN observed Oct30 to historical Oct22–29 or future Nov; exact as-of contract payoff must be captured within <=10sec of every future decision.
+- Official rules [MEXC Event Futures](https://www.mexc.com/support/futures-trading/event-futures) specify index reference at expiry, payout fixed at entry. The different MEXC Prediction Markets 5/15m event product uses a TWAP benchmark, NOT necessarily the same 10-minute Event Futures settlement; do not conflate their receipts or instrument rulebooks.
+
+### Novel price mechanism — public cross-venue order book, no edge claimed
+- In run #41052612511, MEXC public STANDARD FUTURES INDEX + FUTURES DEPTH (top 20) were source-validated for BTC_USDT and ETH_USDT. Binance Spot /api/v3/depth returned HTTP451 for both, source BLOCKED; this is a provider/source problem not a negative alpha result.
+- Pre-outcome alternative source freeze V0.2 was committed before the source requests: exactly OKX spot public orderbook + Bybit spot and MEXC futures depth, two snapshots approximately 5s apart, same two assets, exact server timestamp <=5secs for external venues, no outcome read.
+- First GitHub run #41052892004 failed BEFORE market fetch due missing import Playwright dependency; second #41053001753 fetched books but failed before classification due venue-vs-provider dictionary label. Both failures documented as technical errata, **not** market outcomes. No tuning of scientific signal.
+- Corrected [run #41053130175](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/41053130175) source PASS: **OKX Spot + MEXC Futures depth** valid for BOTH BTC and ETH on BOTH snapshots. Bybit spot returned HTTP403 both; Binance HTTP451 both. OKX spot server timestamp age BTC 111ms/111ms; ETH 94ms/81ms; no primary exchange trade execution latency inferred from these REST ages.
+- Top-five USD/USDT notional imbalance `(bid_notional - ask_notional)/(bid+ask)` dynamic:
+    - BTC OKX spot +0.4746 → +0.2897, MEXC perpetual +0.8947 → −0.9092 (sign flipped on MEXC between samples).
+    - ETH OKX spot −0.7295 → −0.1345, MEXC perpetual +0.6056 → +0.5486.
+These are public order **book positions**, not observed executed market order flow, and spoofing/cancellation/fill exposure and spot-perp basis are uncontrolled. The data show a **testable divergence**, not lead-lag alpha or 10m win rate.
+- Receipt artifact id **12975950991**, sha256:7f134f496141411648e7ceb9cb97c70a8044de554f2ded0323adb6bdb4a56fc7.
+
+### Single NEW prospective hypothesis — no backfit
+V0.3 was FROZEN BEFORE Nov01 outcomes and is a pure OFFLINE decision function:
+- BTC/ETH, UTC 10m slots in Nov01–Nov30 2026, 3 consecutive independent snapshots 4–8secs apart spanning 8–16secs, decision within second20–40, latest source <=2secs old, exact independent OKX server clock and MEXC future depth.
+- Require ALL THREE OKX top-five notional imbalances same direction, |imbalance|>=0.25, while ALL THREE MEXC FUTURES depth imbalances are OPPOSITE sign with |imbalance|>=0.25. Else ABSTAIN.
+- Direction=OKX Spot side. Must also validate exact public Event Futures contract ONLINE/10min and direction-specific q>0 <=10sec old, public index tick <=2sec, every raw SHA256. Fail closed, no forced trade.
+- [10/10 synthetic guards PASS #41053440904](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/41053440904), repeated with strict last-book 2second gate [#41053629344](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/41053629344). **These do not contain real future forecasts, realized q, live trades, or economic observations.**
+- Any promotion needs prospective pre-outcome immutable source/decision artifacts, independent Event Futures actual order opening and expiry index reference/price parity proof, minimum 300 qualified resolved independent samples over >=20 UTC days, holdout chronological last third, daily-block-bootstrap economic lower CI >0 after multiplicity and genuine costs. A minimum sample count alone is not evidence. No automatic recurring runner scheduled or activated from research branch; workflows only run push synthetic or source snapshots.
+
+### Final decision
+**DISCOVERY_DIAMOND? NO.** One economically distinct, falsifiable source-grounded 10m mechanism is now frozen and *source-viable* (BTC and ETH). Product payout moves materially within minutes; ETH at q40 is far harder to certify than BTC at q80. Full exact Event Futures server price parity, reliable as-of independent quote custody and LIVE prospective prediction/expiry observation still unresolved. Keep all trading blocked, main unchanged, no wallet, account, private API or capital exposure. Retain Sep holdouts and old NVDA Oct05-30 forward sealed. Do not recycle earlier cash/NVDA or MU losing models.
