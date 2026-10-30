@@ -1,0 +1,27 @@
+name: SPCX Event10m Exact Public Index Lineage Source Gate V02
+on:
+  push:
+    branches:
+      - research/spcx-event10m-index-lineage-gate-2026-10-30
+    paths:
+      - .github/workflows/spcx-event10m-index-lineage-v02.yml
+permissions:
+  contents: read
+jobs:
+  source-public-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install independent public-browser only
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install chromium
+      - name: Official MEXC public SPCXSTOCK contract/index metadata and Event 10m product read
+        run: python research/mexc_event_direction_v01/spcx_index_lineage_source_v02.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spcx-event10m-index-lineage-v02
+          path: artifacts/spcx_event10m_index_lineage_v02/lineage_receipt.json
+          if-no-files-found: warn
