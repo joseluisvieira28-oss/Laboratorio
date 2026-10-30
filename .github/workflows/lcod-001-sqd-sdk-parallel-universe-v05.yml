@@ -1,0 +1,89 @@
+name: LCOD-001 SQD SDK parallel Borrow universe V0.5
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_SQD_SDK_PARALLEL_UNIVERSE_FREEZE_V0.5.md'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_parallel_prepare_v05.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_parallel_chunk_v05.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_parallel_aggregate_v05.mjs'
+      - '.github/workflows/lcod-001-sqd-sdk-parallel-universe-v05.yml'
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.prep.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - id: prep
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_parallel_prepare_v05.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-parallel-prepare-v05
+          path: artifacts/lcod_parallel_prepare_v05.json
+          if-no-files-found: error
+
+  stream:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save @subsquid/evm-stream@0.1.5
+      - name: Stream chunk
+        env:
+          CHUNK_ID: ${{ matrix.id }}
+          FROM_BLOCK: ${{ matrix.from }}
+          TO_BLOCK: ${{ matrix.to }}
+        run: node research/liquidation_convexity_oracle_distance_001/lcod_parallel_chunk_v05.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lcod-parallel-chunk-${{ matrix.id }}-v05
+          path: artifacts/lcod_parallel_chunk_*.json
+          if-no-files-found: error
+
+  aggregate:
+    needs: [prepare,stream]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lcod-parallel-*-v05
+          path: artifacts/all
+          merge-multiple: true
+      - run: node research/liquidation_convexity_oracle_distance_001/lcod_parallel_aggregate_v05.mjs
+      - name: Persist aggregate
+        if: always()
+        run: |
+          if [ -f artifacts/lcod_sqd_sdk_parallel_universe_v05.json ]; then
+            cp artifacts/lcod_sqd_sdk_parallel_universe_v05.json research/liquidation_convexity_oracle_distance_001/LCOD_SQD_SDK_PARALLEL_UNIVERSE_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/liquidation_convexity_oracle_distance_001/LCOD_SQD_SDK_PARALLEL_UNIVERSE_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "LCOD-001: record parallel complete Borrow universe [skip ci]"
+              git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-parallel-aggregate-v05
+          path: artifacts/lcod_sqd_sdk_parallel_universe_v05.json
+          if-no-files-found: error

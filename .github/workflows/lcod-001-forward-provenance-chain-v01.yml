@@ -1,0 +1,28 @@
+name: LCOD-001 forward provenance chain V0.1
+
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_FORWARD_SERIES_INDEX_V0.1.json'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_SCIENTIFIC_CORE_LOCK_V0.1.json'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_FORWARD_PROVENANCE_ADJUDICATION_001.json'
+      - 'research/liquidation_convexity_oracle_distance_001/forward_snapshots/*.json'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_verify_forward_provenance_chain_v01.py'
+      - '.github/workflows/lcod-001-forward-provenance-chain-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+          fetch-depth: 0
+      - name: Verify complete LCOD forward provenance chain
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_verify_forward_provenance_chain_v01.py
