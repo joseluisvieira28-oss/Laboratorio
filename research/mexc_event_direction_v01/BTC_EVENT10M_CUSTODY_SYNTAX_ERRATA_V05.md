@@ -1,0 +1,2 @@
+# BTC Event10m V0.5 custody Python syntax errata 2026-10-30
+CI #41097576367 failed before any market data read because of missing grouping parenthesis in custody Python if statement. Repaired only the syntax. No change to frozen V0.3 side thresholds, expiry, payout timing, source gates or model outcomes. The earlier V0.4 public source-run passed; no forward market prediction has yet been issued.

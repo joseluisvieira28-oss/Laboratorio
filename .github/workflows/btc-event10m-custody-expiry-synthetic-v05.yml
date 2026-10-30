@@ -1,0 +1,32 @@
+name: BTC Event10m V05 Offline Custody and Expiry Regression
+on:
+  push:
+    branches:
+      - research/btc-event10m-single-hypothesis-source-preflight-2026-10-30
+    paths:
+      - .github/workflows/btc-event10m-custody-expiry-synthetic-v05.yml
+permissions:
+  contents: read
+jobs:
+  offline-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install public WebSocket module for import only
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Syntax-checked independent decision and exact eight raw source bytes
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_custody_v05.py' -v
+      - name: Verify index-shadow expiry without any market network calls
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_public_expiry_v05.py' -v
+      - name: Verify operator workflow remains dormant in research branch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          x=Path(".github/workflows/btc-event10m-paper-one-shot-dormant-v05.yml").read_text()
+          assert any(line=="  workflow_dispatch:" for line in x.splitlines())
+          assert not any(line=="  schedule:" for line in x.splitlines())
+          assert "btc_event10m_custody_v05.py" in x
+          assert "btc_event10m_public_expiry_v05.py" in x
+          print("DORMANT_PAPER_BLUEPRINT_GUARDS_PASS")
+          PY
