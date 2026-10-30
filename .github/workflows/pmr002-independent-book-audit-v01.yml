@@ -1,0 +1,34 @@
+name: PMR002 Independent Original Public Book Forensics V01
+on:
+  push:
+    branches:
+      - audit/pmr002-original-books-competition-v01-2026-10-30
+    paths:
+      - .github/workflows/pmr002-independent-book-audit-v01.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline-source-hash-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download original public Gamma and 18 CLOB books from exactly prior GitHub run
+        uses: actions/download-artifact@v4
+        with:
+          name: pmr002-public-book-competition-v01
+          run-id: 41049992419
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Offline raw SHA/selection replay and competition summary; never access market
+        run: python research/poly_maker_incentive/pmr002_independent_book_audit.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmr002-original-book-independent-audit-v01
+          path: artifacts/pmr002_original_book_audit/receipt.json
+          if-no-files-found: warn
