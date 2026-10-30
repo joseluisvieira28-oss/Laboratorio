@@ -189,6 +189,7 @@ async def run_mexc(e,end):
             d["closed"]=clock()
     except Exception as exc:d["error"]=type(exc).__name__+":"+str(exc)[:150]
 async def run_browser(e):
+    await asyncio.sleep(22)  # pre-run preregistration: require 15s historical Binance feature before payout
     async with async_playwright() as p:
         browser=await p.chromium.launch(headless=True)
         ctx=await browser.new_context(locale="en-GB",timezone_id="UTC",service_workers="block")
