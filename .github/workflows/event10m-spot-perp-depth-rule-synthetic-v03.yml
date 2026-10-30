@@ -1,0 +1,17 @@
+name: BTC ETH Event10m Spot vs Perp Depth V0.3 SYNTHETIC SCIENCE
+on:
+  push:
+    branches:
+      - research/event10m-current-products-and-microstructure-source-2026-10-30
+    paths:
+      - .github/workflows/event10m-spot-perp-depth-rule-synthetic-v03.yml
+permissions:
+  contents: read
+jobs:
+  offline-no-market-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact final source age and other future-only causality guards (10 synthetic tests)
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_event10m_spot_depth_divergence_v03.py' -v
