@@ -1,0 +1,23 @@
+name: SPCX Nasdaq Stock to MEXC SPCXSTOCK Source-Only V0.1
+on:
+  push:
+    branches:
+      - research/event10m-spcx-listed-equity-source-2026-10-30
+    paths:
+      - .github/workflows/spcx-stock-tracker-source-v01.yml
+permissions:
+  contents: read
+jobs:
+  no-outcomes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Two public cash SPCX vs MEXC tokenized index source probes ONLY
+        run: python research/mexc_event_direction_v01/spcx_cash_source_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spcx-stock-tracker-public-source-v01
+          path: artifacts/spcx_event10m_equity_v01/source_gate.json
+          if-no-files-found: warn
