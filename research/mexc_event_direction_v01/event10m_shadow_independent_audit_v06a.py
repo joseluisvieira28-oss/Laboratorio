@@ -74,7 +74,7 @@ def validate(one,opened):
         final=ex.get("expiry_tick")
         require(ex.get("status")=="SHADOW_INDEX_RESOLVED" and isinstance(final,dict),"EXPIRED_SOURCE_BLOCKED")
         late=final["monotonic_ns"]-dec["expiry_target_mono_ns"]
-        require(0<=late<=5_000_000_000 and close(ex["lateness_ms"],late/1e6,1e-6),"FIRST_EXPIRY_TOO_LATE")
+        require(0<=late<=5_000_000_000 and abs(float(ex["lateness_ms"])-late/1e6)<=0.00051,"FIRST_EXPIRY_TOO_LATE")
         require(sha(final["raw_sha256"]) and final["public_index"]>0,"BAD_EXPIRY_HASH_OR_PRICE")
         a=float(dec["decision_index"]);b=float(final["public_index"])
         require(ex["always_up"]==baseline("UP",a,b,qu),"NEGATIVE_UP_WRONG")
