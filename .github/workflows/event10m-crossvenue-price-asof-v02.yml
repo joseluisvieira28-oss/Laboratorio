@@ -1,0 +1,33 @@
+name: EVENT10M BTC-ETH As-Of Crossvenue Price Comparability V02
+on:
+  push:
+    branches:
+      - research/event10m-crossvenue-price-parity-v02-2026-10-30
+    paths:
+      - .github/workflows/event10m-crossvenue-price-asof-v02.yml
+permissions:
+  contents: read
+jobs:
+  public-asof-price:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install public websocket runtime
+        run: python -m pip install 'websockets>=12,<16'
+      - name: Test parser, as-of grid and price no-future guards
+        run: |
+          python -m py_compile research/mexc_event_direction_v01/event10m_crossvenue_price_v02.py
+          python -c "import sys;sys.path.insert(0,'research/mexc_event_direction_v01');import event10m_crossvenue_price_v02 as x;x.test_parsers();x.parity_tests();print('ASOF_TESTS_PASS')"
+      - name: Single frozen 180-second forward public source price comparability observation
+        run: python research/mexc_event_direction_v01/event10m_crossvenue_price_v02.py
+      - name: Preserve raw public price receipts even if price source gate blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-crossvenue-price-parity-v02
+          path: artifacts/event10m_crossvenue_price_parity_v02/source_receipt.json
+          if-no-files-found: warn
