@@ -1,0 +1,31 @@
+name: EVENT10M ETH Post-Outcome Partial Forensics V06B
+on:
+  push:
+    branches:
+      - audit/event10m-eth-partial-forensics-v06b-2026-10-30
+    paths:
+      - .github/workflows/event10m-eth-partial-postoutcome-audit-v06b.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  forensic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original unmodified public ten-minute shadow receipt without requesting any market data
+        uses: actions/download-artifact@v4
+        with:
+          name: event10m-shadow-expiry-smoke-v06
+          run-id: 41044422560
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Recompute ETH-only shadow feature and payout expiry; explicitly fail to rescue BTC
+        run: python research/mexc_event_direction_v01/event10m_eth_partial_forensics_v06b.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event10m-postoutcome-eth-partial-forensics-v06b
+          path: artifacts/event10m_v06b_eth_partial_forensics/receipt.json
+          if-no-files-found: warn
