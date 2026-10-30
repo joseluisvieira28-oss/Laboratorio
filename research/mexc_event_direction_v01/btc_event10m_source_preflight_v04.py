@@ -79,7 +79,7 @@ async def book_pair(n):
         okx,mexc=await asyncio.gather(a,b)
     return {"asset":ASSET,"received_ms":max(okx["received_ms"],mexc["received_ms"]),
        "okx_spot":okx,"mexc_futures":mexc}
-async def collect():
+async def collect(target_boundary_ms=None):
     report={"study":"BTC_EVENT10M_SINGLE_SOURCE_PREFLIGHT_V04",
         "scope":"SOURCE_ONLY_NO_FORECAST_NO_OUTCOME","started_ms":ms(),
         "status":"BLOCKED","samples":[],"market_return_labels_read":0,
@@ -116,6 +116,14 @@ async def collect():
                 if captured:break
                 await asyncio.sleep(.25)
             if not captured:raise ValueError("EVENT_DETAIL_NOT_PUBLICLY_ACCESSIBLE")
+            if target_boundary_ms is not None:
+                # Research-only future one-shot: three book pairs begin at :12,
+                # :17, :22 of a predeclared UTC 10-minute boundary; no late retry.
+                if type(target_boundary_ms) is not int or target_boundary_ms%600000:
+                    raise ValueError("INVALID_UTC_SLOT_BOUNDARY")
+                start_at=target_boundary_ms+12000
+                if ms()>=start_at:raise ValueError("MISSED_FROZEN_PAPER_SLOT")
+                await asyncio.sleep((start_at-ms())/1000)
             for n in range(3):
                 if n:
                     target=samples[-1]["received_ms"]+5000

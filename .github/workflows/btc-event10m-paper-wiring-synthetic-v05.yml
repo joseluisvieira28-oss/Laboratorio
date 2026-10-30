@@ -1,0 +1,31 @@
+name: BTC Event10m Future Paper Wiring Guard CI (SYNTHETIC ONLY)
+on:
+  push:
+    branches:
+      - research/btc-event10m-single-hypothesis-source-preflight-2026-10-30
+    paths:
+      - .github/workflows/btc-event10m-paper-wiring-synthetic-v05.yml
+permissions:
+  contents: read
+jobs:
+  offline-regression-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify BTC three-book asof clocks and frozen Nov signal model
+        run: |
+          python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_source_gates_v04.py' -v
+          python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_event10m_spot_depth_divergence_v03.py' -v
+      - name: Verify future-only paper wiring imports and NEVER schedules here
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          x=Path("research/mexc_event_direction_v01/btc_event10m_paper_decision_v05.py").read_text()
+          assert 'from event10m_spot_depth_divergence_v03 import decide' in x
+          assert 'OUTSIDE_FROZEN_NOVEMBER_PAPER_WINDOW' in x
+          assert 'PAPER_FORECAST_UNANCHORED' in x
+          y=Path(".github/workflows/btc-event10m-paper-wiring-synthetic-v05.yml").read_text()
+          assert 'schedule:' not in y and 'workflow_dispatch:' not in y
+          print("FUTURE_ONLY_NOT_SCHEDULED_OFFLINE_GUARDS_PASS")
+          PY
