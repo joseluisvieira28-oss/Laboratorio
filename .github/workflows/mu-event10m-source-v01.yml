@@ -1,0 +1,23 @@
+name: MU Cash MUSTOCK Event10m Source Only V0.1
+on:
+  push:
+    branches:
+      - research/event10m-mu-cash-transfer-source-2026-10-30
+    paths:
+      - .github/workflows/mu-event10m-source-v01.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Double fetch MU cash and MUSTOCK INDEX price minutes (no outcomes)
+        run: python research/mexc_event_direction_v01/mu_cash_source_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mu-mustock-10m-source-v01
+          path: artifacts/mu_event10m_transfer_v01/source_gate.json
+          if-no-files-found: warn
