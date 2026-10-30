@@ -1,0 +1,17 @@
+name: SPCX Event10m V0.2 Independent Fail-Closed Source Verdict Guards
+on:
+  push:
+    branches:
+      - research/spcx-event10m-index-lineage-gate-2026-10-30
+    paths:
+      - .github/workflows/spcx-event10m-lineage-guards-v02.yml
+permissions:
+  contents: read
+jobs:
+  offline-no-market-outcomes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline synthetic PAUSE, price parity and no-economic-GO regression
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_spcx_lineage_classify_v02.py' -v
