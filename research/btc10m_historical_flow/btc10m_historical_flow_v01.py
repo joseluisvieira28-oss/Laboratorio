@@ -238,7 +238,7 @@ def tests():
     assert normalized_ts("1735689600000000")==1735689600000
     assert wilson_lower(70,30)<.7
     fake=[{"date":"2024-01-01","month":"2024-01","side":"UP","truth":"UP",
-        "signed_return_bps":10.0,"spot_only_side":"UP"} for _ in range(10)]
+        "signed_return_bps":10.0,"spot_only_side":"UP","always_up_side":"UP"} for _ in range(10)]
     d=summarize(fake)
     assert d["wins"]==10 and d["losses"]==0
     assert abs(d["synthetic_payoff_per_stake_q_0p7"]-.7)<1e-9
