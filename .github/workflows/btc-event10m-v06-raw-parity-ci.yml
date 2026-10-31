@@ -1,0 +1,28 @@
+name: BTC Event10m V06 Adversarial Raw Replay Scientific CI
+on:
+  push:
+    branches:
+      - audit/btc-event10m-raw-parity-and-operational-verdict-2026-10-31
+    paths:
+      - .github/workflows/btc-event10m-v06-raw-parity-ci.yml
+permissions:
+  contents: read
+jobs:
+  offline-no-outcomes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test raw HTTP bytes against feature, contract payout and index receipts
+        run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_raw_replay_v06.py' -v
+      - name: Verify GitHub Actions token expressions are not escaped and no auto-schedule
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          w=Path(".github/workflows/btc-event10m-paper-one-shot-dormant-v05.yml").read_text()
+          expression=chr(36)+"{{"
+          assert w.count(expression) >= 5
+          assert not any((chr(92)+expression) in line for line in w.splitlines())
+          assert not any(line.startswith('  schedule:') for line in w.splitlines())
+          print("DORMANT_WORKFLOW_TOKEN_EXPRESSION_GUARD_PASS")
+          PY

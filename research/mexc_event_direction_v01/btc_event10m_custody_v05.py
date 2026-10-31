@@ -5,6 +5,7 @@ Verifies full ZIP (decision+8 raw HTTP responses), exact SHA and frozen model re
 import argparse,datetime as dt,hashlib,io,json,os,pathlib,re,urllib.request,zipfile
 from event10m_spot_depth_divergence_v03 import decide
 from btc_event10m_source_gates_v04 import asof
+from btc_event10m_raw_replay_v06 import validate_eight
 REPO="joseluisvieira28-oss/Laboratorio"
 ART_NAME="btc-event10m-preexpiry-source-and-decision"
 API="https://api.github.com"
@@ -75,6 +76,7 @@ def verify_archive(raw,official_zip_sha,decision_raw):
         for filename,expected in want.items():
             if not HEX.fullmatch(expected) or hash_bytes(archive.read("raw/"+filename))!=expected:
                 raise ValueError("SOURCE_RAW_BYTES_NOT_MATCHING_DECISION_"+filename)
+        validate_eight(archive,obj)
     return hash_bytes(decision_raw)
 def github_json(url,token):
     req=urllib.request.Request(url,headers={"Accept":"application/vnd.github+json",
