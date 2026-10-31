@@ -1,0 +1,29 @@
+name: BTC10M Original OKX Spot and MEXC Perp Exact L2 Historical Archive No-Cost Metadata Census V01
+on:
+  push:
+    branches:
+      - research/btc10m-original-okx-mexc-l2-archive-source-census-v01-2026-10-31
+    paths:
+      - .github/workflows/btc10m-exact-okx-mexc-original-l2-source-v01.yml
+permissions:
+  contents: read
+jobs:
+  exact-pair-read-only-public-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile strict read-only market metadata collector before opening source
+        run: python -m py_compile research/btc10m_original_l2_archive/btc10m_okx_mexc_exact_l2_source_metadata_v01.py
+      - name: One bounded max-five GET identity and historic coverage source census, no checkout
+        run: python -u research/btc10m_original_l2_archive/btc10m_okx_mexc_exact_l2_source_metadata_v01.py
+      - name: Archive original public API JSON responses and provenance hashes including SOURCE_BLOCKED
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-okx-mexc-dual-l2-historical-free-source-identity-v01
+          path: artifacts/btc10m_okx_mexc_l2_archive_source_v01/
+          if-no-files-found: warn
