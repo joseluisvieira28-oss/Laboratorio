@@ -1,0 +1,31 @@
+name: Velocity Solana Public Actual Filler Rewards Economic Gate V01
+on:
+  push:
+    branches:
+      - research/velocity-solana-filler-real-rewards-v01-2026-10-31
+    paths:
+      - .github/workflows/velocity-filler-real-rewards-v01.yml
+permissions:
+  contents: read
+jobs:
+  public-exchange-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate numeric source and reward accounting with synthetic values
+        run: |
+          python -m py_compile research/velocity_filler_001/velocity_filler_real_rewards_source_v01.py
+          python -c "import sys;sys.path.insert(0,'research/velocity_filler_001');import velocity_filler_real_rewards_source_v01 as m;m.tests();print('SOURCE_TESTS_PASS')"
+      - name: One exactly four-GET public Velocity Data API source capture and zero-account economic screen
+        run: python research/velocity_filler_001/velocity_filler_real_rewards_source_v01.py
+      - if: always()
+        name: Preserve exact public response bytes, hashes, and blocked-or-source economic verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: velocity-solana-filler-actual-rewards-v01
+          path: artifacts/velocity_filler_actual_rewards_v01/
+          if-no-files-found: warn
