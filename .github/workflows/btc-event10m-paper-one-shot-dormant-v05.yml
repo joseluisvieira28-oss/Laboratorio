@@ -28,8 +28,8 @@ jobs:
           compression-level: 0
       - name: Download same published artifact via separate GitHub REST call
         env:
-          GITHUB_TOKEN: \${{ github.token }}
-          ART_ID: \${{ steps.preexpiry.outputs.artifact-id }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ART_ID: ${{ steps.preexpiry.outputs.artifact-id }}
         run: |
           curl --fail --show-error --silent --location --max-time 40 \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -39,9 +39,9 @@ jobs:
           test -s "$RUNNER_TEMP/btc-preexpiry.zip"
       - name: Independently verify server created_at, artifact zip hash, eight HTTP source bytes and model
         env:
-          GITHUB_TOKEN: \${{ github.token }}
-          ART_ID: \${{ steps.preexpiry.outputs.artifact-id }}
-          RUN_ID: \${{ github.run_id }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ART_ID: ${{ steps.preexpiry.outputs.artifact-id }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           python research/mexc_event_direction_v01/btc_event10m_custody_v05.py \
             --decision artifacts/btc_event10m_paper_v05/decision.json \

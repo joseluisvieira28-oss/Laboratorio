@@ -1,0 +1,23 @@
+name: BTC Event10m Depth Exchange Clock Source Probe V06
+on:
+  push:
+    branches:
+      - audit/btc-event10m-raw-parity-and-operational-verdict-2026-10-31
+    paths:
+      - .github/workflows/btc-event10m-depth-clock-v06.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read 3 public MEXC BTC perp depth timestamps without opening returns
+        run: python research/mexc_event_direction_v01/btc_event10m_mexc_depth_clock_v06.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-event10m-depth-clock-source-v06
+          path: artifacts/btc_event10m_depth_timestamp_v06/
+          if-no-files-found: warn

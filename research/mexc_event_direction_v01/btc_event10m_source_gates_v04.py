@@ -16,6 +16,10 @@ def asof(snapshots,product,index,decision_ms):
                 raise ValueError("BOOK_AGE_BAD")
             if type(pkt.get("sha256"))!=str or len(pkt["sha256"])!=64:
                 raise ValueError("RAW_SHA_MISSING")
+            if venue=="mexc_futures":
+                s=pkt.get("book_server_ms_unverified")
+                if type(s)!=int or not 0<=pkt["received_ms"]-s<=2000:
+                    raise ValueError("MEXC_PUBLIC_ORDERBOOK_SERVER_TIMESTAMP_STALE")
             if venue=="okx_spot":
                 s=pkt.get("server_ms")
                 if type(s)!=int or not 0<=pkt["received_ms"]-s<=2000:

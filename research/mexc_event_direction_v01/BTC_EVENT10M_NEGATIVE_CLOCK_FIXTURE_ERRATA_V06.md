@@ -1,0 +1,1 @@
+31 Oct 2026: CI #41227808566 showed 7 valid tests and one old negative fixture asserting return false where new strict MEXC exchange server clock now correctly RAISES ValueError for a future-dated source. Test expectation updated to require fail-closed exception; source-model frozen 0.25 imbalance and payout unchanged. No economic outcomes.
