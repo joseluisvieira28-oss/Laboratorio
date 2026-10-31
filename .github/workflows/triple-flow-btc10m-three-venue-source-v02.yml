@@ -1,0 +1,30 @@
+name: TRIPLE FLOW BTC10m V02 REAL Three-Public-WebSocket Source Gate
+on:
+  push:
+    branches:
+      - research/triple-flow-btc10m-three-venue-stream-v02-2026-10-31
+    paths:
+      - .github/workflows/triple-flow-btc10m-three-venue-source-v02.yml
+permissions:
+  contents: read
+jobs:
+  btc-three-venue-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Verify causal signed executed trade and liquidation parsing OFFLINE
+        run: python -m unittest discover -s research/triple_flow_btc10m_v01 -p 'test_triple_flow_three_venue_stream_source_v02.py' -v
+      - name: Three anonymous public WS connections Bybit OKX MEXC, 120 seconds, no outcomes
+        run: python research/triple_flow_btc10m_v01/triple_flow_three_venue_stream_source_v02.py --seconds 120
+      - name: Preserve every raw frame and the independent gate receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triple-flow-btc10m-real-three-venue-ws-v02
+          path: artifacts/triple_flow_btc10m_three_venue_ws_v02/
+          if-no-files-found: warn
+          retention-days: 90
