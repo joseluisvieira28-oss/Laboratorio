@@ -9,7 +9,7 @@ def setup():
         t=D-lag
         samples.append({"asset":"BTC_USDT","received_ms":t,
             "okx_spot":{"received_ms":t-200,"server_ms":t-400,"sha256":SHA},
-            "mexc_futures":{"received_ms":t-250,"sha256":SHA}})
+            "mexc_futures":{"received_ms":t-250,"book_server_ms_unverified":t-450,"sha256":SHA}})
     product={"symbol":"BTC_USDT","state":"ONLINE","duration_min":10,
        "received_ms":D-5100,"sha256":SHA,"up_pay_rate":.8,"down_pay_rate":.8}
     idx={"symbol":"BTC_USDT","index_price":65000.,"received_ms":D-300,
@@ -26,6 +26,10 @@ class Gates(unittest.TestCase):
  def test_index_old_fail(self):
     a=setup();a[2]["server_ms"]=D-9000
     self.assertFalse(asof(*a)["index_fresh"])
+ def test_stale_mexc_exchange_book_clock_block(self):
+    a=setup()
+    a[0][1]["mexc_futures"]["book_server_ms_unverified"]=D-20000
+    with self.assertRaises(ValueError):asof(*a)
  def test_pair_wrong_gap_block(self):
     a=setup();a[0][1]["received_ms"]=a[0][0]["received_ms"]+9000
     with self.assertRaises(ValueError):asof(*a)

@@ -56,6 +56,9 @@ def mexc_book(n):
     if data.get("success") is not True or not isinstance(data.get("data"),dict):
         raise ValueError("MEXC_DEPTH_SCHEMA")
     v=data["data"];metrics=book_stats(v.get("bids"),v.get("asks"))
+    timestamp=v.get("timestamp")
+    if type(timestamp) is not int or not 0<=rec["received_ms"]-timestamp<=2000:
+        raise ValueError("MEXC_PUBLIC_BOOK_SERVER_CLOCK_NOT_FRESH")
     return {"venue":"MEXC_PERPETUAL","received_ms":rec["received_ms"],
         "book_server_ms_unverified":v.get("timestamp"),
         "sha256":rec["sha256"],"raw_file":rec["filename"],**metrics}
