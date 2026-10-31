@@ -1,0 +1,31 @@
+name: Velocity Archived First Source JSON Schema Offline Forensic V01A
+on:
+  push:
+    branches:
+      - audit/velocity-first-response-schema-v01a-2026-10-31
+    paths:
+      - .github/workflows/velocity-first-schema-offline-v01a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exactly original four GET attempt source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: velocity-solana-filler-actual-rewards-v01
+          run-id: 41227701534
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Offline public JSON nested shape and original hash validation
+        run: python research/velocity_filler_001/velocity_offline_first_response_schema_v01a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velocity-first-response-schema-v01a
+          path: artifacts/velocity_offline_schema_audit/receipt.json
+          if-no-files-found: warn
