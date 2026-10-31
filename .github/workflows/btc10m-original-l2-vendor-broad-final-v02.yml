@@ -1,0 +1,28 @@
+name: BTC10M Exact Original OKX Spot and MEXC Perp Broad Metadata Archive Final V02
+on:
+  push:
+    branches:
+      - research/btc10m-original-l2-vendor-broad-identity-final-v02-2026-10-31
+    paths:
+      - .github/workflows/btc10m-original-l2-vendor-broad-final-v02.yml
+permissions:
+  contents: read
+jobs:
+  frozen-broad-pair-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax test strict pair identity source metadata code
+        run: python -m py_compile research/btc10m_original_l2_archive/btc10m_vendor_exact_l2_broad_final_v02.py
+      - name: One final max-four public metadata GETs, exact OKX spot and MEXC perpetual identity
+        run: python research/btc10m_original_l2_archive/btc10m_vendor_exact_l2_broad_final_v02.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-original-l2-broad-exact-venue-identity-final-v02
+          path: artifacts/btc10m_okx_mexc_broad_archive_v02/
+          if-no-files-found: warn
