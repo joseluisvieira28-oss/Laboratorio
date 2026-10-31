@@ -1,0 +1,33 @@
+name: BTC10M OKX True Original Spot and Swap L2 Historical First Hour Frozen Pilot V03
+# One rerun: original failed dummy spread validation BEFORE any historical price was opened.
+on:
+  push:
+    branches:
+      - research/btc10m-okx-spot-swap-true-l2-first-hour-hist-v03-2026-10-31
+    paths:
+      - .github/workflows/btc10m-okx-original-l2-first-hour-hist-v03.yml
+permissions:
+  contents: read
+jobs:
+  source-and-frozen-outcomes-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and synthetic L2 snapshot/update, stale-asof, threshold checks BEFORE historic data
+        run: |
+          python -m py_compile research/btc10m_okx_l2_v01/btc10m_okx_true_l2_first_hour_pilot_v03.py
+          python -c "import sys;sys.path.insert(0,'research/btc10m_okx_l2_v01');import btc10m_okx_true_l2_first_hour_pilot_v03 as m;m.tests();print('SYNTHETIC_PRE_OUTCOME_TESTS_PASS')"
+      - name: Fetch at most 4 x 32MiB official range prefixes and evaluate the frozen 10m paper hypothesis
+        run: python -u research/btc10m_okx_l2_v01/btc10m_okx_true_l2_first_hour_pilot_v03.py
+      - name: Preserve immutable original partial source compressed bytes, exact reconstructed L2 states and 10m outcome receipts even on fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-okx-true-l2-2024-and-2025-first-hour-historical-v03
+          path: artifacts/btc10m_okx_true_l2_pilot_v03/
+          if-no-files-found: warn
+          compression-level: 1

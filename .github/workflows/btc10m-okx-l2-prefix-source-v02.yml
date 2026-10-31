@@ -1,0 +1,26 @@
+name: BTC10M OKX Official Original Historical L2 Four 512KiB Prefix Format Gate V02
+on:
+  push:
+    branches:
+      - research/btc10m-okx-official-l2-prefix-schema-v02-2026-10-31
+    paths:
+      - .github/workflows/btc10m-okx-l2-prefix-source-v02.yml
+permissions:
+  contents: read
+jobs:
+  fixed-prefix-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile research/btc10m_okx_l2_v01/okx_official_l2_prefix_schema_source_v02.py
+      - run: python -u research/btc10m_okx_l2_v01/okx_official_l2_prefix_schema_source_v02.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-okx-spot-swap-l2-official-original-prefix-v02
+          path: artifacts/btc10m_okx_l2_prefix_v02/
+          if-no-files-found: warn
