@@ -1,0 +1,31 @@
+name: TRIPLE FLOW BTC10m V01 150s REAL Joint PUBLIC Source Gate
+on:
+  push:
+    branches:
+      - research/triple-flow-btc10m-public-joint-source-2026-10-31
+    paths:
+      - .github/workflows/triple-flow-btc10m-source-only-v01.yml
+permissions:
+  contents: read
+jobs:
+  source-only-btc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install anonymous websocket client only
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Validate zero-outcome parser and liquidation-side semantics
+        run: python -m unittest discover -s research/triple_flow_btc10m_v01 -p 'test_triple_flow_public_joint_source_v01.py' -v
+      - name: Observe contemporaneous public Bybit/OKX/MEXC feeds for exactly 150 seconds
+        run: python research/triple_flow_btc10m_v01/triple_flow_public_joint_source_v01.py --seconds 150
+      - name: Preserve ORIGINAL raw messages and source-verdict even if source gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triple-flow-btc10m-real-joint-source-v01
+          path: artifacts/triple_flow_btc10m_public_joint_v01/
+          if-no-files-found: warn
+          retention-days: 90
