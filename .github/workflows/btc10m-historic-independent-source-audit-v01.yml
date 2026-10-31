@@ -1,0 +1,31 @@
+name: BTC10M Historic 2025 Independent Original Source ZIP Replay Audit V01
+on:
+  push:
+    branches:
+      - audit/btc10m-historical-original-archive-independent-replay-v01-2026-10-31
+    paths:
+      - .github/workflows/btc10m-historic-independent-source-audit-v01.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independently-replay-2025-original-official-zip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download immutable original historical 2024+2025 archived data by original GitHub run ID
+        uses: actions/download-artifact@v4
+        with:
+          name: btc10m-historical-binance-spot-perp-flow-2024dev-2025oos-v01
+          run-id: 41232569305
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Independently parse original OFFLINE 2025 Binance ZIP+SHA and replay every signal/target pair
+        run: python -u research/btc10m_historical_flow/btc10m_independent_original_zip_audit_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-2025-offline-independent-archive-replay-audit-v01
+          path: artifacts/btc10m_original_zip_independent_audit_v01/
+          if-no-files-found: warn
