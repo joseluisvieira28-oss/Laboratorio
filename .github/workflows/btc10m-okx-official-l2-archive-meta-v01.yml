@@ -1,0 +1,28 @@
+name: BTC10M OKX Spot/Swap Public Official Historical L2 Archive Source Metadata 2024/25 V01
+on:
+  push:
+    branches:
+      - research/btc10m-okx-official-spot-swap-l2-archive-metadata-v01-2026-10-31
+    paths:
+      - .github/workflows/btc10m-okx-official-l2-archive-meta-v01.yml
+permissions:
+  contents: read
+jobs:
+  official-archive-links-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Static source script syntax
+        run: python -m py_compile research/btc10m_okx_l2_v01/okx_official_archive_l2_meta_source_v01.py
+      - name: Exactly four official historical source metadata GETs, no archive download/outcome
+        run: python -u research/btc10m_okx_l2_v01/okx_official_archive_l2_meta_source_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-okx-spot-swap-official-l2-archive-source-v01
+          path: artifacts/btc10m_okx_official_l2_source_v01/
+          if-no-files-found: warn
