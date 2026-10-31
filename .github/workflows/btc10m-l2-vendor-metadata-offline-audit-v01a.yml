@@ -1,0 +1,29 @@
+name: BTC10M Exact L2 Original CryptoStruct Metadata No-Network Offline Schema Audit V01A
+on:
+  push:
+    branches:
+      - audit/btc10m-original-l2-source-response-schema-v01a-2026-10-31
+    paths:
+      - .github/workflows/btc10m-l2-vendor-metadata-offline-audit-v01a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-archive-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: btc10m-okx-mexc-dual-l2-historical-free-source-identity-v01
+          run-id: 41234699496
+          github-token: ${{ github.token }}
+          path: downloaded
+      - run: python research/btc10m_original_l2_archive/btc10m_exact_vendor_metadata_offline_audit_v01a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-original-l2-public-vendor-schema-audit-v01a
+          path: artifacts/btc10m_exact_l2_vendor_offline_audit_v01a/
+          if-no-files-found: warn
