@@ -1,0 +1,31 @@
+name: BTC10M OKX Real Original Archived L5 10m Source and Signal Independent Audit V03A
+on:
+  push:
+    branches:
+      - audit/btc10m-okx-spot-swap-true-l2-independent-states-v03a-2026-10-31
+    paths:
+      - .github/workflows/btc10m-okx-l2-offline-independent-v03a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-offline-feature-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: btc10m-okx-true-l2-2024-and-2025-first-hour-historical-v03
+          run-id: 41240703723
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Recompute four partial original source SHA256 and all fixed 30 L5 signed pressure pairs without new exchange requests
+        run: python research/btc10m_okx_l2_v01/btc10m_okx_independent_saved_l5_audit_v03a.py
+      - name: Archive independent source/feature zero-signal confirmation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-okx-original-l2-independent-saved-state-audit-v03a
+          path: artifacts/btc10m_okx_l2_independent_saved_states_v03a/
+          if-no-files-found: warn
