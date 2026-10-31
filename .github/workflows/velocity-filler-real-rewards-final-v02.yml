@@ -1,0 +1,30 @@
+name: Velocity Final Actual Filler Reward Source Parser V02
+on:
+  push:
+    branches:
+      - research/velocity-filler-documentary-schema-v02-2026-10-31
+    paths:
+      - .github/workflows/velocity-filler-real-rewards-final-v02.yml
+permissions:
+  contents: read
+jobs:
+  one-final-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Confirm reward accounting and safe parser syntax
+        run: |
+          python -m py_compile research/velocity_filler_001/velocity_filler_real_rewards_source_v02.py
+          python -c "import sys;sys.path.insert(0,'research/velocity_filler_001');import velocity_filler_real_rewards_source_v02 as m;m.tests();print('SOURCE_TESTS_PASS')"
+      - name: One final bounded four public GET actual reward source observation
+        run: python research/velocity_filler_001/velocity_filler_real_rewards_source_v02.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velocity-filler-public-source-final-v02
+          path: artifacts/velocity_filler_actual_rewards_v02/
+          if-no-files-found: warn
