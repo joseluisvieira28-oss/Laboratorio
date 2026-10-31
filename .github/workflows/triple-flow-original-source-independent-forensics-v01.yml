@@ -1,0 +1,62 @@
+name: TRIPLE FLOW BTC10m ORIGINAL Source Archive Independent Forensics V01
+on:
+  push:
+    branches:
+      - research/triple-flow-btc10m-public-joint-source-2026-10-31
+    paths:
+      - .github/workflows/triple-flow-original-source-independent-forensics-v01.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-source-forensic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Hermetic independent SHA and raw-line integrity tests
+        run: python -m unittest discover -s research/triple_flow_btc10m_v01 -p 'test_triple_flow_independent_source_replay_v01.py' -v
+      - name: Download pinned independent GitHub server original source artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --silent --show-error --location --max-time 40 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -o "$RUNNER_TEMP/triple-source-original.zip" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/13054576473/zip"
+          test -s "$RUNNER_TEMP/triple-source-original.zip"
+      - name: Independently replay original raw Bybit events and sampled REST response schema
+        run: |
+          python research/triple_flow_btc10m_v01/triple_flow_independent_source_replay_v01.py \
+            --original-zip "$RUNNER_TEMP/triple-source-original.zip" \
+            --zip-sha256 94dfe1e421a8b27836bdd367d303bd261b056df5eefac79bf66fc9520322201c
+      - name: Exact original source failure diagnostics, not a new source test
+        run: |
+          python - <<'PY'
+          import json,os,zipfile
+          with zipfile.ZipFile(os.environ["RUNNER_TEMP"]+"/triple-source-original.zip") as z:
+            v=json.loads(z.read("source_gate_receipt.json"))
+            print("ORIGINAL_SOURCE_STATUS:",v["status"])
+            print("ORIGINAL_LIQ:",v["liquidation_status"])
+            print("ORIGINAL_WS_PINGS_PONGS:",v["bybit"]["pings"],v["bybit"]["pongs"])
+            print("REST_ERRORS:")
+            for k,x in v["rest"].items():print(k,"success",x["success"],"fail",x["fail"],"errors",x["errors"][:3])
+            hints={}
+            for raw in z.read("bybit_public_ws.ndjson").splitlines():
+              try:
+                row=json.loads(raw);msg=json.loads(row["raw_utf8"])
+              except Exception:continue
+              kind=(msg.get("op"),msg.get("ret_msg"))
+              hints[str(kind)]=hints.get(str(kind),0)+1
+            print("RAW_PONG_METADATA:",{k:v for k,v in hints.items() if "pong" in k.lower()})
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triple-flow-btc10m-first-run-independent-raw-audit
+          path: artifacts/triple_flow_btc10m_independent_replay_v01/
+          if-no-files-found: warn
