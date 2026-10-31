@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Verify MEXC exchange source clock stale/future fail-closed
+      - name: Verify MEXC book staleness rejects source by explicit exception
         run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_source_gates_v04.py' -v
       - name: Test raw HTTP bytes against feature, contract payout and index receipts
         run: python -m unittest discover -s research/mexc_event_direction_v01 -p 'test_btc_event10m_raw_replay_v06.py' -v

@@ -19,7 +19,7 @@ class Gates(unittest.TestCase):
  def test_source_all_pass(self):self.assertTrue(all(asof(*setup()).values()))
  def test_old_last_book_fail(self):
     a=setup();a[0][-1]["mexc_futures"]["received_ms"]=D-2500
-    self.assertFalse(asof(*a)["last_book_fresh"])
+    with self.assertRaises(ValueError):asof(*a)
  def test_payout_too_old_fail(self):
     a=setup();a[1]["received_ms"]=D-15000
     self.assertFalse(asof(*a)["product_fresh"])
