@@ -1,0 +1,36 @@
+name: BTC Event10m V06 Original REAL Source Archive Adversarial Re-Audit
+on:
+  push:
+    branches:
+      - audit/btc-event10m-raw-parity-and-operational-verdict-2026-10-31
+    paths:
+      - .github/workflows/btc-event10m-original-real-source-audit-v06.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original Oct30 GitHub source archive, read-only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --show-error --silent --location --max-time 40 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -o "$RUNNER_TEMP/btc-original.zip" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/12996537229/zip"
+          test -s "$RUNNER_TEMP/btc-original.zip"
+      - name: Verify exact zip, raw book reconstruction, real exchange timestamps and dynamic q
+        run: |
+          python research/mexc_event_direction_v01/btc_event10m_real_archive_reaudit_v06.py \
+            "$RUNNER_TEMP/btc-original.zip"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-event10m-original-real-source-reaudit-v06
+          path: artifacts/btc_event10m_real_reaudit_v06/
+          if-no-files-found: warn
