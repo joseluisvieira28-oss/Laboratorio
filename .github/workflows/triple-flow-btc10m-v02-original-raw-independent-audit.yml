@@ -1,0 +1,65 @@
+name: TRIPLE FLOW BTC10m V02 Independent Original Three-Venue WS Replay
+on:
+  push:
+    branches:
+      - research/triple-flow-btc10m-three-venue-stream-v02-2026-10-31
+    paths:
+      - .github/workflows/triple-flow-btc10m-v02-original-raw-independent-audit.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Reject forged ZIP SHA and incomplete original source archive
+        run: python -m unittest discover -s research/triple_flow_btc10m_v01 -p 'test_triple_flow_three_venue_independent_replay_v02.py' -v
+      - name: Retrieve immutable server-hosted original 120sec public-only source ZIP
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --silent --show-error --location --max-time 40 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -o "$RUNNER_TEMP/triple-flow-three-venue-v02.zip" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/13054746594/zip"
+      - name: Independently replay ALL raw messages and original timestamp-valid trade counts
+        run: |
+          python research/triple_flow_btc10m_v01/triple_flow_three_venue_independent_replay_v02.py \
+            --zip "$RUNNER_TEMP/triple-flow-three-venue-v02.zip" --sha256 4cb8a1da92259554271231f7e610548044d8d76d73a62d1c172282531e5ca876
+      - name: Identify exact failed MEXC source frame without modifying or inventing price labels
+        run: |
+          python - <<'PY'
+          import json,os,sys,zipfile
+          sys.path.insert(0,"research/triple_flow_btc10m_v01")
+          from triple_flow_three_venue_stream_source_v02 import make,classify_msg
+          path=os.environ["RUNNER_TEMP"]+"/triple-flow-three-venue-v02.zip"
+          with zipfile.ZipFile(path) as f:
+            for venue in ("MEXC","OKX","BYBIT"):
+              count=0;s=make(venue)
+              for line in f.read(venue.lower()+"_source_ws.ndjson").splitlines():
+                row=json.loads(line);raw=row["raw_utf8"]
+                try:classify_msg(venue,raw,row["received_ms"],s)
+                except Exception as e:
+                  count+=1
+                  if count<=3:
+                    try:
+                      obj=json.loads(raw);ch=obj.get("channel") or obj.get("topic") or str(obj.get("arg"))
+                      data=obj.get("data") or {}
+                      source_ts=obj.get("ts") or (data.get("t") if isinstance(data,dict) else None)
+                    except Exception:ch="INVALID_JSON";source_ts=None
+                    print("FAILED_FRAME",venue,"channel",ch,"source_ts",source_ts,
+                          "receipt_ms",row["received_ms"],"reason",str(e)[:140])
+              print("INVALID_RAW_FRAMES",venue,count)
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triple-flow-btc10m-v02-independent-real-source-audit
+          path: artifacts/triple_flow_btc10m_ws_replay_v02/
+          if-no-files-found: warn
