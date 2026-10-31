@@ -1,0 +1,33 @@
+name: BTC10M Historic Executed Spot Perp Taker Flow 2024 Discovery 2025 OOS V01
+# Second execution only: first run failed synthetic fixture pre-market; frozen hypothesis unmodified.
+on:
+  push:
+    branches:
+      - research/btc10m-historical-binance-spotperp-takerflow-v01-2026-10-31
+    paths:
+      - .github/workflows/btc10m-historical-binance-takerflow-v01.yml
+permissions:
+  contents: read
+jobs:
+  exact-source-and-outcomes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate frozen 10min alignment and payout synthetic guards before public archives
+        run: |
+          python -m py_compile research/btc10m_historical_flow/btc10m_historical_flow_v01.py
+          python -c "import sys;sys.path.insert(0,'research/btc10m_historical_flow');import btc10m_historical_flow_v01 as m;m.tests();print('HISTORICAL_CAUSAL_TESTS_PASS')"
+      - name: Download exact official ZIP and upstream checksum for fixed 2024 and 2025 months; evaluate frozen 10m direction and economic OOS
+        run: python -u research/btc10m_historical_flow/btc10m_historical_flow_v01.py
+      - if: always()
+        name: Preserve original exact source archives, official checksums, all signal/label events and final fail-closed receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-historical-binance-spot-perp-flow-2024dev-2025oos-v01
+          path: artifacts/btc10m_historical_flow_v01/
+          if-no-files-found: warn
+          compression-level: 1
