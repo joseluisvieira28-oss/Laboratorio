@@ -82,7 +82,7 @@ def audit():
     result={"study":"BTC10M_2025_INDEPENDENT_ORIGINAL_ZIP_AUDIT_V01",
             "original_artifact_id":13054236463,"months":MONTHS,
             "original_2025_proxy_only":True,"fresh_market_api_calls":0,
-            "market_inputs_from_original_archives":24,"2025_evaluable_slots":valid,
+            "market_inputs_from_original_archives":12,"2025_evaluable_slots":valid,
             "source_and_label_reproduction":{},"economic_edge_certified":False}
     for name in RULES:
         path=ROOT/f"2025_{name.lower()}_signal_events.jsonl"
