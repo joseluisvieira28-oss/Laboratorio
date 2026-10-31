@@ -1,0 +1,29 @@
+name: BTC10M OKX Official L2 Original Raw 2024 and 2025 Nested Details Offline Audit
+on:
+  push:
+    branches:
+      - audit/btc10m-okx-spot-swap-official-l2-archive-raw-details-v01a-2026-10-31
+    paths:
+      - .github/workflows/btc10m-okx-l2-nested-offline-v01a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-offline-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: btc10m-okx-spot-swap-official-l2-archive-source-v01
+          run-id: 41240149050
+          github-token: ${{ github.token }}
+          path: downloaded
+      - run: python research/btc10m_okx_l2_v01/okx_l2_original_metadata_offline_audit_v01a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-okx-original-l2-details-offline-v01a
+          path: artifacts/btc10m_okx_official_raw_details_audit_v01a/
+          if-no-files-found: warn
