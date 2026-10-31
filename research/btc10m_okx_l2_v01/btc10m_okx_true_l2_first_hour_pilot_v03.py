@@ -193,7 +193,7 @@ def tests():
         "asks":[["100","1"]]},"BTC-USDT") and not book["ready"]
     assert apply(book,{"action":"snapshot","instId":"BTC-USDT",
         "bids":[[str(100-i),str(i+1)] for i in range(5)],
-        "asks":[[str(101+i),str(i+1)] for i in range(5)]},"BTC-USDT")
+        "asks":[[str(100.01+i*0.01),str(i+1)] for i in range(5)]},"BTC-USDT")
     assert book["ready"] and len(book["bids"])==5
     assert asof_state(book,"BTC-USDT",1000,2000)["status"]=="VALID_L2_STATE"
     assert asof_state(book,"BTC-USDT",1000,5000)["status"]=="STALE_OR_NONCAUSAL"
