@@ -1,0 +1,36 @@
+name: BTC 10m 2024 Original Binance Spot Source-To-Label Independent OOS Audit
+on:
+  push:
+    branches:
+      - audit/btc10m-behavioural-2024-oos-original-source-price-label-replay-2026-11-01
+    paths:
+      - .github/workflows/btc10m-2024-selected-source-label-independent-audit-v01.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  read-only-original-price-and-outcome-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: btc10m-behavioural-conditions-2023-selection-2024-oos-v01
+          run-id: 41294978457
+          github-token: ${{ github.token }}
+          path: original
+      - uses: actions/download-artifact@v4
+        with:
+          name: btc10m-behavioural-2023-select-2024-oos-original-gap-safe-v02
+          run-id: 41295287307
+          github-token: ${{ github.token }}
+          path: results
+      - name: Offline independently reconstruct 2024 original market spot OPEN(t), OPEN(t+600s), label, z5 and payoff; zero HTTP
+        run: python -u research/btc10m_behavioural_v01/btc10m_2024_selected_original_price_label_independent_audit_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-2024-selected-model-original-spot-source-price-label-independent-audit
+          path: artifacts/btc10m_behavioural_oos_label_audit/
+          if-no-files-found: warn
