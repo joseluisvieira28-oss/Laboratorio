@@ -1,0 +1,39 @@
+name: BTC10M Historical Conditions V02 Original 24 ZIP with 80min Proven NaN Gap 2023 Select 2024 OOS
+on:
+  push:
+    branches:
+      - research/btc10m-behavioural-v02-proven-80min-source-gap-safe-2026-11-01
+    paths:
+      - .github/workflows/btc10m-behavioural-pinned-24zip-gap-safe-v02.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  single-chosen-2024-oos-no-new-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: btc10m-behavioural-conditions-2023-selection-2024-oos-v01
+          run-id: 41294978457
+          github-token: ${{ github.token }}
+          path: downloaded
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1
+      - name: Synthetic no-lookahead invariants BEFORE reading archived price data
+        run: |
+          python -m py_compile research/btc10m_behavioural_v01/btc10m_behavioural_condition_scan_v02.py
+          python -c "import sys;sys.path.insert(0,'research/btc10m_behavioural_v01');import btc10m_behavioural_condition_scan_v02 as m;m.unit_tests();print('CLOSED_1MIN_FEATURE_NO_LOOKAHEAD_PASS')"
+      - name: Verify ALL original official Binance ZIP/checksums with exact source-only 80min March gap, select ONE candidate on 2023Q4 and test 2024 only
+        run: python -u research/btc10m_behavioural_v01/btc10m_behavioural_condition_scan_v02.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc10m-behavioural-2023-select-2024-oos-original-gap-safe-v02
+          path: artifacts/btc10m_behavioural_discovery_v01/
+          if-no-files-found: warn
+          compression-level: 1
