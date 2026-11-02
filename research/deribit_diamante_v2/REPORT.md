@@ -94,3 +94,6 @@ Current7Nov/six-month returns cannot be manufactured today. Next useful checkpoi
 - https://support.deribit.com/hc/en-us/articles/26327903944221-Investor-classification
 
 Switzerland does not appear on the inspected public restricted-country list. That does NOT confirm individual derivatives eligibility, KYC, legal suitability or onboarding; those remain unverified. No login was attempted.
+
+## Final verification
+Draft [PR331](https://github.com/joseluisvieira28-oss/Laboratorio/pull/331) created. Final offline [CI41488007563](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/41488007563) SUCCESS at code commit98316f23e39c445790ba36805849716097e93d6d:7 tests, both archive ZIP hashes, original/new raw hashes and independent economics reproduced with ZERO market requests. Main rechecked unchanged. Scheduled forward has not yet run; zero prospective economic outcomes.
