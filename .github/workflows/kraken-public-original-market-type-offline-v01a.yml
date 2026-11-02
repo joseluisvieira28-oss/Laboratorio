@@ -1,0 +1,30 @@
+name: Crypto Lab Kraken Public Derivatives 223 Original Source SHA and Instrument Type Independent Offline Audit
+on:
+  push:
+    branches:
+      - audit/kraken-public-derivatives-original-catalog-offline-exact-type-v01-2026-11-02
+    paths:
+      - .github/workflows/kraken-public-original-market-type-offline-v01a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  exact-source-sha-product-category-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: crypto-lab-kraken-public-derivatives-metadata-only-source-v01
+          run-id: 41454048643
+          github-token: ${{ github.token }}
+          path: original_kraken_source
+      - name: Confirm two official source SHA256 and check 223 original market product classifications without any market API
+        run: python -u research/real_quote_economics_v01/kraken_original_223_market_type_offline_audit_v01a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-lab-kraken-public-original-market-type-independent-audit-v01a
+          path: artifacts/kraken_offline_public_catalog_product_classifier_v01a/
+          if-no-files-found: warn
