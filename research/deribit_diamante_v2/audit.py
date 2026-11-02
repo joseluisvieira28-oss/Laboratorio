@@ -74,6 +74,7 @@ def leg_from_raw(book,meta,item,expiry):
     assert meta['base_currency']=='BTC' and meta['kind']=='option'
     assert meta['price_index']=='btc_usdc' and meta['quote_currency']==meta['settlement_currency']=='USDC'
     assert meta['contract_size']==1 and num(meta['min_trade_amount'])==Q and meta['is_active'] is True
+    assert num(meta['taker_commission'])==D('.0003'),'AUDIT_FEE_CHANGED'
     assert meta['expiration_timestamp']==int(dt.datetime.fromisoformat(expiry).timestamp()*1000)
     age=dt.datetime.fromisoformat(item['received']).timestamp()-book['timestamp']/1000
     assert -3<=age<=10,'AUDIT_STALE_BOOK'
@@ -84,10 +85,20 @@ def leg_from_raw(book,meta,item,expiry):
     for step in sorted(meta.get('tick_size_steps',[]),key=lambda x:x['above_price']):
         if ask[0]>num(step['above_price']):tick=num(step['tick_size'])
     return dict(bid=bid[0],ask=ask[0],tick=tick,index=num(book['index_price']),
-                strike=num(meta['strike']),side=meta['option_type'],expiry=expiry)
+                strike=num(meta['strike']),side=meta['option_type'],expiry=expiry,
+                tick_steps=meta.get('tick_size_steps',[]))
 
 def amount(legs,ticks=0,factor=D(1)):
-    return sum(Q*(l['ask']+ticks*l['tick'])+factor*fees(l['ask']+ticks*l['tick'],l['index']) for l in legs)
+    total=D(0)
+    for leg in legs:
+        price=leg['ask']
+        for _ in range(ticks):
+            step=leg['tick']
+            for rule in sorted(leg.get('tick_steps',[]),key=lambda s:s['above_price']):
+                if price>=num(rule['above_price']):step=num(rule['tick_size'])
+            price=(price/step).to_integral_value(rounding='ROUND_FLOOR')*step+step
+        total+=Q*price+factor*fees(price,leg['index'])
+    return total
 
 def pnl(legs,s,ticks=0,factor=D(1)):
     s=num(s);assert s>0

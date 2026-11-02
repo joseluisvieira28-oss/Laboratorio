@@ -1,0 +1,32 @@
+name: Deribit V2 final offline replay NO MARKET REQUESTS
+on:
+  push:
+    branches: [research/deribit-diamante-v2-2026-11-02]
+    paths: [.github/workflows/deribit-diamante-v2-offline-replay.yml]
+permissions:
+  contents: read
+jobs:
+  immutable-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s research/deribit_diamante_v2 -p 'test_*.py'
+      - name: Verify two original archives without source calls
+        run: |
+          python - <<'PY'
+          import hashlib,pathlib,zipfile
+          root=pathlib.Path('research/deribit_diamante_v2/evidence')
+          for name,sha,out in [('original-41456328296.zip','838e99db9d7d36ebf4304e4ca261023ec90e6abbe984a618c187854b892ba782','original'),('v2-41486828544.zip','62d57ca258a56742e959e6a394b7224d775d0eb404f385cf220ecbd4cc658117','fresh')]:
+              p=root/name
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==sha
+              with zipfile.ZipFile(p) as z:z.extractall(out)
+          PY
+      - name: Recalculate source, cost, scenarios and break-even roots independently
+        run: python research/deribit_diamante_v2/audit.py --original original --fresh fresh/fresh --out independent-final.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deribit-v2-final-offline-audit
+          path: independent-final.json
+          if-no-files-found: error

@@ -72,12 +72,23 @@ def tick(meta, price):
 def fee(price, index, factor=1):
     return factor*Q*min(.0003*index, .125*price)
 
+def adverse_price(leg, ticks):
+    price=leg['ask']
+    for _ in range(ticks):
+        step=leg['tick']
+        for rule in sorted(leg.get('tick_steps',[]),key=lambda x:x['above_price']):
+            if price >= rule['above_price']:
+                step=rule['tick_size']
+        price=math.ceil((price+step)/step-1e-10)*step
+    return price
+
 def metadata(m, expiry):
     expected = dict(kind='option', base_currency='BTC', quote_currency='USDC',
                     settlement_currency='USDC', price_index='btc_usdc')
     assert all(m.get(k) == v for k,v in expected.items()), 'METADATA_IDENTITY'
     assert m['instrument_name'].startswith('BTC_USDC-') and m['is_active'] is True
     assert m['contract_size'] == 1 and m['min_trade_amount'] == .01, 'SIZE_OR_STEP'
+    assert m['taker_commission'] == .0003, 'FEE_SCHEDULE_CHANGED'
     assert abs(Q / m['min_trade_amount'] - round(Q / m['min_trade_amount'])) < 1e-9
     assert m['expiration_timestamp'] == int(expiry.timestamp()*1000), 'EXPIRY'
     if 'instrument_type' in m:
@@ -94,10 +105,11 @@ def bookcheck(b, m, received, depth=.01):
     return dict(symbol=b['instrument_name'], bid=bid[0], ask=ask[0], bid_depth=bid[1],
                 ask_depth=ask[1], index=b['index_price'], timestamp=b['timestamp'],
                 age=age, tick=tick(m,ask[0]), strike=m['strike'], side=m['option_type'],
-                expiry=dt.datetime.fromtimestamp(m['expiration_timestamp']/1000,UTC).isoformat())
+                expiry=dt.datetime.fromtimestamp(m['expiration_timestamp']/1000,UTC).isoformat(),
+                tick_steps=m.get('tick_size_steps',[]))
 
 def cost(legs, ticks=0, factor=1):
-    return sum(Q*(x['ask']+ticks*x['tick'])+fee(x['ask']+ticks*x['tick'],x['index'],factor) for x in legs)
+    return sum(Q*adverse_price(x,ticks)+fee(adverse_price(x,ticks),x['index'],factor) for x in legs)
 
 def payout(legs, terminal):
     assert math.isfinite(terminal) and terminal > 0

@@ -27,6 +27,13 @@ class EconomicsTests(unittest.TestCase):
         self.legs[0]['expiry']=self.legs[1]['expiry']='2026-11-05T08:00:00+00:00'
         self.assertEqual(probe.payout(self.legs,81000)[1],0)
 
+    def test_tick_threshold_crossing_uses_valid_grid(self):
+        leg=dict(ask=995,tick=5,tick_steps=[dict(above_price=1000,tick_size=20)])
+        self.assertEqual(probe.adverse_price(leg,1),1000)
+        self.assertEqual(probe.adverse_price(leg,2),1020)
+        leg['ask']=1000
+        self.assertEqual(probe.adverse_price(leg,1),1020)
+
     def test_hash_tampering(self):
         with tempfile.TemporaryDirectory() as tmp:
             f=Path(tmp)/'x';f.write_text('{}')
