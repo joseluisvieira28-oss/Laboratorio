@@ -1,0 +1,31 @@
+name: INDEPENDENT BTC Deribit True Options Four Original SHA and Quote Cost Audit NO TRADE V01A
+on:
+  push:
+    branches:
+      - audit/deribit-original-btc-callput-0p1-book-friction-independent-v01a-2026-11-02
+    paths:
+      - .github/workflows/deribit-original-public-btc-option-books-independent-sha-replay-v01a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  immutable-four-original-offline-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: true-deribit-btc-option-quote-original-source-and-economic-receipts-v01
+          run-id: 41455540344
+          github-token: ${{ github.token }}
+          path: original
+      - name: Independent original source SHA 4/4, frozen pair re-selection, actual bid ask depth, 0.1 option-contract exact standard fees
+        run: python -u research/true_option_book_source_v01/deribit_real_option_book_independent_source_and_fee_replay_v01a.py
+      - name: Preserve independently recomputed real source evidence and explicit fail receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-option-deribit-independent-four-original-source-sha-and-cost-audit-v01a
+          path: artifacts/deribit_btc_option_book_original_sha_independent_audit_v01a/
+          if-no-files-found: warn
