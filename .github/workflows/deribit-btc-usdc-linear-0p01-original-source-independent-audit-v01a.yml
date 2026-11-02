@@ -1,0 +1,32 @@
+name: INDEPENDENT Deribit BTC USDC LINEAR True Options Original Source SHA4 and Minimum 0.01 USDC Friction Audit
+on:
+  push:
+    branches:
+      - audit/deribit-btc-usdc-linear-original-four-sha-0p01-economic-v01a-2026-11-02
+    paths:
+      - .github/workflows/deribit-btc-usdc-linear-0p01-original-source-independent-audit-v01a.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay-four-original-real-linear-option-json:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: deribit-actual-btc-usdc-linear-0p01-option-book-original-source-economic-v01
+          run-id: 41456328296
+          github-token: ${{ github.token }}
+          path: original
+      - name: Compile independent source replay without importing primary model
+        run: python -m py_compile research/true_option_book_source_v01/deribit_btc_usdc_linear_0p01_original_independent_replay_v01a.py
+      - name: Independently verify 4 official SHA256, deterministic frozen pair, original L2 depth and USDC quote+fee arithmetic
+        run: python -u research/true_option_book_source_v01/deribit_btc_usdc_linear_0p01_original_independent_replay_v01a.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: btc-usdc-linear-0p01-real-options-independent-source-sha-and-friction-audit
+          path: artifacts/deribit_btc_usdc_linear_original_sha_independent_audit_v01a/
+          if-no-files-found: warn
