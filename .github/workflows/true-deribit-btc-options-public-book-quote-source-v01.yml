@@ -1,0 +1,30 @@
+name: BTC Actual Deribit Public Options Two-Leg Real Orderbook Source Economic Witness V01 NO TRADE
+on:
+  push:
+    branches:
+      - research/btc-options-deribit-public-real-book-economic-witness-v01-2026-11-02
+    paths:
+      - .github/workflows/true-deribit-btc-options-public-book-quote-source-v01.yml
+permissions:
+  contents: read
+jobs:
+  source-only-two-real-btc-options:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile self-contained stdlib-only immutable source and synthetic guards before real first GET
+        run: python -m py_compile research/true_option_book_source_v01/deribit_true_btc_option_pair_public_real_orderbook_witness_v01.py
+      - name: Exactly four bounded official anonymous Deribit BTC option market GETs, calculate public implied 0.1 straddle roundtrip friction, never send orders
+        run: python -u research/true_option_book_source_v01/deribit_true_btc_option_pair_public_real_orderbook_witness_v01.py
+      - name: Preserve all original Deribit public JSON sources, SHA hashes and economic/transport fail closed receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: true-deribit-btc-option-quote-original-source-and-economic-receipts-v01
+          path: artifacts/deribit_real_btc_option_orderbook_source_v01/
+          if-no-files-found: warn
+          compression-level: 1
