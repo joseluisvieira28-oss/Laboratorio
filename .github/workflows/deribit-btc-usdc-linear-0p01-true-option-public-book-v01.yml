@@ -1,0 +1,30 @@
+name: BTC USDC LINEAR Deribit Real Options Public BidAsk Minimum 0.01 Contracts Economic Source Gate NO TRADE
+on:
+  push:
+    branches:
+      - research/deribit-btc-usdc-linear-option-min0p01-true-book-feasibility-v01-2026-11-02
+    paths:
+      - .github/workflows/deribit-btc-usdc-linear-0p01-true-option-public-book-v01.yml
+permissions:
+  contents: read
+jobs:
+  official-real-linear-option-books-one-shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen no-dependency source-only code
+        run: python -m py_compile research/true_option_book_source_v01/deribit_btc_usdc_linear_0p01_real_option_pair_source_v01.py
+      - name: Exact four official public GETs for real BTC USDC option quotes 0.01 contract no orders, no account
+        run: python -u research/true_option_book_source_v01/deribit_btc_usdc_linear_0p01_real_option_pair_source_v01.py
+      - if: always()
+        name: Persist original four HTTP response bodies with SHA256 and static economic receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: deribit-actual-btc-usdc-linear-0p01-option-book-original-source-economic-v01
+          path: artifacts/deribit_btc_usdc_linear_min0p01_option_source_v01/
+          if-no-files-found: warn
+          compression-level: 1
