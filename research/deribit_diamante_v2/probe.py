@@ -99,6 +99,21 @@ def synchronization(legs, index_received, limit_ms):
     return result
 
 
+def assert_entry_times(day, manifest, decision_at=None):
+    """Enforce the existing 08:05..08:10 UTC freeze on ALL raw observations and decision."""
+    start = dt.datetime.combine(day, dt.time(8, 5), tzinfo=UTC)
+    end = dt.datetime.combine(day, dt.time(8, 10), tzinfo=UTC)
+    assert len(manifest) == 6, 'INCOMPLETE_ENTRY_SOURCES'
+    for item in manifest:
+        for key in ('started', 'received'):
+            assert key in item, 'INCOMPLETE_ENTRY_SOURCES'
+            when = dt.datetime.fromisoformat(item[key])
+            assert when.tzinfo is not None and start <= when < end, 'OUTSIDE_FROZEN_ENTRY_WINDOW'
+    if decision_at is not None:
+        when = dt.datetime.fromisoformat(decision_at)
+        assert when.tzinfo is not None and start <= when < end, 'OUTSIDE_FROZEN_DECISION_WINDOW'
+
+
 def tick(meta, price):
     value = float(meta['tick_size'])
     for s in sorted(meta.get('tick_size_steps', []), key=lambda x:x['above_price']):
@@ -253,6 +268,8 @@ def collect(root, mode):
         receipt['synchronization']=sync
         assert sync['book_skew_ms']<=sync['book_skew_limit_ms'], 'ASYNCHRONOUS_BOOKS'
         assert sync['index_distance_seconds']<=10, 'INDEX_TOO_OLD'
+        if mode=='entry':
+            assert_entry_times(t.date(), source.manifest)
         if mode=='sync-check':
             receipt['status']='SYNC_DIAGNOSTIC_PASS'
             return receipt
@@ -262,10 +279,19 @@ def collect(root, mode):
             receipt['status']='FEASIBILITY_ONLY_NO_FORWARD_OUTCOME'
         else:
             e=receipt['structures']['straddle']
-            assert abs(legs['atm_call']['strike']/index-1)<=.01 and e['roundtrip_pct']<=8, 'LIQUIDITY_COST_GATE'
-            receipt['forecast']=forecast(deliveries,t,index,(expiry-t).total_seconds(),e['legs'])
-            receipt['status']='SIMULATED_ENTRY_SELECTED' if receipt['forecast']['selected'] else 'ABSTAIN_FORECAST'
-            receipt['control_selected']=True
+            if abs(legs['atm_call']['strike']/index-1)>.01 or e['roundtrip_pct']>8:
+                decision_at=stamp()
+                assert_entry_times(t.date(), source.manifest, decision_at)
+                receipt.update(status='ABSTAIN_LIQUIDITY_COST', decision_at=decision_at,
+                               control_selected=False, reason='FROZEN_MONEYNESS_OR_ROUNDTRIP_LIMIT')
+            else:
+                candidate=forecast(deliveries,t,index,(expiry-t).total_seconds(),e['legs'])
+                decision_at=stamp()
+                assert_entry_times(t.date(), source.manifest, decision_at)
+                receipt['forecast']=candidate
+                receipt['decision_at']=decision_at
+                receipt['status']='SIMULATED_ENTRY_SELECTED' if candidate['selected'] else 'ABSTAIN_FORECAST'
+                receipt['control_selected']=True
     except Exception as exc:
         receipt['error']=type(exc).__name__+':'+str(exc)
     finally:
