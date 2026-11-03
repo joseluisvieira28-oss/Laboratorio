@@ -104,6 +104,54 @@ class SyncTests(unittest.TestCase):
             self.assertNotIn('forecast',r)
             self.assertNotIn('control_selected',r)
 
+    def test_frozen_source_and_decision_window_boundaries(self):
+        day=dt.date(2026,11,4)
+        start='2026-11-04T08:05:00+00:00'
+        last='2026-11-04T08:09:59.999999+00:00'
+        end='2026-11-04T08:10:00+00:00'
+        manifest=[dict(name=str(i),started=start,received=last) for i in range(6)]
+        probe.assert_entry_times(day,manifest,last)
+        with self.assertRaisesRegex(AssertionError,'OUTSIDE_FROZEN_ENTRY_WINDOW'):
+            probe.assert_entry_times(day,[*manifest[:-1],dict(name='last',started=start,received=end)])
+        with self.assertRaisesRegex(AssertionError,'OUTSIDE_FROZEN_DECISION_WINDOW'):
+            probe.assert_entry_times(day,manifest,end)
+        with self.assertRaisesRegex(AssertionError,'INCOMPLETE_ENTRY_SOURCES'):
+            probe.assert_entry_times(day,manifest[:-1])
+
+    def _simulated_entry_result(self, after_forecast=False):
+        current=[dt.datetime(2026,11,3,8,6,tzinfo=UTC)]
+        class Clock(dt.datetime):
+            @classmethod
+            def now(cls,tz=None):return current[0]
+        def fake_get(source,name,method,**params):
+            source.manifest.append(dict(name=name,started=probe.stamp(),received=probe.stamp()))
+            if name=='instruments':return list(META.values())
+            if name=='index':return {'index_price':76500}
+            return {'data':[]}
+        def fake_books(source,chosen,expiry,depth):
+            for name in chosen:
+                source.manifest.append(dict(name=name,started=probe.stamp(),received=probe.stamp()))
+            return {k:dict(timestamp=int(current[0].timestamp()*1000),strike=76500) for k in chosen}
+        def fake_forecast(*args):
+            if after_forecast:current[0]=dt.datetime(2026,11,3,8,10,tzinfo=UTC)
+            return {'selected':True}
+        with tempfile.TemporaryDirectory() as tmp, patch('probe.dt.datetime',Clock), patch.object(probe.Source,'get',fake_get), patch('probe.parallel_books',side_effect=fake_books), patch('probe.economics',return_value={'legs':[],'roundtrip_pct':7.0 if after_forecast else 9.0}), patch('probe.forecast',side_effect=fake_forecast), contextlib.redirect_stdout(io.StringIO()):
+            return probe.collect(Path(tmp)/'raw','entry')
+
+    def test_liquidity_cost_gate_is_abstention_not_source_outage(self):
+        r=self._simulated_entry_result(False)
+        self.assertEqual(r['status'],'ABSTAIN_LIQUIDITY_COST')
+        self.assertFalse(r['control_selected'])
+        self.assertNotIn('forecast',r)
+        self.assertEqual(len(r['manifest']),6)
+
+    def test_late_economic_decision_is_blocked_not_backdated(self):
+        r=self._simulated_entry_result(True)
+        self.assertEqual(r['status'],'SOURCE_BLOCKED')
+        self.assertIn('OUTSIDE_FROZEN_DECISION_WINDOW',r['error'])
+        self.assertNotIn('forecast',r)
+        self.assertNotIn('control_selected',r)
+
     def test_diagnostic_cannot_be_settled(self):
         with tempfile.TemporaryDirectory() as tmp:
             entry=Path(tmp)/'receipt.json'
