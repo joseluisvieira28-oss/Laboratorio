@@ -25,6 +25,27 @@ jobs:
       - name: One session or immutable missed receipt; never retries sources
         run: |
           python research/deribit_diamante_v2/forward_session.py --request research/deribit_diamante_v2/FORWARD_REQUEST.json --evidence research/deribit_diamante_v2/evidence --work /tmp/deribit-forward-session
+      - name: Independently audit immutable entry before any economic acceptance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import subprocess
+
+          root = Path('research/deribit_diamante_v2')
+          day = json.loads((root/'FORWARD_REQUEST.json').read_text())['date']
+          dated = root/'evidence'/day
+          archive = dated/'entry-session.zip'
+          if not archive.exists():
+              print('NO_NEW_ENTRY_ARCHIVE; duplicate request was skipped')
+          else:
+              metadata = json.loads((dated/'entry-session-archive.json').read_text())
+              command = ['python', str(root/'audit_forward.py'), '--archive', str(archive),
+                         '--sha256', metadata['sha256'], '--date', day]
+              with (dated/'independent-forward-audit.json').open('x') as output:
+                  subprocess.run(command, check=True, stdout=output)
+              print((dated/'independent-forward-audit.json').read_text())
+          PY
       - name: Preserve evidence on research branch only
         if: always()
         run: |
