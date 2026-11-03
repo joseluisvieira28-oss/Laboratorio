@@ -1,0 +1,47 @@
+name: Deribit V2 bounded parallel sync diagnostic NO ENTRY
+on:
+  push:
+    branches: [research/deribit-diamante-v2-2026-11-02]
+    paths: [.github/workflows/deribit-diamante-v2-sync-diagnostic.yml]
+permissions:
+  contents: read
+jobs:
+  synchronization-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Offline concurrency, failure and frozen boundary regressions
+        run: python -m unittest discover -s research/deribit_diamante_v2 -p 'test_*.py'
+      - name: Verify unchanged scientific freeze
+        run: |
+          git show e34ad0732abf1574735006b33307ddf5653fbaa9:research/deribit_diamante_v2/FREEZE.md > /tmp/original-freeze
+          cmp /tmp/original-freeze research/deribit_diamante_v2/FREEZE.md
+      - name: Preserve blocked session and independently replay rejection
+        run: |
+          mkdir blocked
+          python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('research/deribit_diamante_v2/evidence/2026-11-03/entry-0809.zip') as z:
+              z.extractall('blocked')
+          PY
+          find blocked -name manifest.json
+          python - <<'PY'
+          import pathlib,subprocess,sys
+          manifest=list(pathlib.Path('blocked').rglob('manifest.json'))
+          assert len(manifest)==1
+          subprocess.run([sys.executable,'research/deribit_diamante_v2/audit_sync.py',str(manifest[0].parent),'--expect','fail'],check=True)
+          PY
+      - name: Exactly ONE six-GET diagnostic; no retry or economic entry
+        run: python research/deribit_diamante_v2/probe.py sync-check --out sync-evidence/raw
+      - name: Independent raw hash and timestamp recalculation
+        run: python research/deribit_diamante_v2/audit_sync.py sync-evidence/raw --expect pass | tee sync-evidence/independent-sync.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deribit-v2-sync-only-${{ github.run_id }}
+          path: sync-evidence
+          if-no-files-found: error
+          retention-days: 90

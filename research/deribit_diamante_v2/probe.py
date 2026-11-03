@@ -5,6 +5,8 @@ entry: first prospective decision in frozen 08:05..08:10 UTC window.
 settle: official delivery only, immutable entry required, no mark substitution.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 import datetime as dt
 import hashlib
 import json
@@ -41,25 +43,61 @@ class Source:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=False)
         self.manifest = []
+        self.lock = Lock()
 
     def get(self, name, method, **params):
         assert method in {'get_instruments', 'get_index_price', 'get_book_summary_by_currency',
                           'get_delivery_prices', 'get_order_book'}
-        assert len(self.manifest) < 8
         url = BASE+method+'?'+urllib.parse.urlencode(params)
         item = dict(name=name, url=url, started=stamp())
-        self.manifest.append(item)
-        request = urllib.request.Request(url, headers={'Accept':'application/json',
-                                                     'User-Agent':'CryptoLab-Deribit-V2-Public-Research'})
-        with urllib.request.build_opener(NoRedirect).open(request, timeout=15) as r:
-            assert r.status == 200
-            raw = r.read(12_000_001)
-        item.update(received=stamp(), sha256=digest(raw), bytes=len(raw))
-        assert 0 < len(raw) <= 12_000_000
-        (self.root/(name+'.json')).write_bytes(raw)
-        j = json.loads(raw)
-        assert j.get('testnet') is False and 'result' in j and 'error' not in j
-        return j['result']
+        with self.lock:
+            assert len(self.manifest) < 8, 'REQUEST_BUDGET'
+            assert not any(x['name'] == name for x in self.manifest), 'DUPLICATE_SOURCE_NAME'
+            self.manifest.append(item)
+        try:
+            request = urllib.request.Request(url, headers={'Accept':'application/json',
+                                                         'User-Agent':'CryptoLab-Deribit-V2-Public-Research'})
+            with urllib.request.build_opener(NoRedirect).open(request, timeout=15) as r:
+                assert r.status == 200
+                raw = r.read(12_000_001)
+            item.update(received=stamp(), sha256=digest(raw), bytes=len(raw))
+            # Keep exact response bytes even if JSON or source identity is invalid.
+            with (self.root/(name+'.json')).open('xb') as f:
+                f.write(raw)
+            assert 0 < len(raw) <= 12_000_000
+            j = json.loads(raw)
+            assert j.get('testnet') is False and 'result' in j and 'error' not in j
+            return j['result']
+        except Exception as exc:
+            item['error'] = type(exc).__name__+':'+str(exc)
+            raise
+
+    def received(self, name):
+        return next(x['received'] for x in self.manifest if x['name'] == name)
+
+
+def parallel_books(source, chosen, expiry, depth):
+    # Validate all identities before dispatch. Each symbol is requested once.
+    for m in chosen.values():
+        metadata(m, expiry)
+    with ThreadPoolExecutor(max_workers=len(chosen)) as pool:
+        pending = {key: pool.submit(source.get, key, 'get_order_book',
+                                   instrument_name=m['instrument_name'], depth=5)
+                   for key, m in chosen.items()}
+        # All futures finish before the context exits, including on failure.
+        books = {key: future.result() for key, future in pending.items()}
+    return {key: bookcheck(b, chosen[key], source.received(key), depth)
+            for key, b in books.items()}
+
+
+def synchronization(legs, index_received, limit_ms):
+    times = [x['timestamp'] for x in legs.values()]
+    result = dict(book_skew_ms=max(times)-min(times), book_skew_limit_ms=limit_ms,
+                  book_timestamps={key: x['timestamp'] for key, x in legs.items()},
+                  index_distance_seconds=abs(max(times)/1000-
+                      dt.datetime.fromisoformat(index_received).timestamp()))
+    return result
+
 
 def tick(meta, price):
     value = float(meta['tick_size'])
@@ -199,25 +237,25 @@ def collect(root, mode):
         assert t.date()>=dt.date(2026,11,3) and t.hour==8 and 5<=t.minute<10, 'OUTSIDE_FROZEN_ENTRY_WINDOW'
     source=Source(root)
     receipt=dict(freeze=FREEZE, mode=mode, observed=stamp(), status='SOURCE_BLOCKED',
-                 economic_edge_proven=False, simulation=True, orders=0, private_requests=0)
+                 economic_edge_proven=False, simulation=True, orders=0, private_requests=0,
+                 collector_version='parallel-books-v1', diagnostic_only=(mode=='sync-check'))
     try:
         expiry=dt.datetime(2026,11,6,8,tzinfo=UTC) if mode=='probe' else t.replace(hour=8,minute=0,second=0,microsecond=0)+dt.timedelta(days=1)
         assert t<expiry
         metas=source.get('instruments','get_instruments',currency='USDC',kind='option',expired='false')
-        index=source.get('index','get_index_price',index_name='btc_usdc')['index_price']
         source.get('summaries','get_book_summary_by_currency',currency='USDC',kind='option')
         deliveries=source.get('deliveries','get_delivery_prices',index_name='btc_usdc',count=100)
+        index=source.get('index','get_index_price',index_name='btc_usdc')['index_price']
         chosen=select(metas,index,expiry,mode)
         receipt.update(index=index, expiry=expiry.isoformat(), chosen={k:v['instrument_name'] for k,v in chosen.items()})
-        legs={}
-        for key,m in chosen.items():
-            metadata(m,expiry)
-            b=source.get(key,'get_order_book',instrument_name=m['instrument_name'],depth=5)
-            legs[key]=bookcheck(b,m,source.manifest[-1]['received'],.05 if mode=='entry' else .01)
-        times=[x['timestamp'] for x in legs.values()]
-        assert max(times)-min(times)<= (1000 if mode=='entry' else 3000), 'ASYNCHRONOUS_BOOKS'
-        index_time=dt.datetime.fromisoformat(next(x['received'] for x in source.manifest if x['name']=='index')).timestamp()
-        assert abs(max(times)/1000-index_time)<=10, 'INDEX_TOO_OLD'
+        legs=parallel_books(source,chosen,expiry,.01 if mode=='probe' else .05)
+        sync=synchronization(legs,source.received('index'),3000 if mode=='probe' else 1000)
+        receipt['synchronization']=sync
+        assert sync['book_skew_ms']<=sync['book_skew_limit_ms'], 'ASYNCHRONOUS_BOOKS'
+        assert sync['index_distance_seconds']<=10, 'INDEX_TOO_OLD'
+        if mode=='sync-check':
+            receipt['status']='SYNC_DIAGNOSTIC_PASS'
+            return receipt
         receipt['structures']={'straddle':economics([legs['atm_call'],legs['atm_put']],index)}
         if mode=='probe':
             receipt['structures']['strangle']=economics([legs['otm_call'],legs['otm_put']],index)
@@ -267,7 +305,7 @@ def settlement(entry, root, expected):
 
 if __name__=='__main__':
     p=argparse.ArgumentParser()
-    p.add_argument('mode',choices=['probe','entry','settle'])
+    p.add_argument('mode',choices=['probe','entry','settle','sync-check'])
     p.add_argument('--out',required=True)
     p.add_argument('--entry');p.add_argument('--entry-sha256')
     a=p.parse_args()
