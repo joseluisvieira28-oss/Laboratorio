@@ -110,4 +110,31 @@ class SyncTests(unittest.TestCase):
             sha=probe.save(entry,dict(freeze=probe.FREEZE,mode='sync-check',status='SYNC_DIAGNOSTIC_PASS'))
             with self.assertRaises(AssertionError):probe.settlement(entry,Path(tmp)/'out',sha)
 
+
+class ForwardRequestTests(unittest.TestCase):
+    def test_existing_blocked_day_never_calls_source(self):
+        import forward_session
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);request=root/'request.json'
+            request.write_text('{"date":"2026-11-03"}')
+            dated=root/'evidence'/'2026-11-03';dated.mkdir(parents=True)
+            (dated/'entry-0809.zip').write_bytes(b'original')
+            with patch('probe.collect',side_effect=AssertionError('no recollection')),contextlib.redirect_stdout(io.StringIO()):
+                forward_session.run(request,root/'evidence',root/'work')
+            self.assertEqual((dated/'entry-0809.zip').read_bytes(),b'original')
+            self.assertFalse((root/'work').exists())
+
+    def test_late_request_archived_as_missed_without_sources(self):
+        import forward_session,zipfile
+        class Clock(dt.datetime):
+            @classmethod
+            def now(cls,tz=None):return dt.datetime(2026,11,4,8,11,tzinfo=UTC)
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);request=root/'request.json'
+            request.write_text('{"date":"2026-11-04"}')
+            with patch('forward_session.dt.datetime',Clock),patch('probe.collect',side_effect=AssertionError('no backfill')),contextlib.redirect_stdout(io.StringIO()):
+                forward_session.run(request,root/'evidence',root/'work')
+            with zipfile.ZipFile(root/'evidence'/'2026-11-04'/'entry-session.zip') as z:
+                self.assertEqual(json.loads(z.read('receipt.json'))['status'],'MISSED_SESSION')
+
 if __name__=='__main__':unittest.main()

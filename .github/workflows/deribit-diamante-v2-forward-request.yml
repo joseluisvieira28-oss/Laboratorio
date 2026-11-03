@@ -1,0 +1,43 @@
+name: Deribit V2 requested frozen-window forward SIMULATION
+on:
+  push:
+    branches: [research/deribit-diamante-v2-2026-11-02]
+    paths: [research/deribit_diamante_v2/FORWARD_REQUEST.json]
+permissions:
+  contents: write
+concurrency:
+  group: deribit-v2-forward-single-writer
+  cancel-in-progress: false
+jobs:
+  one-requested-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/deribit-diamante-v2-2026-11-02
+          fetch-depth: 0
+      - name: Guard branch and frozen specification
+        run: |
+          test "$GITHUB_REF" = refs/heads/research/deribit-diamante-v2-2026-11-02
+          git show e34ad0732abf1574735006b33307ddf5653fbaa9:research/deribit_diamante_v2/FREEZE.md > /tmp/freeze-original
+          cmp /tmp/freeze-original research/deribit_diamante_v2/FREEZE.md
+      - name: One session or immutable missed receipt; never retries sources
+        run: |
+          python research/deribit_diamante_v2/forward_session.py --request research/deribit_diamante_v2/FORWARD_REQUEST.json --evidence research/deribit_diamante_v2/evidence --work /tmp/deribit-forward-session
+      - name: Preserve evidence on research branch only
+        if: always()
+        run: |
+          test "$GITHUB_REF" = refs/heads/research/deribit-diamante-v2-2026-11-02
+          git add research/deribit_diamante_v2/evidence
+          if ! git diff --cached --quiet; then
+            git -c user.name='Crypto Lab Evidence' -c user.email='evidence@users.noreply.github.com' commit -m 'Preserve requested simulated Deribit session; no retries'
+            git push origin HEAD:refs/heads/research/deribit-diamante-v2-2026-11-02
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deribit-v2-forward-${{ github.run_id }}
+          path: /tmp/deribit-forward-session
+          if-no-files-found: ignore
+          retention-days: 90

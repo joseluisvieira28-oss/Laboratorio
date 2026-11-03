@@ -2,7 +2,7 @@ name: Deribit V2 final offline replay NO MARKET REQUESTS
 on:
   push:
     branches: [research/deribit-diamante-v2-2026-11-02]
-    paths: [.github/workflows/deribit-diamante-v2-offline-replay.yml]
+    paths: [.github/workflows/deribit-diamante-v2-offline-replay.yml, research/deribit_diamante_v2/probe.py, research/deribit_diamante_v2/forward_session.py, research/deribit_diamante_v2/test_sync.py]
 permissions:
   contents: read
 jobs:
@@ -30,3 +30,12 @@ jobs:
           name: deribit-v2-final-offline-audit
           path: independent-final.json
           if-no-files-found: error
+      - name: Replay preserved synchronization diagnostic with zero source requests
+        run: |
+          python - <<'PY'
+          import hashlib,pathlib,zipfile
+          p=pathlib.Path('research/deribit_diamante_v2/evidence/2026-11-03/sync-diagnostic-41602441575.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='f18f8b45cae28abb29db50135d5369c839590c89bcd024720057111d22a5a60c'
+          with zipfile.ZipFile(p) as z:z.extractall('sync-replay')
+          PY
+          python research/deribit_diamante_v2/audit_sync.py sync-replay/raw --expect pass
