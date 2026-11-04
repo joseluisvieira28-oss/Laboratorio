@@ -1,0 +1,67 @@
+# Exactly ONE push-triggered prospective economics source window.
+# No schedule, no workflow_dispatch, no secrets, no exchange orders, no main merge.
+name: Liquidation Exhaustion — Economic Forward V1 one-shot
+on:
+  push:
+    branches:
+      - research/liquidation-exhaustion-v1-2026-11-04
+    paths:
+      - .github/workflows/liquidation-exhaustion-economic-forward-v1.yml
+permissions:
+  contents: read
+jobs:
+  public-quote-proxy-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify frozen rules present before any new source
+        run: |
+          test -s research/liquidation_exhaustion_v1/ECONOMIC_FORWARD_FREEZE_2026-11-04.md
+          echo "PREOUTCOME_PROTOCOL_PRESENT"
+      - name: Install pinned open-source WS client
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Pure synthetic preflight for both sources and execution math
+        run: |
+          python research/liquidation_exhaustion_v1/economic_forward_capture_v1.py --self-test
+          python research/liquidation_exhaustion_v1/economic_forward_evaluator_v1.py --self-test
+      - name: ONE 420-second public Bybit + MEXC source observation, no trading
+        run: python research/liquidation_exhaustion_v1/economic_forward_capture_v1.py
+      - name: Evaluate fixed primary 15s delay and 60s quote-proxy exits
+        if: always()
+        shell: bash
+        run: |
+          if test -s artifacts/liquidation_exhaustion_economic_forward_v1/raw_forward_public.ndjson; then
+            python research/liquidation_exhaustion_v1/economic_forward_evaluator_v1.py \
+              --raw artifacts/liquidation_exhaustion_economic_forward_v1/raw_forward_public.ndjson \
+              --out artifacts/liquidation_exhaustion_economic_forward_v1/economic_receipt.json
+          else
+            echo "NO_RAW_INPUT — SOURCE_BLOCKED"
+          fi
+      - name: Preserve immutable raw, quality gate and economic verdict receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liquidation-exhaustion-economic-forward-v1-one-shot
+          path: artifacts/liquidation_exhaustion_economic_forward_v1/
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Publish job-only summary (not PR write)
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json,pathlib
+          p=pathlib.Path("artifacts/liquidation_exhaustion_economic_forward_v1/economic_receipt.json")
+          print("## LIQUIDATION EXHAUSTION ECONOMIC FORWARD V1")
+          if not p.exists():
+              print("SOURCE_BLOCKED / NO ECONOMIC RECEIPT")
+          else:
+              r=json.loads(p.read_text())
+              print("Verdict:",r["verdict"])
+              print("Source quality:",r["source_quality_pass"])
+              print("Triggers:",r["episodes_triggered"])
+              print("Primary quote pairs:",r["primary_quote_pairs"])
+              print("Raw SHA256:",r["raw_sha256"])
+              print("No orders, no fills, no proven market edge.")
+          PY
