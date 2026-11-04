@@ -233,6 +233,17 @@ class BrokerFailureInjection(Fixture):
     def test_weekly_loss_freeze(self):
         self.engine.loss_mark("0","3",NOW,"100")
         self.assertEqual(self.engine.state,"FROZEN_LOSS_LIMIT")
+    def test_disarm_cannot_clear_loss_freeze(self):
+        self.engine.loss_mark("1","1",NOW,"100")
+        self.engine.disarm("operator attempted reset")
+        self.assertEqual(self.engine.state,"FROZEN_LOSS_LIMIT")
+        with self.assertRaisesRegex(Rejected,"NOT_DISARMED"):
+            self.engine.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+    def test_disarm_cannot_clear_unknown_broker_freeze(self):
+        self.result(scenario=replace(self.ok,entry="TIMEOUT"))
+        self.engine.disarm("operator attempted reset")
+        self.assertEqual(self.engine.state,"FROZEN_BROKER_UNKNOWN")
+
     def test_under_daily_limit_no_freeze(self):
         self.engine.loss_mark("0.9","1.1",NOW,"100")
         self.assertEqual(self.engine.state,"PAPER_ARMED")
