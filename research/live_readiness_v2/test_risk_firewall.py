@@ -97,7 +97,7 @@ class AuthorizationAndInputs(Fixture):
     def test_stale_exchange_quote(self):
         self.rejects("QUOTE_PUBLISHER_STALE",quote=replace(self.quote,published_ms=NOW-3000))
     def test_stale_local_receipt(self):
-        self.rejects("QUOTE_RECEIPT_STALE",quote=replace(self.quote,received_ms=NOW-2000))
+        self.rejects("QUOTE_RECEIPT_STALE",quote=replace(self.quote,received_ms=NOW-2000,published_ms=NOW-2100))
     def test_quote_future(self):
         self.rejects("QUOTE_PUBLISHER_STALE",quote=replace(self.quote,published_ms=NOW+1000))
     def test_unmatched_orders(self):
