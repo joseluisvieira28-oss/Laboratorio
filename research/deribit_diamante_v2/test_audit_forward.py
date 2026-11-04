@@ -67,7 +67,12 @@ def synthetic_archive(invalid=None):
                  control_selected=True,
                  structures={"straddle":{"entry_premium":premium,"entry_fee":fees,
                      "entry_allin":premium+fees,"roundtrip_pct":pct,
-                     "one_tick_allin":premium+.01*10+fees}},
+                     "one_tick_allin":premium+.01*10+fees,
+                     "legs":[dict(symbol=data[name]["instrument_name"],
+                                  side="call" if name=="atm_call" else "put",
+                                  strike=STRIKE,ask=1000,bid=995,index=PRICE,
+                                  bid_depth=1,ask_depth=1,expiry=EXPIRE.isoformat())
+                             for name in ("atm_call","atm_put")]}},
                  forecast={"selected":False,"forecast_net_proceeds":0,
                            "input_dates":[d.isoformat() for d in dates]})
     if invalid=="late":receipt["decision_at"]="2026-11-04T08:10:00+00:00"
