@@ -1,0 +1,45 @@
+# Explicit one-shot CI only. No account, broker access, scheduler or real trading.
+name: Crypto Lab Live Readiness V2 — offline risk firewall fault injection
+on:
+  push:
+    branches:
+      - research/live-readiness-v2-supervised-architecture-2026-11-04
+    paths:
+      - .github/workflows/live-readiness-v2-offline-risk-ci.yml
+permissions:
+  contents: read
+jobs:
+  fail-closed-mock-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Python modules compile (stdlib only)
+        run: |
+          python -m py_compile research/live_readiness_v2/risk_firewall.py
+          python -m py_compile research/live_readiness_v2/test_risk_firewall.py
+      - name: Assert no live transport and human-approval gate cannot become LIVE
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,"research/live_readiness_v2")
+          import risk_firewall
+          src=Path("research/live_readiness_v2/risk_firewall.py").read_text()
+          for banned in ("import requests","import websockets","import ccxt","urllib.request",
+                         "subprocess","socket.connect","place_order","create_order"):
+              assert banned not in src, f"FORBIDDEN_LIVE_TRANSPORT: {banned}"
+          assert risk_firewall.live_enabled() is False
+          print("NO_LIVE_TRANSPORT_STATIC_GUARD_PASS")
+          PY
+      - name: Independent adversarial fault-injection test matrix
+        run: |
+          python -m unittest discover -s research/live_readiness_v2 -p 'test_risk_firewall.py' -v 2>&1 | tee risk_firewall_ci_output.txt
+      - name: Save audit test evidence even if job fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-readiness-v2-risk-firewall-offline-tests
+          path: risk_firewall_ci_output.txt
+          if-no-files-found: warn
+          retention-days: 30
