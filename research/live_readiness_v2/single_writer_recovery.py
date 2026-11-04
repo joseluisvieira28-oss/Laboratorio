@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import sqlite3
 import uuid
+from decimal import Decimal, InvalidOperation
 
 
 class GuardError(Exception):
@@ -69,6 +70,13 @@ class PaperFencedStore:
              seq INTEGER PRIMARY KEY AUTOINCREMENT, at_ms INTEGER NOT NULL,
              epoch INTEGER NOT NULL, event TEXT NOT NULL, detail TEXT NOT NULL,
              previous_digest TEXT NOT NULL, digest TEXT NOT NULL)""")
+        self.db.execute("""CREATE TABLE IF NOT EXISTS paper_risk (
+             id INTEGER PRIMARY KEY CHECK(id=1),
+             daily_highwater TEXT NOT NULL, weekly_highwater TEXT NOT NULL,
+             last_verified_equity TEXT NOT NULL)""")
+        self.db.execute("""INSERT OR IGNORE INTO paper_risk
+             (id,daily_highwater,weekly_highwater,last_verified_equity)
+             VALUES (1,'0','0','0')""")
         # Refuse to boot if evidence is corrupt, and close the database even
         # when startup verification raises (Windows holds open files locked).
         try:
@@ -186,6 +194,41 @@ class PaperFencedStore:
             self._event(m["epoch"],now_ms,"FENCE_RENEW",{})
         self._run(ticket,now_ms,action)
 
+    def record_paper_loss(self, ticket: Ticket, now_ms: int, *,
+                          daily_cash, weekly_cash, equity_cash,
+                          daily_fraction, weekly_fraction) -> dict:
+        """Durably latch paper loss limits before mirroring the in-memory firewall."""
+        values=[]
+        for raw in (daily_cash,weekly_cash,equity_cash,daily_fraction,weekly_fraction):
+            try:
+                d=Decimal(str(raw))
+            except (ValueError,TypeError,InvalidOperation):
+                raise GuardError("INVALID_PAPER_RISK_DECIMAL")
+            if not d.is_finite() or d<0:
+                raise GuardError("INVALID_PAPER_RISK_DECIMAL")
+            values.append(d)
+        day,week,equity,day_frac,week_frac=values
+        if equity<=0 or not 0<day_frac<=week_frac<=1:
+            raise GuardError("INVALID_PAPER_RISK_LIMITS")
+        def action(m):
+            row=self.db.execute("""SELECT daily_highwater,weekly_highwater
+                        FROM paper_risk WHERE id=1""").fetchone()
+            stored_day,stored_week=map(Decimal,row)
+            day_max=max(day,stored_day);week_max=max(week,stored_week)
+            self.db.execute("""UPDATE paper_risk SET daily_highwater=?,
+                   weekly_highwater=?,last_verified_equity=? WHERE id=1""",
+                   (str(day_max),str(week_max),str(equity)))
+            locked=day_max>=equity*day_frac or week_max>=equity*week_frac
+            if locked:
+                self.db.execute("""UPDATE owner_state SET hard_lock=1,
+                           phase='FROZEN_PAPER_LOSS' WHERE id=1""")
+            self._event(m["epoch"],now_ms,"PAPER_LOSS_SNAPSHOT",{
+               "day":str(day_max),"week":str(week_max),
+               "equity":str(equity),"locked":locked})
+            return {"daily":str(day_max),"weekly":str(week_max),
+                    "equity":str(equity),"locked":locked}
+        return self._run(ticket,now_ms,action)
+
     def arm_paper(self, ticket: Ticket, now_ms: int, *, human_approval: bool,
                   policy_sha: str, strategy_sha: str, ttl_ms: int=10000) -> None:
         if human_approval is not True:
@@ -263,25 +306,40 @@ class PaperFencedStore:
         self._run(ticket,now_ms,action)
 
     def reconcile_flat(self, ticket: Ticket, now_ms: int, *,
-                       human_approval: bool, mock_flat_confirmed: bool) -> None:
+                       human_approval: bool, mock_flat_confirmed: bool,
+                       mock_confirmed_closed_ids=()) -> None:
         if human_approval is not True or mock_flat_confirmed is not True:
             raise GuardError("MOCK_RECOVERY_PROOF_REQUIRED")
+        closed_ids=tuple(mock_confirmed_closed_ids)
+        if len(closed_ids)!=len(set(closed_ids)):
+            raise GuardError("DUPLICATE_RECOVERY_IDENTITIES")
         def action(m):
             if m["phase"]!="FROZEN_RECOVERY_REQUIRED":
                 raise GuardError("RECOVERY_NOT_REQUIRED")
+            for client_id in closed_ids:
+                row=self.db.execute("""SELECT state FROM paper_intents
+                                  WHERE client_id=?""",(client_id,)).fetchone()
+                if row is None:
+                    raise GuardError("UNRECOGNIZED_MOCK_BROKER_CLOSE")
+                self.db.execute("""UPDATE paper_intents SET state='CLOSED',updated_ms=?
+                                  WHERE client_id=?""",(now_ms,client_id))
             self.db.execute("""UPDATE paper_intents SET state='CANCELLED',updated_ms=?
                  WHERE state NOT IN ('CLOSED','CANCELLED')""",(now_ms,))
             self.db.execute("""UPDATE owner_state SET phase='DISARMED',
                  session_until_ms=0 WHERE id=1""")
-            self._event(m["epoch"],now_ms,"PAPER_RECONCILED_FLAT",{"mock_only":True})
+            self._event(m["epoch"],now_ms,"PAPER_RECONCILED_FLAT",{
+                 "mock_only":True,"mock_closed_ids":list(closed_ids)})
         self._run(ticket,now_ms,action)
 
     def inspect(self) -> dict:
         m=self._meta()
         intents=self.db.execute("SELECT client_id,state,epoch FROM paper_intents ORDER BY client_id").fetchall()
+        risk=self.db.execute("""SELECT daily_highwater,weekly_highwater,last_verified_equity
+                  FROM paper_risk WHERE id=1""").fetchone()
         return {"epoch":m["epoch"],"phase":m["phase"],"owner":m["owner"],
                 "lease_until_ms":m["lease_until_ms"],"hard_lock":bool(m["hard_lock"]),
                 "session_until_ms":m["session_until_ms"],
+                "paper_risk":{"daily":risk[0],"weekly":risk[1],"equity":risk[2]},
                 "intents":[{"id":a,"state":b,"epoch":c} for a,b,c in intents]}
 
     def verify_audit(self) -> int:
