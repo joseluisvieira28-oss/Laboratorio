@@ -58,6 +58,10 @@ class PaperFixture(unittest.TestCase):
                 policy_sha=POLICY,strategy_sha=STRATEGY))
         finally:second.close()
 
+    def test_forged_process_identifier_rejected_even_with_correct_owner_epoch(self):
+        fake=replace(self.ticket,process_id=self.ticket.process_id+1000000)
+        self.reject("TICKET_PROCESS_MISMATCH",lambda:self.store.renew(fake,NOW+1))
+
     def test_expired_ticket_cannot_renew(self):
         self.reject("LEASE_EXPIRED",lambda:self.store.renew(self.ticket,NOW+30000))
 
@@ -346,6 +350,31 @@ class RealSubprocessCrashTests(unittest.TestCase):
 
     def command(self, script):
         return [sys.executable,"-c",script,str(self.file)]
+
+    def test_stolen_original_ticket_rejected_in_distinct_os_process(self):
+        owner=PaperFencedStore(self.file)
+        try:
+            ticket=owner.claim(NOW)
+            code="""import sys
+from single_writer_recovery import PaperFencedStore,Ticket,GuardError
+db=PaperFencedStore(sys.argv[1])
+copied=Ticket(sys.argv[2],int(sys.argv[3]),int(sys.argv[4]))
+try:
+  db.renew(copied,2000000000001)
+  print('UNSAFE_RENEWED')
+except GuardError as exc:
+  print('DENIED:'+str(exc))
+finally:
+  db.close()
+"""
+            child=subprocess.run([sys.executable,"-c",code,str(self.file),ticket.owner,
+                                  str(ticket.epoch),str(ticket.process_id)],
+                                 env=self.env,stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,text=True,timeout=15)
+            self.assertEqual(child.returncode,0,child.stderr)
+            self.assertEqual(child.stdout.strip(),"DENIED:TICKET_PROCESS_MISMATCH")
+            self.assertEqual(owner.inspect()["epoch"],1)
+        finally:owner.close()
 
     def test_six_real_processes_only_one_can_claim(self):
         code="""import sys
