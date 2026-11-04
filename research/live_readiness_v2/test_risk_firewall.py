@@ -3,6 +3,7 @@
 import json
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 
@@ -56,6 +57,14 @@ class HappyPath(Fixture):
         self.result()
         second=replace(self.intent,client_id="a2")
         self.rejects("NOT_PAPER_ARMED",intent=second)
+    def test_concurrent_intents_cannot_open_second_physical_position(self):
+        requests=[replace(self.intent,client_id=f"concurrent_{i}") for i in range(16)]
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            outcomes=list(pool.map(lambda intent:self.result(intent=intent),requests))
+        self.assertEqual(outcomes.count("PAPER_PROTECTED"),1)
+        self.assertEqual(sum(o.startswith("REJECT:NOT_PAPER_ARMED") for o in outcomes),15)
+        self.assertEqual(len([r for r in HashJournal.verify(self.path)
+                              if r["event"]=="PAPER_FILL"]),1)
     def test_short_eligible_with_correct_stop(self):
         intent=replace(self.intent,side="SHORT",stop="101")
         self.assertEqual(self.result(intent=intent),"PAPER_PROTECTED")
@@ -159,6 +168,38 @@ class SessionSafety(unittest.TestCase):
         self.assertEqual(restarted.state,"FROZEN_RECONCILIATION_REQUIRED")
         with self.assertRaisesRegex(Rejected,"NOT_DISARMED"):
             restarted.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+    def test_client_id_replay_blocked_after_restart_and_reconciliation(self):
+        self.fw.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+        quote=Quote("BTC_USDT","99.99","100",NOW-100,NOW-50)
+        acct=Account("100","100",0,0,NOW-50)
+        signal=Intent("persistent_id",SHA,"BTC_USDT","LONG","0.01","1","0.01",
+                      "0.01","0.01","99",NOW-100)
+        self.assertEqual(self.fw.simulate(signal,quote,acct,
+                          BrokerScenario(entry="REJECTED"),NOW),"ENTRY_REJECTED")
+        restarted=Firewall(self.policy,HashJournal(self.fw.journal.path))
+        self.assertIn("persistent_id",restarted.used_ids)
+        restarted.reconcile_flat(paper_broker_flat=True,human_approval=True)
+        restarted.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+        self.assertEqual(restarted.simulate(signal,quote,acct,BrokerScenario(),NOW),
+                         "REJECT:DUPLICATE_INTENT")
+    def test_nonlimit_loss_highwater_survives_restart(self):
+        self.fw.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+        self.fw.loss_mark("0.8","1.3",NOW,"100")
+        new=Firewall(self.policy,HashJournal(self.fw.journal.path))
+        self.assertEqual(new.daily_loss,D("0.8"))
+        self.assertEqual(new.weekly_loss,D("1.3"))
+        new.reconcile_flat(paper_broker_flat=True,human_approval=True)
+        new.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+        new.loss_mark("0.2","0.3",NOW,"100")
+        self.assertEqual(new.daily_loss,D("0.8"))
+        self.assertEqual(new.weekly_loss,D("1.3"))
+    def test_loss_lock_irreversible_across_restart_without_new_epoch(self):
+        self.fw.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+        self.fw.loss_mark("1","1",NOW,"100")
+        restarted=Firewall(self.policy,HashJournal(self.fw.journal.path))
+        self.assertTrue(restarted.loss_locked)
+        with self.assertRaisesRegex(Rejected,"LOSS_LOCK_PERSISTENT"):
+            restarted.reconcile_flat(paper_broker_flat=True,human_approval=True)
     def test_tamper_detected(self):
         self.fw.arm_paper(NOW,120000,self.policy.digest,SHA,True)
         s=self.fw.journal.path.read_text()
