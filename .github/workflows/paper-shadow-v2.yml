@@ -1,0 +1,22 @@
+name: Paper Shadow Economic V2 offline adversarial
+on:
+  pull_request:
+    paths: ['research/paper_shadow_v2/**', '.github/workflows/paper-shadow-v2.yml']
+  push:
+    branches: ['research/paper-shadow-economic-v2-2026-11-04']
+permissions:
+  contents: read
+jobs:
+  offline:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s research/paper_shadow_v2 -p 'test_*.py' -v
+      - run: python -m unittest discover -s research/live_readiness_v2 -p 'test_*.py'
