@@ -1,15 +1,14 @@
-# One-shot activation of source-only experiment, 2026-11-04.
-# The restricted push path prevents data/code-only changes from retriggering a capture.
+# Bounded source-only research capture; activate only with an explicit trigger-file push.
+# Prevents duplicate captures when editing workflow or forensic reports.
 name: Liquidation Exhaustion V1 — single public source proof
 on:
   push:
     branches:
       - research/liquidation-exhaustion-v1-2026-11-04
     paths:
-      - .github/workflows/liquidation-exhaustion-v1-source-proof.yml
+      - research/liquidation_exhaustion_v1/EXPLICIT_SINGLE_CAPTURE_TRIGGER.txt
 permissions:
   contents: read
-  issues: write
 jobs:
   free-source-only:
     runs-on: ubuntu-latest
@@ -30,33 +29,20 @@ jobs:
           path: artifacts/liquidation_exhaustion_v1/
           if-no-files-found: warn
           retention-days: 30
-      - name: Publish one auditable outcome receipt to PR 332
+      - name: Add outcome to GitHub job summary (no issue-write permission)
         if: always()
-        continue-on-error: true
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const p = 'artifacts/liquidation_exhaustion_v1/source_receipt.json';
-            let summary;
-            if (fs.existsSync(p)) {
-              const r = JSON.parse(fs.readFileSync(p, 'utf8'));
-              summary = [
-                'Status: ' + r.verdict,
-                'BTC liquidation frames: ' + r.counts['allLiquidation.BTCUSDT'],
-                'ETH liquidation frames: ' + r.counts['allLiquidation.ETHUSDT'],
-                'Observed liquidation child events: ' + r.liquidation_children,
-                'BTC/ETH trade and book counts: ' + JSON.stringify(Object.fromEntries(Object.entries(r.counts).filter(([k])=>!k.startsWith('allLiquidation.')))),
-                'Source errors: ' + JSON.stringify(r.errors),
-                'Raw SHA256: ' + r.raw_sha256,
-                'No economic outcomes opened; no trading.'
-              ].join('\n');
-            } else {
-              summary = 'NO_SOURCE_RECEIPT — setup or tests failed before real capture. Examine job logs. NO SOURCE PASS.';
-            }
-            const body = 'LIQUIDATION EXHAUSTION V1 — ONE SOURCE-ONLY RUN\n\n' + summary +
-              '\n\nEvidence: https://github.com/' + context.repo.owner + '/' + context.repo.repo +
-              '/actions/runs/' + context.runId + '\nPR #332 remains research only. No LIVE GO.';
-            await github.rest.issues.createComment({
-              ...context.repo, issue_number: 332, body
-            });
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          p = pathlib.Path("artifacts/liquidation_exhaustion_v1/source_receipt.json")
+          print("## Liquidation Exhaustion V1 — public-source-only receipt")
+          if p.exists():
+              r = json.loads(p.read_text())
+              print("Status:", r["verdict"])
+              print("Positive liquidation children observed:", r["liquidation_children"])
+              print("Raw SHA-256:", r["raw_sha256"])
+              print("No PnL, no trading, no source-census certification.")
+          else:
+              print("NO_RECEIPT — setup/test/source failure; not SOURCE_PASS.")
+          PY
