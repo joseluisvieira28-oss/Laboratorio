@@ -22,7 +22,7 @@ def independent_replay(filename):
         raise ValueError("RAW_ARCHIVE_DIGEST_MISMATCH")
     bybit=Counter();liq=0;trade=0;book_snap=0;book_delta=0;last_u=None
     mexc_valid=0;mexc_stale=0;mexc_consecutive=0;mexc_eligible=0
-    clocks={};frame_count=0;errors=[]
+    clocks={};frame_count=0;errors=[];last_mexc_eligible_recv=None;liq_with_fresh_crossvenue=0;max_crossvenue_age=None
     for line in raw.splitlines():
         frame_count+=1
         wrap=json.loads(line)
@@ -66,6 +66,11 @@ def independent_replay(filename):
                     lag=recv-int(x["T"])
                     if lag < -250 or lag>1500:raise ValueError("LIQ_TIMESTAMP_STALE")
                     liq+=1
+                    if last_mexc_eligible_recv is not None:
+                        age=recv-last_mexc_eligible_recv
+                        if 0<=age<=1500:
+                            liq_with_fresh_crossvenue+=1
+                            max_crossvenue_age=max(age,max_crossvenue_age or 0)
         else:
             if msg.get("channel")!="push.ticker":continue
             data=msg.get("data")
@@ -81,7 +86,9 @@ def independent_replay(filename):
                 mexc_stale+=1;mexc_consecutive=0
             else:
                 mexc_valid+=1;mexc_consecutive+=1
-                if mexc_consecutive>=3:mexc_eligible+=1
+                if mexc_consecutive>=3:
+                    mexc_eligible+=1
+                    last_mexc_eligible_recv=recv
     if liq!=rec["bybit"]["liquidation_children"]:raise ValueError("LIQ_COUNT_PARITY_FAIL")
     if dict(bybit)!=rec["bybit"]["topic_counts"]:raise ValueError("BYBIT_TOPIC_COUNT_PARITY_FAIL")
     if trade!=rec["bybit"]["bybit_trade_children"]:raise ValueError("TRADE_COUNT_PARITY_FAIL")
@@ -100,6 +107,8 @@ def independent_replay(filename):
       "book_snapshots":book_snap,"book_contiguous_deltas":book_delta,
       "mexc_fresh_ticker":mexc_valid,"mexc_stale_ticker":mexc_stale,
       "mexc_quarantined_then_eligible_bbo":mexc_eligible,
+      "liquidations_with_previously_received_fresh_mexc_quote":liq_with_fresh_crossvenue,
+      "max_asof_mexc_quote_age_at_liquidation_ms":max_crossvenue_age,
       "collector_status":rec["pilot_verdict"],
       "full_census_proven":False,"economic_returns_evaluated":False,
       "live_go":False
