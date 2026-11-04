@@ -124,6 +124,7 @@ def handle_mexc(msg, received, state, memory):
     except ValueError:
         state["ticker_stale_samples"]+=1
         memory["consecutive_valid"]=0
+        state["ticker_quarantine_complete"]=False
         return
     state["ticker_fresh_messages"]+=1
     state["ticker_max_lag_ms"]=max(lag,state["ticker_max_lag_ms"] or 0)
