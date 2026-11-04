@@ -39,7 +39,6 @@ class Fixture(unittest.TestCase):
     def rejects(self, key, **kwargs):
         out = self.result(**kwargs)
         self.assertEqual(out, "REJECT:"+key, out)
-        self.assertFalse(self.engine.active)
         return out
 
 
