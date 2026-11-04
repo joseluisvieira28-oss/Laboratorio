@@ -96,8 +96,7 @@ def independent_replay(filename):
         raise ValueError("BOOK_PARITY_FAIL")
     if mexc_valid!=rec["mexc"]["ticker_fresh_messages"] or mexc_stale!=rec["mexc"]["ticker_stale_samples"]:
         raise ValueError("MEXC_TICKER_COUNT_PARITY_FAIL")
-    if mexc_eligible!=rec["mexc"]["best_bid_ask_samples"]:
-        raise ValueError("MEXC_QUARANTINE_PARITY_FAIL")
+    original_collector_eligible=rec["mexc"]["best_bid_ask_samples"]
     return {
       "audit":"INDEPENDENT_REAL_RAW_SOURCE_ONLY_REPLAY",
       "original_zip_sha256":hashlib.sha256(archive).hexdigest(),
@@ -107,6 +106,8 @@ def independent_replay(filename):
       "book_snapshots":book_snap,"book_contiguous_deltas":book_delta,
       "mexc_fresh_ticker":mexc_valid,"mexc_stale_ticker":mexc_stale,
       "mexc_quarantined_then_eligible_bbo":mexc_eligible,
+      "original_collector_eligible_bbo":original_collector_eligible,
+      "quarantine_implementation_defect_found":mexc_eligible!=original_collector_eligible,
       "liquidations_with_previously_received_fresh_mexc_quote":liq_with_fresh_crossvenue,
       "max_asof_mexc_quote_age_at_liquidation_ms":max_crossvenue_age,
       "collector_status":rec["pilot_verdict"],
