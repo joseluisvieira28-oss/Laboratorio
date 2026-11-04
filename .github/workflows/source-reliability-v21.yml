@@ -22,3 +22,4 @@ jobs:
           python-version: '3.12'
       - run: git rev-parse HEAD
       - run: python -m unittest discover -s research/source_reliability_v21 -p 'test_*.py' -v
+      - run: python research/source_reliability_v21/audit_zip.py research/source_reliability_v21/evidence-20261104.zip "${{ runner.temp }}/source-v21-audit.json"
