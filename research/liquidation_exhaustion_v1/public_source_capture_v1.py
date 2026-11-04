@@ -143,7 +143,7 @@ async def collect():
 def self_test():
     now=1790000000000
     assert validate({"topic":"allLiquidation.BTCUSDT","data":[{"s":"BTCUSDT","S":"Sell","p":"60000","v":"1","T":now}]},now)==("allLiquidation","BTCUSDT",1)
-    assert validate({"topic":"orderbook.50.ETHUSDT","type":"snapshot","data":{"s":"ETHUSDT","u":1,"b":[],"a":[]}},now)==("orderbook","ETHUSDT",1)
+    assert validate({"topic":"orderbook.50.ETHUSDT","type":"snapshot","data":{"s":"ETHUSDT","u":1,"b":[],"a":[]}},now)==("orderbook.50","ETHUSDT",1)
     try:
         validate({"topic":"allLiquidation.BTCUSDT","data":[{"s":"ETHUSDT","S":"Sell","p":"1","v":"1","T":now}]},now)
         raise AssertionError("should reject mismatch")
