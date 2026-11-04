@@ -61,7 +61,7 @@ class SettlementReceiptTests(unittest.TestCase):
         receipt=self.check(*self.make())
         self.assertEqual(receipt["status"],"OFFICIAL_SETTLEMENT_INDEPENDENTLY_AUDITED_NOT_EDGE")
         self.assertEqual(receipt["P1_net_usdc"],"0")
-        self.assertEqual(receipt["C0_net_usdc"],"14.441")
+        self.assertEqual(audit_settlement.independent.dec(receipt["C0_net_usdc"]),D("14.441"))
         self.assertFalse(receipt["edge_proven"])
 
     def test_missing_delivery_stays_unsettled(self):
