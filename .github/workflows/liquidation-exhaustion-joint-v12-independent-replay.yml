@@ -1,0 +1,51 @@
+# Independent reproducibility gate; only source quality, no market returns.
+name: Liquidation Exhaustion V1.2 — independent joint raw source replay
+on:
+  push:
+    branches:
+      - research/liquidation-exhaustion-economic-forward-v1-2026-11-04
+    paths:
+      - .github/workflows/liquidation-exhaustion-joint-v12-independent-replay.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-joint-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact original public dual-source artifact #13344759793
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --location --silent --show-error \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/13344759793/zip" \
+            --output original_joint_source.zip
+      - name: Independent causal source-only replay and immutable checks
+        run: |
+          python research/liquidation_exhaustion_economic_forward_v1/independent_joint_source_audit.py original_joint_source.zip > independent_joint_receipt.json
+          python - <<'PY'
+          import json
+          r=json.load(open("independent_joint_receipt.json"))
+          assert r["zip_sha256"]=="ceba3e7b19ff1226d3f84c424c3fca904d8bdc9f59b969ae1a1939bfcfe4c736"
+          assert r["raw_sha256"]=="ddc79738929f40028a4e0702eb7f3028bb4e74a9a57edef533df30d5c6e2f96f"
+          assert r["bybit_liquidation_children"]==1
+          assert r["liquidations_with_causal_prior_quote_book_trade"]==1
+          assert r["bybit_contiguous_book_deltas"]==10358
+          assert r["mexc_depth_frames"]==856
+          assert r["mexc_depth_after_strict_quarantine"]==854
+          assert r["economic_outcomes_opened"] is False
+          assert r["PnL"] is None
+          print("JOINT_DUAL_VENUE_CAUSAL_SOURCE_INDEPENDENT_PASS / ECONOMICS_NOT_TESTED")
+          PY
+      - name: Publish independent forensic receipt (including blocked)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liquidation-exhaustion-v12-independent-source-verdict
+          path: independent_joint_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
