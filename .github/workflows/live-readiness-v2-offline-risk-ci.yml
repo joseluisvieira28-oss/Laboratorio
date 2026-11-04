@@ -32,9 +32,21 @@ jobs:
           assert risk_firewall.live_enabled() is False
           print("NO_LIVE_TRANSPORT_STATIC_GUARD_PASS")
           PY
-      - name: Independent adversarial fault-injection test matrix
+      - name: Prove CI FAILS if upstream tests FAIL (pipefail injection)
+        shell: bash
         run: |
+          set -euo pipefail
+          if bash -o pipefail -c 'false | tee /dev/null'; then
+            echo "UNSAFE_CI_FALSE_GREEN"; exit 1
+          fi
+          echo "CI_PIPEFAIL_PROOF_PASS"
+      - name: Independent adversarial fault-injection test matrix
+        shell: bash
+        run: |
+          set -euo pipefail
           python -m unittest discover -s research/live_readiness_v2 -p 'test_risk_firewall.py' -v 2>&1 | tee risk_firewall_ci_output.txt
+          grep -E '^Ran [0-9]+ tests' risk_firewall_ci_output.txt
+          grep -x 'OK' risk_firewall_ci_output.txt
       - name: Save audit test evidence even if job fails
         if: always()
         uses: actions/upload-artifact@v4
