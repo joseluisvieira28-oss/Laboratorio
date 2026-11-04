@@ -9,3 +9,5 @@
 - Control ticker on same socket: only 14/46 fresh by frozen 1500ms maximum, remaining 32/46 stale. Depth is a clearly better *observed quote feed* in this single source window.
 - This proves a public MEXC full-depth message source is available and temporally fresh for this bounded observation. Does NOT certify full order fills, time-skew across exchanges, 60-second outcomes, broker access, actual user fee rate, profitability or live trading.
 - Verdict MEXC_DEPTH_SOURCE_WINDOW_TECHNICAL_PASS / ECONOMICS_NOT_TESTED / NO_LIVE_GO.
+
+Additional independent raw quote-cadence audit: 426 successive snapshot-receive intervals had median 272ms, maximum 527ms, and **0 intervals over 1500ms**. This is bounded-window quote-source cadence only, NOT a guarantee of future fills or cross-venue clock parity.\n
