@@ -69,6 +69,8 @@ class PaperFencedStore:
              seq INTEGER PRIMARY KEY AUTOINCREMENT, at_ms INTEGER NOT NULL,
              epoch INTEGER NOT NULL, event TEXT NOT NULL, detail TEXT NOT NULL,
              previous_digest TEXT NOT NULL, digest TEXT NOT NULL)""")
+        # Refuse to boot if the durable paper evidence has been unexpectedly modified.
+        self.verify_audit()
 
     def close(self) -> None:
         self.db.close()
