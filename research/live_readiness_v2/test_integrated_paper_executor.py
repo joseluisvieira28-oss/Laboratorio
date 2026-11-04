@@ -115,8 +115,10 @@ class PaperIntegratedFixture(unittest.TestCase):
         st=self.executor.status()
         self.assertEqual(st["custody"]["phase"],"FROZEN_RECOVERY_REQUIRED")
         self.assertEqual(st["mock_broker"]["unprotected_positions"],1)
-        self.reject("NOT_PAPER_ARMED",lambda:self.paper_entry(
-                     intent=replace(self.intent,client_id="extra"),now=NOW+3))
+        self.assertEqual(
+            self.paper_entry(intent=replace(self.intent,client_id="extra"),now=NOW+3),
+            "REJECT_RISK:NOT_PAPER_ARMED")
+        self.assertEqual(len(self.executor.broker.snapshot()["orders"]),1)
 
     def test_mock_broker_rejects_duplicate_id_even_if_called_directly(self):
         self.paper_entry()
