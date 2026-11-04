@@ -118,7 +118,7 @@ async def collect():
                         kind,symbol,size=value
                         r["counts"][msg["topic"]]+=1
                         if kind=="allLiquidation":r["liquidation_children"]+=size
-                        if kind=="orderbook":
+                        if kind.startswith("orderbook."):
                             if msg["type"]=="snapshot":r["book_snapshots"][symbol]+=1
                             u=msg["data"]["u"]
                             prev=last_book_u.get(symbol)
