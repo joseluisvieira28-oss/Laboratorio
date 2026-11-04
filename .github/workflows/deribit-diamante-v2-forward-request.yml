@@ -46,6 +46,8 @@ jobs:
                   subprocess.run(command, check=True, stdout=output)
               print((dated/'independent-forward-audit.json').read_text())
           PY
+      - name: Verify previous archived expiry
+        run: python research/deribit_diamante_v2/settle_prior.py --request research/deribit_diamante_v2/FORWARD_REQUEST.json --evidence research/deribit_diamante_v2/evidence --work /tmp/v2-expiry
       - name: Preserve evidence on research branch only
         if: always()
         run: |
