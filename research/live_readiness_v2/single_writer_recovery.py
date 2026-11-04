@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import sqlite3
 import uuid
@@ -24,6 +25,7 @@ class GuardError(Exception):
 class Ticket:
     owner: str
     epoch: int
+    process_id: int
 
 
 @dataclass(frozen=True)
@@ -112,6 +114,8 @@ class PaperFencedStore:
 
     def _guard(self, m: dict, ticket: Ticket, now_ms: int):
         self._time(now_ms)
+        if ticket.process_id != os.getpid():
+            return Denied("TICKET_PROCESS_MISMATCH")
         if now_ms < m["last_ms"]:
             # Persisted circuit breaker, not rolled back by raising.
             self.db.execute("UPDATE owner_state SET hard_lock=1,phase='FROZEN_CLOCK' WHERE id=1")
@@ -162,7 +166,7 @@ class PaperFencedStore:
                      last_ms=?,phase=?,session_until_ms=0,policy_sha=NULL,strategy_sha=NULL
                      WHERE id=1""",(owner,epoch,now_ms+lease_ms,now_ms,phase))
                 self._event(epoch,now_ms,"FENCE_CLAIM",{"recovery_required":epoch>1})
-                ticket=Ticket(owner,epoch)
+                ticket=Ticket(owner,epoch,os.getpid())
         if denial:raise GuardError(denial)
         return ticket
 
