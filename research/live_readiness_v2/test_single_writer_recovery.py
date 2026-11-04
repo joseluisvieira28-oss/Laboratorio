@@ -264,6 +264,11 @@ class PaperFixture(unittest.TestCase):
         self.store.db.execute("UPDATE audit SET digest='bad' WHERE seq=1")
         self.reject("AUDIT_DIGEST_MISMATCH",self.store.verify_audit)
 
+    def test_corrupted_audit_chain_prevents_new_process_start(self):
+        self.arm()
+        self.store.db.execute("UPDATE audit SET digest='changed' WHERE seq=1")
+        self.reject("AUDIT_DIGEST_MISMATCH",lambda:PaperFencedStore(self.path))
+
     def test_audit_last_head_mismatch_detected(self):
         self.arm()
         self.store.db.execute("UPDATE owner_state SET last_digest='bad' WHERE id=1")
