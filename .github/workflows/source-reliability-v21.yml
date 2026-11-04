@@ -1,0 +1,24 @@
+name: Source Reliability V2.1 offline bounded
+on:
+  pull_request:
+    paths: ['research/source_reliability_v21/**', '.github/workflows/source-reliability-v21.yml']
+permissions:
+  contents: read
+concurrency:
+  group: source-v21-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source-adversarial:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: git rev-parse HEAD
+      - run: python -m unittest discover -s research/source_reliability_v21 -p 'test_*.py' -v
