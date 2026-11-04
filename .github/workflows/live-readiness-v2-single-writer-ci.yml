@@ -1,0 +1,65 @@
+# Isolated one-shot test, PAPER ONLY. No broker, credentials, or live adapter.
+name: Crypto Lab V2 — SQLite single-writer and crash recovery adversarial CI
+on:
+  push:
+    branches:
+      - research/live-readiness-v2-supervised-architecture-2026-11-04
+    paths:
+      - .github/workflows/live-readiness-v2-single-writer-ci.yml
+permissions:
+  contents: read
+jobs:
+  cross-platform-mock-recovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile paper-only Python modules (stdlib only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/live_readiness_v2/single_writer_recovery.py
+          python -m py_compile research/live_readiness_v2/test_single_writer_recovery.py
+      - name: Static no live/adapters/secret mode guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("research/live_readiness_v2/single_writer_recovery.py")
+          s=p.read_text()
+          assert "def live_enabled()" in s and "return False" in s
+          assert "BEGIN IMMEDIATE" in s and "synchronous=FULL" in s
+          assert "FROZEN_RECOVERY_REQUIRED" in s
+          for token in ("import ccxt","import requests","import websockets",
+                        "create_order(", "place_order(", "http.client","urllib.request"):
+              assert token not in s, "FORBIDDEN_LIVE_CODE: "+token
+          print("SINGLE_WRITER_NO_LIVE_NETWORK_GUARD_PASS")
+          PY
+      - name: Fail-CI-on-left-side-error proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          if bash -o pipefail -c 'false | tee /dev/null'; then
+            echo "FALSE_GREEN_FAILURE"; exit 1
+          fi
+          echo "CI_PIPEFAIL_GUARD_PASS"
+      - name: Final Windows leak-free boot rejection and Linux PID-fencing crash tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s research/live_readiness_v2 -p 'test_single_writer_recovery.py' -v 2>&1 | tee single_writer_test_receipt.txt
+          grep -E '^Ran [0-9]+ tests' single_writer_test_receipt.txt
+          grep -x 'OK' single_writer_test_receipt.txt
+      - name: Preserve test receipts even if failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-readiness-v2-single-writer-${{ matrix.os }}
+          path: single_writer_test_receipt.txt
+          if-no-files-found: warn
+          retention-days: 30
