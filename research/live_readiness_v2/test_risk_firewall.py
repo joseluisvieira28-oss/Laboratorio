@@ -200,6 +200,14 @@ class SessionSafety(unittest.TestCase):
         self.assertTrue(restarted.loss_locked)
         with self.assertRaisesRegex(Rejected,"LOSS_LOCK_PERSISTENT"):
             restarted.reconcile_flat(paper_broker_flat=True,human_approval=True)
+    def test_external_journal_advance_blocks_second_mock_operator(self):
+        # Two offline engines are deliberately initialised before either arms.
+        other=Firewall(self.policy,HashJournal(self.fw.journal.path))
+        self.fw.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+        with self.assertRaisesRegex(Rejected,"JOURNAL_WRITE_FAILED"):
+            other.arm_paper(NOW,120000,self.policy.digest,SHA,True)
+        self.assertEqual(other.state,"FROZEN_JOURNAL_FAILURE")
+        self.assertEqual(len(HashJournal.verify(self.fw.journal.path)),1)
     def test_tamper_detected(self):
         self.fw.arm_paper(NOW,120000,self.policy.digest,SHA,True)
         s=self.fw.journal.path.read_text()
