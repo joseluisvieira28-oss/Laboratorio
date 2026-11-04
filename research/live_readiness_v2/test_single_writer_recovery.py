@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Attack SQLite single-writer/recovery rules with separate connections and crash injection."""
 import concurrent.futures
+import os
+import subprocess
+import sys
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -326,6 +329,99 @@ class MultiprocessStyleRace(unittest.TestCase):
             finally:
                 first.close()
 
+
+
+class RealSubprocessCrashTests(unittest.TestCase):
+    """Actual OS processes, not just independent SQLite threads."""
+
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.file=Path(self.tmp.name)/"worker.sqlite"
+        db=PaperFencedStore(self.file)
+        db.close()
+        self.env=dict(os.environ)
+        src_dir=str(Path(__file__).resolve().parent)
+        self.env["PYTHONPATH"]=src_dir+os.pathsep+self.env.get("PYTHONPATH","")
+
+    def command(self, script):
+        return [sys.executable,"-c",script,str(self.file)]
+
+    def test_six_real_processes_only_one_can_claim(self):
+        code="""import sys
+from single_writer_recovery import PaperFencedStore,GuardError
+db=PaperFencedStore(sys.argv[1])
+try:
+  db.claim(2000000000000)
+  print('WON',flush=True)
+except GuardError as e:
+  print('REJECT:'+str(e),flush=True)
+finally:
+  db.close()
+"""
+        workers=[subprocess.Popen(self.command(code),env=self.env,
+                 stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+                 for _ in range(6)]
+        results=[p.communicate(timeout=15) for p in workers]
+        self.assertTrue(all(p.returncode==0 for p in workers),results)
+        lines=[a.strip() for a,b in results]
+        self.assertEqual(lines.count("WON"),1,lines)
+        self.assertEqual(lines.count("REJECT:LEASE_HELD_BY_OTHER"),5,lines)
+
+    def test_real_process_exit_after_commit_keeps_pending_and_forces_reconcile(self):
+        code="""import os,sys
+from single_writer_recovery import PaperFencedStore
+db=PaperFencedStore(sys.argv[1])
+t=db.claim(2000000000000)
+db.arm_paper(t,2000000000001,human_approval=True,
+             policy_sha='1'*64,strategy_sha='2'*64,ttl_ms=10000)
+db.reserve(t,2000000000002,'crashed_pending','2'*64)
+os._exit(17)
+"""
+        child=subprocess.run(self.command(code),env=self.env,
+                             stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                             text=True,timeout=15)
+        self.assertEqual(child.returncode,17,child.stderr)
+        store=PaperFencedStore(self.file)
+        try:
+            self.assertEqual(store.inspect()["intents"][0]["state"],"PENDING")
+            new=store.claim(NOW+30001)
+            self.assertEqual(store.inspect()["phase"],"FROZEN_RECOVERY_REQUIRED")
+            with self.assertRaisesRegex(GuardError,"RECOVERY_OR_FREEZE_BLOCK"):
+                store.arm_paper(new,NOW+30002,human_approval=True,
+                     policy_sha=POLICY,strategy_sha=STRATEGY)
+            store.reconcile_flat(new,NOW+30003,human_approval=True,
+                                 mock_flat_confirmed=True)
+            store.arm_paper(new,NOW+30004,human_approval=True,
+                            policy_sha=POLICY,strategy_sha=STRATEGY,ttl_ms=1000)
+            with self.assertRaisesRegex(GuardError,"DUPLICATE_INTENT_PERSISTENT"):
+                store.reserve(new,NOW+30005,"crashed_pending",STRATEGY)
+        finally:store.close()
+
+    def test_real_process_exit_mid_transaction_rolls_back_uncommitted_reservation(self):
+        code="""import os,sys
+from single_writer_recovery import PaperFencedStore
+db=PaperFencedStore(sys.argv[1])
+t=db.claim(2000000000000)
+db.arm_paper(t,2000000000001,human_approval=True,
+             policy_sha='1'*64,strategy_sha='2'*64,ttl_ms=10000)
+db.db.execute('BEGIN IMMEDIATE')
+db.db.execute("INSERT INTO paper_intents(client_id,epoch,state,created_ms,updated_ms) VALUES('uncommitted',1,'PENDING',2000000000002,2000000000002)")
+os._exit(19)
+"""
+        child=subprocess.run(self.command(code),env=self.env,
+                             stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                             text=True,timeout=15)
+        self.assertEqual(child.returncode,19,child.stderr)
+        store=PaperFencedStore(self.file)
+        try:
+            self.assertEqual(store.inspect()["intents"],[])
+            self.assertEqual(store.inspect()["phase"],"PAPER_ARMED")
+            self.assertGreaterEqual(store.verify_audit(),2)
+            new=store.claim(NOW+30001)
+            self.assertEqual(store.inspect()["phase"],"FROZEN_RECOVERY_REQUIRED")
+            store.reconcile_flat(new,NOW+30002,human_approval=True,mock_flat_confirmed=True)
+        finally:store.close()
 
 if __name__=="__main__":
     unittest.main(verbosity=2)
