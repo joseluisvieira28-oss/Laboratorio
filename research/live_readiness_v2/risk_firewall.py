@@ -172,6 +172,9 @@ class HashJournal:
 
     def record(self, event: str, data: dict) -> None:
         require(isinstance(event, str) and bool(event), "EMPTY_EVENT")
+        existing = self.verify(self.path) if self.path.exists() and self.path.stat().st_size else []
+        current = existing[-1]["hash"] if existing else "0" * 64
+        require(current == self.previous, "JOURNAL_EXTERNAL_WRITE_DETECTED")
         payload = {"prev": self.previous, "event": event, "data": data}
         digest = hashlib.sha256(json.dumps(payload, sort_keys=True,
                                             separators=(",", ":")).encode()).hexdigest()
