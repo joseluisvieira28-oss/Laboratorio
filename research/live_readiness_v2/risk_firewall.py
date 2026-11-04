@@ -12,6 +12,8 @@ from pathlib import Path
 import hashlib
 import json
 import os
+import threading
+from functools import wraps
 
 
 class Rejected(Exception):
@@ -182,12 +184,22 @@ class HashJournal:
         self.previous = digest
 
 
+def synchronized(method):
+    """Serialise simulated account state changes and id reservations."""
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapper
+
+
 class Firewall:
     """Paper-only state machine: no method can produce or submit a real order."""
 
     def __init__(self, policy: Policy, journal: HashJournal):
         self.policy = policy
         self.journal = journal
+        self._lock = threading.RLock()
         self.state = "DISARMED"
         self.expires_ms = -1
         self.used_ids = set()
@@ -195,8 +207,19 @@ class Firewall:
         self.weekly_loss = Decimal(0)
         self.active = None
         self.last_event = None
-        # Even valid historical journal requires independent reconciliation:
+        self.loss_locked = False
+        # On recovery, journal is authoritative for dedup and loss locks.
+        # A recovered session is NEVER automatically armed.
         if self.journal.path.exists() and self.journal.path.stat().st_size:
+            records = HashJournal.verify(self.journal.path)
+            for event in records:
+                if event["event"] == "INTENT_RESERVED":
+                    self.used_ids.add(event["data"]["client_id"])
+                elif event["event"] == "LOSS_SNAPSHOT":
+                    self.daily_loss = max(self.daily_loss, D(event["data"]["daily"]))
+                    self.weekly_loss = max(self.weekly_loss, D(event["data"]["weekly"]))
+                elif event["event"] == "LOSS_LIMIT":
+                    self.loss_locked = True
             self.state = "FROZEN_RECONCILIATION_REQUIRED"
 
     def _write(self, event: str, data: dict) -> None:
@@ -206,9 +229,11 @@ class Firewall:
             self.state = "FROZEN_JOURNAL_FAILURE"
             raise Rejected("JOURNAL_WRITE_FAILED")
 
+    @synchronized
     def arm_paper(self, now_ms: int, requested_ttl_ms: int, policy_digest: str,
                   strategy_sha: str, human_approval: bool) -> None:
         require(self.state == "DISARMED", "NOT_DISARMED")
+        require(not self.loss_locked, "LOSS_LOCK_PERSISTENT")
         require(human_approval is True, "HUMAN_APPROVAL_REQUIRED")
         require(policy_digest == self.policy.digest, "POLICY_HASH_MISMATCH")
         require(strategy_sha == self.policy.strategy_sha, "STRATEGY_HASH_MISMATCH")
@@ -219,6 +244,7 @@ class Firewall:
         self.expires_ms = now_ms + requested_ttl_ms
         self.state = "PAPER_ARMED"
 
+    @synchronized
     def disarm(self, reason: str) -> None:
         frozen = self.state.startswith("FROZEN")
         self._write("DISARM", {"reason": reason, "position_known": self.active is not None,
@@ -227,12 +253,23 @@ class Firewall:
         if not frozen:
             self.state = "DISARMED" if self.active is None else "FROZEN_POSITION_NEEDS_RECONCILIATION"
 
+    @synchronized
     def loss_mark(self, daily_cash_loss, weekly_cash_loss, now_ms: int, equity) -> None:
         daily, weekly, eq = D(daily_cash_loss), D(weekly_cash_loss), D(equity)
         require(eq > 0 and daily >= 0 and weekly >= 0, "BAD_PNL_SNAPSHOT")
-        self.daily_loss, self.weekly_loss = daily, weekly
-        if daily >= eq * D(self.policy.daily_fraction) or weekly >= eq * D(self.policy.weekly_fraction):
-            self._write("LOSS_LIMIT", {"daily": str(daily), "weekly": str(weekly)})
+        require(type(now_ms) is int, "BAD_PNL_TIME")
+        # No reset by reporting a smaller loss. An actual new risk epoch would
+        # need a separate audited procedure; not implemented.
+        self.daily_loss = max(self.daily_loss, daily)
+        self.weekly_loss = max(self.weekly_loss, weekly)
+        self._write("LOSS_SNAPSHOT", {"daily": str(self.daily_loss),
+                                      "weekly": str(self.weekly_loss),
+                                      "equity": str(eq), "at_ms": now_ms})
+        if (self.daily_loss >= eq * D(self.policy.daily_fraction)
+                or self.weekly_loss >= eq * D(self.policy.weekly_fraction)):
+            self._write("LOSS_LIMIT", {"daily": str(self.daily_loss),
+                                       "weekly": str(self.weekly_loss)})
+            self.loss_locked = True
             self.state = "FROZEN_LOSS_LIMIT"
 
     def _preflight(self, intent: Intent, quote: Quote, account: Account,
@@ -281,6 +318,7 @@ class Firewall:
                 "entry_quote":str(entry), "stop":str(stop), "risk_cash":str(modeled_risk),
                 "notional":str(notional), "policy_sha":self.policy.digest}
 
+    @synchronized
     def simulate(self, intent: Intent, quote: Quote, account: Account,
                  scenario: BrokerScenario, now_ms: int) -> str:
         try:
@@ -328,7 +366,9 @@ class Firewall:
         self.state = "PAPER_PROTECTED"
         return "PAPER_PROTECTED"
 
+    @synchronized
     def reconcile_flat(self, *, paper_broker_flat: bool, human_approval: bool) -> None:
+        require(not self.loss_locked, "LOSS_LOCK_PERSISTENT")
         require(self.state.startswith("FROZEN") or self.state == "PAPER_PROTECTED",
                 "RECONCILIATION_NOT_NEEDED")
         require(human_approval is True and paper_broker_flat is True,
