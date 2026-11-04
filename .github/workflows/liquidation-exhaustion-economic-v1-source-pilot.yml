@@ -1,0 +1,48 @@
+# One-shot source pilot, not an economic outcome study.
+name: Liquidation Exhaustion Economic Forward V1 — Bybit/MEXC source pilot
+on:
+  push:
+    branches:
+      - research/liquidation-exhaustion-economic-forward-v1-2026-11-04
+    paths:
+      - .github/workflows/liquidation-exhaustion-economic-v1-source-pilot.yml
+permissions:
+  contents: read
+jobs:
+  public-source-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install public websocket library only
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Synthetic validation BEFORE any market data
+        run: python research/liquidation_exhaustion_economic_forward_v1/dual_venue_source_pilot.py --self-test
+      - name: Single 240s public two-venue SOURCE-ONLY recording — no outcomes
+        run: python research/liquidation_exhaustion_economic_forward_v1/dual_venue_source_pilot.py
+      - name: Preserve raw source and fail-closed receipt even on errors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liquidation-exhaustion-economic-v1-dual-venue-source-pilot
+          path: artifacts/liquidation_exhaustion_economic_forward_v1/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Publish source-only job summary, no issue-write permissions
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          p=pathlib.Path("artifacts/liquidation_exhaustion_economic_forward_v1/pilot_receipt.json")
+          print("## Economic Forward V1 — public data gate only")
+          if not p.exists():
+              print("NO_RECEIPT: test/setup/source transport failure. ECONOMICS_NOT_TESTED.")
+          else:
+              j=json.loads(p.read_text())
+              print("Status:",j["pilot_verdict"])
+              print("Observed BTC liquidation children:",j["bybit"]["liquidation_children"])
+              print("Valid MEXC best-bid/ask samples:",j["mexc"]["best_bid_ask_samples"])
+              print("MEXC stale ticker messages:",j["mexc"]["ticker_stale_samples"])
+              print("Source SHA256:",j["raw_sha256"])
+              print("No paper performance, accounts or orders.")
+          PY
