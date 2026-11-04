@@ -69,8 +69,13 @@ class PaperFencedStore:
              seq INTEGER PRIMARY KEY AUTOINCREMENT, at_ms INTEGER NOT NULL,
              epoch INTEGER NOT NULL, event TEXT NOT NULL, detail TEXT NOT NULL,
              previous_digest TEXT NOT NULL, digest TEXT NOT NULL)""")
-        # Refuse to boot if the durable paper evidence has been unexpectedly modified.
-        self.verify_audit()
+        # Refuse to boot if evidence is corrupt, and close the database even
+        # when startup verification raises (Windows holds open files locked).
+        try:
+            self.verify_audit()
+        except BaseException:
+            self.db.close()
+            raise
 
     def close(self) -> None:
         self.db.close()
