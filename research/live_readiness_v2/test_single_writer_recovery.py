@@ -305,25 +305,26 @@ class MultiprocessStyleRace(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             p=Path(root)/"intents.sqlite"
             first=PaperFencedStore(p)
-            second=PaperFencedStore(p)
             try:
                 token=first.claim(NOW)
                 first.arm_paper(token,NOW+1,human_approval=True,
                                 policy_sha=POLICY,strategy_sha=STRATEGY,ttl_ms=10000)
-                def insert(db,idx):
+                def insert(idx):
+                    db=PaperFencedStore(p)
                     try:
                         db.reserve(token,NOW+2,f"parallel-{idx}",STRATEGY)
                         return "RESERVED"
                     except GuardError as e:
                         return str(e)
+                    finally:
+                        db.close()
                 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-                    futures=[pool.submit(insert,first,0),pool.submit(insert,second,1)]
-                    outcomes=[a.result() for a in futures]
+                    outcomes=list(pool.map(insert,range(2)))
                 self.assertEqual(outcomes.count("RESERVED"),1,outcomes)
                 self.assertEqual(sum(o=="ANOTHER_POSITION_OR_ORDER_PENDING" for o in outcomes),1,outcomes)
                 self.assertEqual(len(first.inspect()["intents"]),1)
             finally:
-                first.close();second.close()
+                first.close()
 
 
 if __name__=="__main__":
