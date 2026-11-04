@@ -220,8 +220,12 @@ class Firewall:
         self.state = "PAPER_ARMED"
 
     def disarm(self, reason: str) -> None:
-        self._write("DISARM", {"reason": reason, "position_known": self.active is not None})
-        self.state = "DISARMED" if self.active is None else "FROZEN_POSITION_NEEDS_RECONCILIATION"
+        frozen = self.state.startswith("FROZEN")
+        self._write("DISARM", {"reason": reason, "position_known": self.active is not None,
+                                "already_frozen": frozen})
+        # CRITICAL: an operator DISARM must never clear a loss/unknown-broker freeze.
+        if not frozen:
+            self.state = "DISARMED" if self.active is None else "FROZEN_POSITION_NEEDS_RECONCILIATION"
 
     def loss_mark(self, daily_cash_loss, weekly_cash_loss, now_ms: int, equity) -> None:
         daily, weekly, eq = D(daily_cash_loss), D(weekly_cash_loss), D(equity)
