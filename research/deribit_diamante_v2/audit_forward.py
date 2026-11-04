@@ -144,6 +144,20 @@ def audit_entry(archive, sha256, day):
         entry_allin = premium+entryfee
         one_tick = sum(Q*next_price(v["ask"],v["meta"])+fee(next_price(v["ask"],v["meta"]),v["index"]) for v in legs)
         econ = receipt["structures"]["straddle"]
+        recorded_legs = econ.get("legs", [])
+        check(len(recorded_legs) == 2, "MISSING_PINNED_ENTRY_LEGS")
+        for name, expected, pinned in zip(("atm_call", "atm_put"), legs, recorded_legs):
+            check(pinned.get("symbol") == chosen[name] and pinned.get("side") == expected["side"],
+                  "PINNED_CONTRACT_MISMATCH")
+            for key, value in (("strike", strike), ("ask", expected["ask"]),
+                               ("bid", expected["bid"]), ("index", expected["index"])):
+                check(key in pinned and abs(dec(pinned[key])-value)<D(".000001"),
+                      "PINNED_LEG_MISMATCH_"+key)
+            book=data[name]
+            check(dec(pinned.get("bid_depth",0))==max((dec(q) for v,q in book["bids"] if dec(v)==expected["bid"]),default=D(0)) and
+                  dec(pinned.get("ask_depth",0))==max((dec(q) for v,q in book["asks"] if dec(v)==expected["ask"]),default=D(0)),
+                  "PINNED_DEPTH_MISMATCH")
+            check(instant(pinned.get("expiry"))==expiration, "PINNED_EXPIRY_MISMATCH")
         for field,value in [("entry_premium",premium),("entry_fee",entryfee),
                             ("entry_allin",entry_allin),("roundtrip_pct",friction_pct),
                             ("one_tick_allin",one_tick)]:
