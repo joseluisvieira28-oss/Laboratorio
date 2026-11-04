@@ -65,6 +65,9 @@ class Adversarial(unittest.TestCase):
     def test_transport_gap_never_drops_exposure(self):
         r=Replay(1); p={'status':'OPEN'}; r.pending=p; r.decisions=[p]
         r.reset('disconnect'); self.assertEqual(p['status'],'UNRESOLVED'); self.assertIsNone(r.pending)
+    def test_sufficient_losing_sample_is_no_edge(self):
+        episodes=[{'status':'COMPLETE','decision_ms':day*86400000+i*120000,'base_bps':-1,'stress_bps':-2} for day in range(14) for i in range(5)]
+        self.assertEqual(economic_gate(episodes)['verdict'],'NO_EDGE')
     def test_unknown_units_block(self):
         r=Replay(); r.book=1000000; r.mexc=(1000000,self.depth()['data'])
         r.liq=[(999999,'Buy',60000),(1000000,'Buy',60000)]; r.trades=[(1000000,'Buy',10000)]; r.detect(1000000)

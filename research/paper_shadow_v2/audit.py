@@ -3,7 +3,11 @@ import gzip, json
 from collections import Counter
 from pathlib import Path
 from shadow import Replay, sha
-p=Path(__file__).parent/'pilot-20261104'; rows=[json.loads(x) for x in (p/'raw.jsonl').read_text().splitlines()]
+p=Path(__file__).parent/'pilot-20261104'
+if not (p/'raw.jsonl').exists(): (p/'raw.jsonl').write_bytes(gzip.decompress((p/'raw.jsonl.gz').read_bytes()))
+original=json.loads((p/'report.json').read_text())
+assert sha(p/'raw.jsonl')==original['raw_sha256'], 'RAW_HASH_MISMATCH'
+rows=[json.loads(x) for x in (p/'raw.jsonl').read_text().splitlines()]
 contract=json.loads(next(x['raw'] for x in rows if x['kind']=='contract'))['data']['contractSize']
 r=Replay(contract)
 for row in rows: r.feed(row)
