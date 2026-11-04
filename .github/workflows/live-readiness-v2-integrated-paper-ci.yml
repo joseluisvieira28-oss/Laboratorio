@@ -1,0 +1,70 @@
+# One-shot isolated PAPER integration CI. No exchange endpoints, credentials or schedules.
+name: Crypto Lab V2 — integrated paper executor crash boundary
+on:
+  push:
+    branches:
+      - research/live-readiness-v2-supervised-architecture-2026-11-04
+    paths:
+      - .github/workflows/live-readiness-v2-integrated-paper-ci.yml
+permissions:
+  contents: read
+jobs:
+  independent-cross-ledger-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile all paper modules and cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/live_readiness_v2/risk_firewall.py
+          python -m py_compile research/live_readiness_v2/single_writer_recovery.py
+          python -m py_compile research/live_readiness_v2/integrated_paper_executor.py
+          python -m py_compile research/live_readiness_v2/test_integrated_paper_executor.py
+      - name: Fail closed if any integrated module has trade transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import sys, pathlib
+          sys.path.insert(0,"research/live_readiness_v2")
+          import risk_firewall, single_writer_recovery, integrated_paper_executor
+          for obj in (risk_firewall,single_writer_recovery,integrated_paper_executor):
+              assert obj.live_enabled() is False
+          source=pathlib.Path("research/live_readiness_v2/integrated_paper_executor.py").read_text()
+          for bad in ("import requests","import ccxt","import websockets",
+                      "urllib.request","socket.connect","create_order(","place_order("):
+              assert bad not in source, "FORBIDDEN_LIVE_TRANSPORT:"+bad
+          assert "PaperFencedStore" in source and "Firewall" in source
+          assert "mock_broker.sqlite" in source
+          assert "AFTER_BROKER_FILL" in source and "AFTER_BROKER_STOP_ACK" in source
+          print("PAPER_ONLY_DUAL_LEDGER_NO_LIVE_TRANSPORT_PASS")
+          PY
+      - name: Prove a failed test cannot get a false green CI status
+        shell: bash
+        run: |
+          set -euo pipefail
+          if bash -o pipefail -c 'false | tee /dev/null'; then
+            echo "FALSE_GREEN"; exit 1
+          fi
+          echo "PIPEFAIL_NEGATIVE_TEST_PASS"
+      - name: Run complete old plus integrated cross-ledger adversarial matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s research/live_readiness_v2 -p 'test_*.py' -v 2>&1 | tee integrated_paper_ci.txt
+          grep -E '^Ran [0-9]+ tests' integrated_paper_ci.txt
+          grep -x 'OK' integrated_paper_ci.txt
+      - name: Always retain test receipts for independent verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-readiness-v2-integrated-paper-${{ matrix.os }}
+          path: integrated_paper_ci.txt
+          if-no-files-found: warn
+          retention-days: 30
