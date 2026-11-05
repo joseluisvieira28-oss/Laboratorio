@@ -57,11 +57,11 @@ class Independent:
     def _stamp(self,m,r):
         x=int(m["ts"])
         chk(r["utc_ms"]-1500<=x<=r["utc_ms"]+250,"WRONG_SOURCE_TIMESTAMP")
-    def _levels(self,rows,allowzero):
+    def _levels(self,rows,allowzero,allowthird=False):
         chk(isinstance(rows,list),"MISSING_PRICE_LEVELS")
         ps=[]
         for pair in rows:
-            chk(isinstance(pair,list) and len(pair)==2,"LEVEL_SHAPE")
+            chk(isinstance(pair,list) and (len(pair)==2 or (allowthird and len(pair)==3)),"LEVEL_SHAPE")
             ps.append((val(pair[0]),val(pair[1],allowzero)))
         chk(len({x[0] for x in ps})==len(ps),"DUPLICATE_PRICE")
         return ps
@@ -121,7 +121,7 @@ class Independent:
             self._stamp(msg,r)
             d=msg["data"];ver=int(d["version"])
             chk(self.um is None or ver>self.um,"MEXC_VERSION")
-            b=self._levels(d["bids"],False);a=self._levels(d["asks"],False)
+            b=self._levels(d["bids"],False,True);a=self._levels(d["asks"],False,True)
             chk(len(b)>=5 and len(a)>=5,"MEXC_SHORT")
             chk([x[0] for x in b]==sorted([x[0] for x in b],reverse=True),"MEXC_B_SORT")
             chk([x[0] for x in a]==sorted([x[0] for x in a]),"MEXC_A_SORT")
