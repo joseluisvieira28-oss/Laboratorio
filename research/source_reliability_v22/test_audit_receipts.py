@@ -20,8 +20,11 @@ class AuditFaults(unittest.TestCase):
                     "venue":"system","kind":kind,"segment":0,"raw":"fixture"}
         data=(json.dumps(row(1,0))+"\n"+json.dumps(row(2,5,"end"))+"\n").encode()
         with gzip.open(self.p/"raw.jsonl.gz","wb") as f:f.write(data)
+        source_dir=Path(__file__).resolve().parent
         (self.p/"manifest.json").write_text(json.dumps({
             "raw_sha256":digest(data),"gzip_sha256":digest((self.p/"raw.jsonl.gz").read_bytes()),
+            "protocol_sha256":digest((source_dir/"PROTOCOL_FROZEN.md").read_bytes()),
+            "source_sha256":digest((source_dir/"compare.py").read_bytes()),
             "rows":2}))
         (self.p/"report.json").write_text(json.dumps({
             "comparison":{k:{"good":0,"stale_resets":0} for k in "ABC"},
