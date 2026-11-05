@@ -13,7 +13,12 @@ class AuditFaults(unittest.TestCase):
     def setUp(self):
         self.folder=tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
-        self.p=Path(self.folder.name)
+        self.p=Path(self.folder.name)/"v22_evidence"
+        self.p.mkdir()
+        captured=self.p.parent/"research"/"source_reliability_v22"
+        captured.mkdir(parents=True)
+        for name in ("PROTOCOL_FROZEN.md","compare.py"):
+            (captured/name).write_bytes((Path(__file__).resolve().parent/name).read_bytes())
         def row(seq,t,kind="start"):
             return {"seq":seq,"elapsed":t,"utc_ms":1793850000000+int(t*1000),
                     "mono_ns":1111000000000+int(t*1e9),
