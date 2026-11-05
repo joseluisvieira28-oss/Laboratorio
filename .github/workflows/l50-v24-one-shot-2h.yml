@@ -1,0 +1,122 @@
+name: Crypto Lab V2.4 ONE-SHOT 2h L50 + Bybit liquidation SOURCE STRESS
+on:
+  push:
+    branches:
+      - research/l50-stress-liquidation-v24-2026-11-05
+    paths:
+      - .github/workflows/l50-v24-one-shot-2h.yml
+permissions:
+  contents: read
+jobs:
+  collect-public-only-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 145
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert pre-capture protocol frozen, no exchange order transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pathlib,sys
+          v24=pathlib.Path("research/source_reliability_v24")
+          sys.path.insert(0,str(v24))
+          import source_guard
+          assert source_guard.live_enabled() is False
+          capture=(v24/"capture_v24.py").read_text()
+          assert "source.WINDOW = 7200" in capture
+          assert "allLiquidation.BTCUSDT" in capture
+          assert "orderbook.50.BTCUSDT" in capture
+          assert (v24/"PROTOCOL_FROZEN.md").exists()
+          for bad in ("create_order(","place_order(","private.position","api_key"):
+              assert bad not in capture, bad
+          print("V24_PRECAPTURE_FREEZE_AND_PUBLIC_ONLY_PASS")
+          PY
+      - name: Install pinned public WebSocket client, no broker SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-input websockets==15.0.1
+      - name: ONE finite 7200-second live public market-data capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/source_reliability_v24/capture_v24.py v24_evidence 2>&1 | tee v24_stdout.txt
+      - name: Raw manifest integrity check (NOT an independent source verdict)
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,hashlib,json
+          d=pathlib.Path("v24_evidence")
+          if not (d/"manifest.json").exists() or not (d/"report.json").exists():
+              print("MISSING_CAPTURE_RECEIPT");raise SystemExit(2)
+          m=json.loads((d/"manifest.json").read_text())
+          r=json.loads((d/"report.json").read_text())
+          sha=lambda p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          assert sha(d/"raw.jsonl.gz")==m["gzip_sha256"]
+          assert sha("research/source_reliability_v24/PROTOCOL_FROZEN.md")==m["protocol_sha256"]
+          assert sha("research/source_reliability_v22/compare.py")==m["source_sha256"]
+          assert r["live_verdict"]=="NO_LIVE_GO" and r["pnl"]=="NOT_COMPUTED_SOURCE_ONLY"
+          print("RAW_MANIFEST_SELF_HASH_PASS")
+          print("CAPTURE_END",m["end_reason"])
+          print("RECORDS",m["rows"])
+          PY
+      - name: Preserve original raw, protocol and code even after failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v24-original-public-source-2h
+          path: |
+            v24_evidence/
+            v24_stdout.txt
+            research/source_reliability_v24/PROTOCOL_FROZEN.md
+            research/source_reliability_v24/capture_v24.py
+            research/source_reliability_v22/compare.py
+          retention-days: 30
+          if-no-files-found: warn
+
+  independently-replay-original-evidence:
+    needs: collect-public-only-once
+    if: always()
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact original public evidence from preceding job
+        uses: actions/download-artifact@v4
+        with:
+          name: v24-original-public-source-2h
+          path: original_artifact
+      - name: Independent frozen 2h causal source and stress event gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/source_reliability_v24/audit_v24.py original_artifact/v24_evidence 2>&1 | tee v24_independent_receipt.json
+          python - <<'PY'
+          import json
+          with open("v24_independent_receipt.json",encoding="utf-8") as fh:
+              r=json.load(fh)
+          assert r["live_verdict"]=="NO_LIVE_GO"
+          assert r["economic_verdict"]=="ECONOMIC_INSUFFICIENT"
+          assert r["pnl"]=="NOT_COMPUTED_SOURCE_ONLY"
+          assert len(r["ten_minute_windows"])==12
+          print("V24_INDEPENDENT_AUDIT_COMPLETED",r["source_verdict"])
+          # Source BLOCKED is a genuine scientific failure, never a green CI.
+          if r["source_verdict"] in (
+                  "SOURCE_STRESS_BLOCKED","SOURCE_STRESS_BLOCKED_RESOURCE_CAP",
+                  "SOURCE_STRESS_NOT_MEASURED"):
+              raise SystemExit("SOURCE_STRESS_QUALITY_GATE_FAILED")
+          PY
+      - name: Preserve independent Windows/Linux forensic receipts on failure too
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v24-independent-original-raw-${{ matrix.os }}
+          path: v24_independent_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
