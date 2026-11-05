@@ -23,6 +23,8 @@ jobs:
           set -euo pipefail
           python -m py_compile research/source_reliability_v22/compare.py
           python -m py_compile research/source_reliability_v22/test_compare.py
+          python -m py_compile research/source_reliability_v22/audit_receipts.py
+          python -m py_compile research/source_reliability_v22/test_audit_receipts.py
       - name: Assert observer has no trading transport
         shell: bash
         run: |
@@ -44,11 +46,11 @@ jobs:
           if bash -o pipefail -c 'false | tee /dev/null'; then
             echo "FALSE_GREEN"; exit 1
           fi
-      - name: Causal stream and delta reconstruction fault tests
+      - name: Causal orderbook and independent evidence-integrity adversarial matrix
         shell: bash
         run: |
           set -euo pipefail
-          python -m unittest discover -s research/source_reliability_v22 -p 'test_compare.py' -v 2>&1 | tee compare_tests.txt
+          python -m unittest discover -s research/source_reliability_v22 -p 'test_*.py' -v 2>&1 | tee compare_tests.txt
           grep -E '^Ran [0-9]+ tests' compare_tests.txt
           grep -x 'OK' compare_tests.txt
       - name: Preserve negative or positive offline evidence
