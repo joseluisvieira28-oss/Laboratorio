@@ -1,0 +1,60 @@
+name: Bybit V2.2 source comparator OFFLINE tests
+on:
+  push:
+    branches:
+      - research/bybit-book50-source-compare-v22-2026-11-05
+    paths:
+      - .github/workflows/bybit-v22-offline-ci.yml
+permissions:
+  contents: read
+jobs:
+  offline-fault-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile V2.2 protocol and parser
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/source_reliability_v22/compare.py
+          python -m py_compile research/source_reliability_v22/test_compare.py
+      - name: Assert observer has no trading transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import sys, pathlib
+          sys.path.insert(0,"research/source_reliability_v22")
+          from compare import live_enabled
+          assert live_enabled() is False
+          s=pathlib.Path("research/source_reliability_v22/compare.py").read_text()
+          for bad in ["import ccxt","create_order(","place_order(","api_key","private.position","order/create"]:
+              assert bad not in s, f"TRADING_TRANSPORT_DETECTED: {bad}"
+          print("V22_PAPER_ONLY_STATIC_GUARD_PASS")
+          PY
+      - name: Verify pipefail cannot mask broken tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          if bash -o pipefail -c 'false | tee /dev/null'; then
+            echo "FALSE_GREEN"; exit 1
+          fi
+      - name: Causal stream and delta reconstruction fault tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s research/source_reliability_v22 -p 'test_compare.py' -v 2>&1 | tee compare_tests.txt
+          grep -E '^Ran [0-9]+ tests' compare_tests.txt
+          grep -x 'OK' compare_tests.txt
+      - name: Preserve negative or positive offline evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v22-offline-source-tests-${{ matrix.os }}
+          path: compare_tests.txt
+          retention-days: 14
