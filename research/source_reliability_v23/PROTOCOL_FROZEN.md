@@ -1,0 +1,30 @@
+# Crypto Lab — L50 Cross-Sequence Parity & Continuity V2.3
+## Immutable pre-capture protocol — 2026-11-05 Europe/Zurich
+
+**Scoped authority:** ONE public-data prospective source observation for 900 seconds, NO TRADING, NO PRIVATE APIs, NO ORDERS, NO KEYS, NO LEVERAGE, NO PNL, NO FEES, NO AUTOMATED REPEATS, NO MERGE. This is a separate draft on top of V2.2 PR #337; frozen #333-#337, original ZIP, previous protocols and holdouts remain untouched.
+
+### Motivation and exploratory context (NON-INDEPENDENT)
+Prior 600-second V2.2 showed L50 570/600 (95%) and baseline L1 510/600 (85%) joint coverage and an initial 30s mandatory warmup. *Exploratory* local read of that already-known 600-second raw ZIP indicated 22,733/22,733 observed L50 delta update IDs (`u`) incremented by 1 and 19,901 stable L1 cross-sequence brackets showed bid/ask parity (19,901 matches). These prior results are used ONLY to design this new gate. They are NOT the new prospective outcome.
+
+Bybit V5 official orderbook documentation: https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook describes `seq` as a cross-depth sequence and `u=1` as restart. The strict `u(n+1)=u(n)+1` rule is independently investigated and NOT assumed to be officially guaranteed for L50; a gap makes this experiment fail until a new snapshot/resync can be proved. Full-orderbook doc explicitly documents consecutive `u` for *full-depth*, which is not automatically authoritative for L50.
+
+### Fixed capture and resource gate
+- One GitHub Actions standard public Linux runner, 900s nominal wall, 960s hard timeout, max 64 MiB compressed / 256 MiB uncompressed raw. No paid compute, no recurring jobs.
+- Use the already vetted V2.2 public observer `research/source_reliability_v22/compare.py` EXACTLY AS COMMITTED in this branch, with ONLY `WINDOW=900` and `HERE` replaced at runtime to read this V2.3 frozen protocol; capture wrapper/source and original V2.2 code included in artifact and SHA256 attested. The old #337 experiment is not re-run or altered.
+- Bybit public linear BTCUSDT `orderbook.1` and `orderbook.50` on SAME WebSocket plus MEXC public futures `sub.depth.full BTC_USDT limit=5`. Source authorisation/interval/receive time and control L1 use the unchanged V2.2 code; new strict V2.3 `u`/L1 parity analysis takes place in the **independent offline raw auditor**.
+- No lookahead in acquisition or quote freshness. Offline bid/ask comparison may use the future L1 anchor to *validate historic consistency after the fact*, but those comparisons are NOT tradable decisions and cannot be used to infer an entry, future return or PnL.
+- Raw evidence kept as JSONL gzip with monotonically increasing receipt IDs, UTC ms and monotonic ns clocks, exact WebSocket payload, segment and event kind. Segment discontinuities and resets quarantine observations, never forward fill.
+- Keep original artifact & on-job reports, ZIP SHA and raw checksum; audit **the same original GitHub artifact** on Windows AND Linux.
+
+### Independent cross-sequence parity algorithm (FROZEN)
+1. Stream raw JSONL in receive order. Reconstruct L50 book from snapshot + bid/ask deltas with Decimal exact quantities; size 0 = delete; new snapshot resets; crossed/empty BBO => reject. Invalid, out-of-order / decreasing `seq` or nonconsecutive delta `u` => **integrity failure**, no posthoc gap repair.
+2. For each L50 reconstructed update with cross-depth `seq=s`, find L1 snapshot with greatest `seq<=s` (previous anchor) and first L1 snapshot with smallest `seq>=s` (next anchor), from the same uninterrupted source segment. Require both L1 anchors' **bid and ask prices identical**, and at most **200ms receipt-time distance** to L50 update on each side, with no L1 receive timestamp >200ms behind/ahead in a way that crosses a source segment. Count **stable anchor** only when these conditions hold; otherwise label uncomparable, not matching.
+3. For stable anchors, compare **both** best bid and best ask at full decimal precision from L50 reconstructed book to L1 bracket. Every stable comparison that differs counts as a true inconsistency. Because the future L1 anchor is used *after capture*, this statistic is an offline **diagnostic quality check** only, not a latency-free executable quote.
+4. Require at least **15,000** stable anchors (a minimum coverage sample, not independent 15k trading observations), parity agreement **>=99.9%** among stable anchors, zero missing delta `u` increments within uninterrupted L50 segments, zero monotonic `seq` reversals, zero invalid/crossed reconstructed BBO and zero raw receipt sequence/clock violations.
+5. Independently reproduce 1-second as-of joint Bybit L50 + MEXC source coverage. At least **855/900 good seconds (95%)**, original mandatory 30s initial warmup counted invalid, all source quarantine/reconnects counted. At most one reconnection per venue and no more than 1% invalid source frame parsing.
+6. Also publish control L1 (A) same-window coverage and L50-L1 paired difference. **RELATIVE_GAIN_REPRODUCED** only if L50-A >=5 percentage points; otherwise `RELATIVE_GAIN_NOT_REPRODUCED`. This is a separate finding, not needed for source parity gate.
+7. `SOURCE_PARITY_PASS_LIMITED` only if all above and complete >=900s wall, original and audited SHA checks. Otherwise `SOURCE_PARITY_BLOCKED` (not `NO_EDGE`). If no original capture available, `SOURCE_PARITY_NOT_MEASURED`.
+8. Economic gate NEVER opens in this V2.3. `ECONOMIC_INSUFFICIENT / NO_LIVE_GO` always. Only a future independent 2h (or longer) source confirmation with explicit Bybit resynchronization could be considered. No multi-day paper strategy forward authorized by this source diagnostic.
+
+### Anti-p-hacking and resource note
+Freeze protocol in an independent commit BEFORE new capture. No threshold tuning or re-labeling if source fails. Auditor corrections to literal message shapes or Windows line ending must preserve raw bytes, original protocol and failed receipts, and must be openly recorded. No second capture or continuous schedule.
