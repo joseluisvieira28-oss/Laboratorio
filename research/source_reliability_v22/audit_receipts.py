@@ -168,6 +168,10 @@ def audit(path):
     expected=json.loads((path/"report.json").read_text())
     chk(raw.exists(),"MISSING_RAW")
     chk(sha(raw.read_bytes())==manifest["gzip_sha256"],"GZIP_SHA256_MISMATCH")
+    frozen=Path(__file__).resolve().parent/"PROTOCOL_FROZEN.md"
+    source=Path(__file__).resolve().parent/"compare.py"
+    chk(sha(frozen.read_bytes())==manifest["protocol_sha256"],"PROTOCOL_SHA256_MISMATCH")
+    chk(sha(source.read_bytes())==manifest["source_sha256"],"SOURCE_SHA256_MISMATCH")
     raw_h=hashlib.sha256();n=0;ind=Independent()
     with gzip.open(raw,"rb") as fh:
         for line in fh:
