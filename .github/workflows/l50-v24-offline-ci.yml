@@ -1,0 +1,69 @@
+name: Crypto Lab V2.4 fail-closed source-only offline regression
+on:
+  push:
+    branches:
+      - research/l50-stress-liquidation-v24-2026-11-05
+    paths:
+      - .github/workflows/l50-v24-offline-ci.yml
+permissions:
+  contents: read
+jobs:
+  offline-fault-injection:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile fresh V2.4 modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/source_reliability_v24/audit_v24.py
+          python -m py_compile research/source_reliability_v24/source_guard.py
+          python -m py_compile research/source_reliability_v24/test_v24.py
+          python -m py_compile research/source_reliability_v24/capture_v24.py
+      - name: Confirm public-only source and no trading capability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pathlib,sys
+          sys.path.insert(0,"research/source_reliability_v24")
+          import source_guard
+          assert source_guard.live_enabled() is False
+          sources=[pathlib.Path("research/source_reliability_v24")/p for p in
+             ["capture_v24.py","audit_v24.py","source_guard.py"]]
+          for p in sources:
+              s=p.read_text()
+              for bad in ("import ccxt", "place_order(","create_order(",
+                          "private.position","wss://stream.bybit.com/v5/private",
+                          "wss://stream.bybit.com/v5/trade"):
+                  assert bad not in s, (p,bad)
+          print("PUBLIC_ONLY_NO_LIVE_ORDER_GUARD_PASS")
+          PY
+      - name: Assert pipefail cannot accidentally mark red tests green
+        shell: bash
+        run: |
+          set -euo pipefail
+          if bash -o pipefail -c 'false | tee /dev/null'; then
+            echo "FALSE_GREEN_CI";exit 1
+          fi
+          echo "PIPEFAIL_GUARD_PASS"
+      - name: Execute SOURCE ONLY synthetic missing-packet and liquidation gate attacks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s research/source_reliability_v24 -p 'test_v24.py' -v 2>&1 | tee v24_offline_test_receipt.txt
+          grep -E '^Ran [0-9]+ tests' v24_offline_test_receipt.txt
+          grep -x 'OK' v24_offline_test_receipt.txt
+      - name: Preserve raw test log on both success and failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v24-fail-closed-synthetic-tests-${{ matrix.os }}
+          path: v24_offline_test_receipt.txt
+          retention-days: 30
+          if-no-files-found: warn
