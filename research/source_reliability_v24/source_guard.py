@@ -30,6 +30,8 @@ class SafeL50:
         self.incidents=[]
         self.resubscribe_required=True
     def _freeze(self,now_ms,reason):
+        if type(now_ms) is not int or now_ms<=0:
+            now_ms=self.last_ms or 0
         self.incidents.append({"at_ms":now_ms,"reason":reason})
         self.state="AWAIT_SNAPSHOT"
         self.resubscribe_required=True
@@ -65,6 +67,7 @@ class SafeL50:
                 b=dict(bids);a=dict(asks);self._good(b,a)
                 # Receiving snapshot cannot circumvent pre-existing quarantine.
                 self.bids=b;self.asks=a;self.u=u;self.seq=seq
+                self.ready_after_ms=max(self.ready_after_ms,now_ms+self.quarantine_ms)
                 self.last_ms=now_ms
                 self.resubscribe_required=False
                 self.state="QUARANTINED" if now_ms<self.ready_after_ms else "SOURCE_READY"
