@@ -1,0 +1,47 @@
+name: Crypto Lab V2.3 independent replay of ORIGINAL 900s raw
+on:
+  push:
+    branches:
+      - research/l50-seq-parity-v23-2026-11-05
+    paths:
+      - .github/workflows/bybit-v23-independent-replay.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay-original-public-raw:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch ONLY original GitHub public capture artifact 13394232355
+        uses: actions/download-artifact@v4
+        with:
+          name: v23-original-900s-public-source-raw
+          run-id: 41980319398
+          github-token: ${{ github.token }}
+          path: original_artifact
+      - name: Assert no live trading and compare frozen raw hashes plus strict parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/source_reliability_v23/audit_v23.py original_artifact/v23_evidence 2>&1 | tee independent_v23_receipt.json
+          grep -q '"original_raw_sha256":' independent_v23_receipt.json
+          grep -q '"source_verdict":' independent_v23_receipt.json
+          grep -q '"live_verdict": "NO_LIVE_GO"' independent_v23_receipt.json
+          grep -q '"economic_verdict": "ECONOMIC_INSUFFICIENT"' independent_v23_receipt.json
+          if grep -q '"audit": "FAILED"' independent_v23_receipt.json; then
+            echo "FAILED_INDEPENDENT_AUDIT";exit 1
+          fi
+      - name: Always preserve full independent raw replay receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v23-independent-900s-replay-${{ matrix.os }}
+          path: independent_v23_receipt.json
+          if-no-files-found: warn
+          retention-days: 30

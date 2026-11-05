@@ -1,0 +1,60 @@
+name: Crypto Lab V2.3 offline seq-parity adversarial tests
+on:
+  push:
+    branches:
+      - research/l50-seq-parity-v23-2026-11-05
+    paths:
+      - .github/workflows/bybit-v23-auditor-ci.yml
+permissions:
+  contents: read
+jobs:
+  offline-auditor-failure-injection:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile only offline modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile research/source_reliability_v23/audit_v23.py
+          python -m py_compile research/source_reliability_v23/test_audit_v23.py
+      - name: Show original frozen protocol and auditor separation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import sys,pathlib
+          sys.path.insert(0,"research/source_reliability_v23")
+          from audit_v23 import Parity
+          src=pathlib.Path("research/source_reliability_v23/audit_v23.py").read_text()
+          assert "import compare" not in src
+          for bad in ("import ccxt","create_order(","place_order(","api_key"):
+              assert bad not in src, bad
+          assert pathlib.Path("research/source_reliability_v23/PROTOCOL_FROZEN.md").exists()
+          print("V23_INDEPENDENT_NO_TRADING_GUARD_PASS")
+          PY
+      - name: Verify test errors cannot be hidden by tee
+        shell: bash
+        run: |
+          set -euo pipefail
+          if bash -o pipefail -c 'false | tee /dev/null'; then exit 1; fi
+      - name: Run strict cross-seq parity and integrity fault-injection cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s research/source_reliability_v23 -p 'test_*.py' -v 2>&1 | tee v23_unit_log.txt
+          grep -E '^Ran [0-9]+ tests' v23_unit_log.txt
+          grep -x 'OK' v23_unit_log.txt
+      - name: Always preserve test receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v23-parity-offline-unit-tests-${{ matrix.os }}
+          path: v23_unit_log.txt
+          if-no-files-found: warn
+          retention-days: 30
