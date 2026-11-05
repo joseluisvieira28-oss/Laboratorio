@@ -371,6 +371,16 @@ def stress_brackets(parity,clusters):
     return result
 
 
+def window_quality(good_seconds, minutes=120):
+    """Fixed 600-second windows; exact one-second bins, no cherry-picked exclusions."""
+    size=600; windows=[]
+    for i in range(minutes//10):
+        count=sum(1 for t in good_seconds if i*size<t<=(i+1)*size)
+        windows.append({"window_utc_relative":i,"start_s":i*size,"end_s":(i+1)*size,
+                        "joint_good":count,"fraction":count/size})
+    return windows,[w["window_utc_relative"] for w in windows if w["joint_good"]<540]
+
+
 def audit(path):
     root=Path(path)
     manifest=json.loads((root/"manifest.json").read_text())
@@ -414,12 +424,7 @@ def audit(path):
     stable=bracket["stable_brackets"]
     match=bracket["price_parity_match"]
     frac=(match/stable) if stable else 0.
-    windows=[]
-    for i in range(12):
-        count=sum(1 for t in replay.accepted_seconds["C"] if i*600<t<=(i+1)*600)
-        windows.append({"window_utc_relative":i,"start_s":i*600,"end_s":(i+1)*600,
-                        "joint_good":count,"fraction":count/600})
-    bad_windows=[w["window_utc_relative"] for w in windows if w["joint_good"]<540]
+    windows,bad_windows=window_quality(replay.accepted_seconds["C"])
     stress=stress_brackets(parity,liquidations.clusters)
     full_capture=(float(report["elapsed_seconds"])>=7200 and end_reason=="WALL_LIMIT"
                   and manifest.get("end_reason")=="WALL_LIMIT"
