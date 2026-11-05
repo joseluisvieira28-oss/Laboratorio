@@ -168,8 +168,11 @@ def audit(path):
     expected=json.loads((path/"report.json").read_text())
     chk(raw.exists(),"MISSING_RAW")
     chk(sha(raw.read_bytes())==manifest["gzip_sha256"],"GZIP_SHA256_MISMATCH")
-    frozen=Path(__file__).resolve().parent/"PROTOCOL_FROZEN.md"
-    source=Path(__file__).resolve().parent/"compare.py"
+    # Original artifact files are used byte-for-byte to avoid Windows checkout
+    # CRLF changes to Markdown; do NOT trust reconstructed checkout file hashes.
+    captured_source_dir=path.parent/"research"/"source_reliability_v22"
+    frozen=captured_source_dir/"PROTOCOL_FROZEN.md"
+    source=captured_source_dir/"compare.py"
     chk(sha(frozen.read_bytes())==manifest["protocol_sha256"],"PROTOCOL_SHA256_MISMATCH")
     chk(sha(source.read_bytes())==manifest["source_sha256"],"SOURCE_SHA256_MISMATCH")
     raw_h=hashlib.sha256();n=0;ind=Independent()
@@ -184,7 +187,9 @@ def audit(path):
     chk(n==manifest["rows"],"RAW_ROW_COUNT_MISMATCH")
     for k in "ABC":
         chk(ind.good[k]==expected["comparison"][k]["good"],
-            "CAUSAL_GRID_MISMATCH_"+k+":"+str(ind.good[k])+" vs "+str(expected["comparison"][k]["good"]))
+            "CAUSAL_GRID_MISMATCH_"+k+":"+str(ind.good[k])+" vs "+str(expected["comparison"][k]["good"])+
+            " first_invalid="+repr(ind.invalid[:5])+" ack="+repr(ind.ack)+
+            " pong="+repr(ind.pong)+" counts="+repr(ind.count.most_common(8)))
         chk(ind.stale[k]==expected["comparison"][k]["stale_resets"],
             "STALE_COUNT_MISMATCH_"+k)
     chk(ind.count["l50_snapshot"]==expected["l50_snapshot_count"],
