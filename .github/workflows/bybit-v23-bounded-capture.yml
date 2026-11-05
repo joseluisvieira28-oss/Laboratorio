@@ -1,0 +1,69 @@
+name: Crypto Lab V2.3 single public L50 sequence parity capture
+on:
+  push:
+    branches:
+      - research/l50-seq-parity-v23-2026-11-05
+    paths:
+      - .github/workflows/bybit-v23-bounded-capture.yml
+permissions:
+  contents: read
+jobs:
+  one-shot-public-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert frozen protocol and no live trading path
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pathlib,sys
+          sys.path.insert(0,"research/source_reliability_v22")
+          from compare import live_enabled
+          assert live_enabled() is False
+          assert pathlib.Path("research/source_reliability_v23/PROTOCOL_FROZEN.md").is_file()
+          print("V23_FROZEN_PUBLIC_ONLY_PASS")
+          PY
+      - name: Install public websocket transport only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-input websockets==15.0.1
+      - name: One independent 900-second public source capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/source_reliability_v23/capture_v23.py v23_evidence 2>&1 | tee v23_capture_stdout.txt
+      - name: Independent-of-trading source manifest checks
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,hashlib,json
+          d=pathlib.Path("v23_evidence")
+          if not (d/"report.json").exists():
+              print("CAPTURE_REPORT_MISSING");raise SystemExit(1)
+          m=json.loads((d/"manifest.json").read_text())
+          report=json.loads((d/"report.json").read_text())
+          sha=lambda f:hashlib.sha256(pathlib.Path(f).read_bytes()).hexdigest()
+          assert sha(d/"raw.jsonl.gz")==m["gzip_sha256"]
+          assert sha("research/source_reliability_v23/PROTOCOL_FROZEN.md")==m["protocol_sha256"]
+          assert sha("research/source_reliability_v22/compare.py")==m["source_sha256"]
+          assert report["live_verdict"]=="NO_LIVE_GO" and report["pnl"]=="NOT_COMPUTED_SOURCE_ONLY"
+          print("V23_RAW_SHA_AND_NO_LIVE_GUARD_PASS")
+          print("GRID_RESULT",report["comparison"])
+          PY
+      - name: Preserve ORIGINAL capture raw and source/protocol bytes even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v23-original-900s-public-source-raw
+          path: |
+            v23_evidence/
+            v23_capture_stdout.txt
+            research/source_reliability_v23/PROTOCOL_FROZEN.md
+            research/source_reliability_v23/capture_v23.py
+            research/source_reliability_v22/compare.py
+          if-no-files-found: warn
+          retention-days: 30
