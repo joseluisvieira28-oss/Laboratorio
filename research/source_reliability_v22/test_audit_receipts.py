@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from audit_receipts import audit,AuditFail
+from audit_receipts import audit,AuditFail,Independent
 
 def digest(x):return hashlib.sha256(x).hexdigest()
 
@@ -30,6 +30,12 @@ class AuditFaults(unittest.TestCase):
             "comparison":{k:{"good":0,"stale_resets":0} for k in "ABC"},
             "l50_snapshot_count":0,"l50_delta_count":0,"mexc_books":0,
             "l1_duplicate_no_refresh":0,"source_verdict":"SOURCE_COMPARE_BLOCKED"}))
+    def test_real_mexc_depth_shape_has_three_fields(self):
+        rows=[["80377.1","239562",1],["80377.0","10",4]]
+        a=Independent()
+        self.assertEqual(len(a._levels(rows,False,True)),2)
+        with self.assertRaisesRegex(AuditFail,"LEVEL_SHAPE"):
+            a._levels(rows,False,False)
     def test_synthetic_empty_evidence_never_claims_edge(self):
         a=audit(self.p)
         self.assertEqual(a["audit"],"INDEPENDENT_RECEIVE_ORDER_RECONSTRUCTION_PASS")
