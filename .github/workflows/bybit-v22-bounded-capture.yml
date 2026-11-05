@@ -1,0 +1,69 @@
+name: Bybit V2.2 single bounded public L1 versus L50 capture
+on:
+  push:
+    branches:
+      - research/bybit-book50-source-compare-v22-2026-11-05
+    paths:
+      - .github/workflows/bybit-v22-bounded-capture.yml
+permissions:
+  contents: read
+jobs:
+  compare-real-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure checkout is new research branch and public-only no-trading mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pathlib,sys
+          sys.path.insert(0,"research/source_reliability_v22")
+          from compare import live_enabled,WINDOW
+          assert live_enabled() is False and WINDOW==600
+          assert pathlib.Path("research/source_reliability_v22/PROTOCOL_FROZEN.md").is_file()
+          print("RESEARCH_PAPER_ONLY_FREEZE_GUARD_PASS")
+          PY
+      - name: Install public websocket client only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-input websockets==15.0.1
+      - name: Single ten-minute public market capture (bounded)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/source_reliability_v22/compare.py v22_evidence 2>&1 | tee v22_capture_stdout.txt
+      - name: Self consistency check only, NOT economic GO
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib,json,hashlib,gzip
+          d=pathlib.Path("v22_evidence")
+          if not (d/"report.json").is_file() or not (d/"manifest.json").is_file():
+              print("EVIDENCE_MISSING");raise SystemExit(1)
+          r=json.loads((d/"report.json").read_text())
+          m=json.loads((d/"manifest.json").read_text())
+          h=lambda p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          assert h(d/"raw.jsonl.gz")==m["gzip_sha256"]
+          assert h("research/source_reliability_v22/PROTOCOL_FROZEN.md")==m["protocol_sha256"]
+          assert h("research/source_reliability_v22/compare.py")==m["source_sha256"]
+          assert r["live_verdict"]=="NO_LIVE_GO" and r["pnl"]=="NOT_COMPUTED_SOURCE_ONLY"
+          print("V22_RAW_HASH_AND_NO_LIVE_SELF_CHECK_PASS")
+          print("SOURCE_VERDICT",r["source_verdict"])
+          print("OBSERVED_L50",r["comparison"]["C"])
+          PY
+      - name: Preserve raw source / receipts even on failed run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v22-public-source-paired-10min-raw
+          path: |
+            v22_evidence/
+            v22_capture_stdout.txt
+            research/source_reliability_v22/PROTOCOL_FROZEN.md
+            research/source_reliability_v22/compare.py
+          if-no-files-found: warn
+          retention-days: 30

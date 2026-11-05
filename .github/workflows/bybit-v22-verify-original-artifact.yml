@@ -1,0 +1,42 @@
+name: Bybit V2.2 INDEPENDENT raw replay of original capture (no new market collection)
+on:
+  push:
+    branches:
+      - research/bybit-book50-source-compare-v22-2026-11-05
+    paths:
+      - .github/workflows/bybit-v22-verify-original-artifact.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-verify-original-raw:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the ORIGINAL bounded public raw artifact from run 41976298621
+        uses: actions/download-artifact@v4
+        with:
+          name: v22-public-source-paired-10min-raw
+          run-id: 41976298621
+          github-token: ${{ github.token }}
+          path: original_artifact
+      - name: Verify actual MEXC triple-book levels and rebuild original causal grid
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/source_reliability_v22/audit_receipts.py original_artifact/v22_evidence 2>&1 | tee independent_replay_receipt.json
+          grep -q 'INDEPENDENT_RECEIVE_ORDER_RECONSTRUCTION_PASS' independent_replay_receipt.json
+          grep -q '"live_verdict": "NO_LIVE_GO"' independent_replay_receipt.json
+      - name: Preserve independent receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v22-independent-original-raw-${{ matrix.os }}
+          path: independent_replay_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
