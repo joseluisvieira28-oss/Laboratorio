@@ -70,7 +70,7 @@ class Independent:
         chk(msg["type"]=="snapshot" and d["s"]=="BTCUSDT","WRONG_L1")
         b=self._levels(d["b"],False);a=self._levels(d["a"],False)
         chk(b and a and b[0][0]<a[0][0],"BAD_L1_BBO")
-        u=int(d["u"]);sig=(str(b[0][0]),str(a[0][0]),str(b[0][1]),str(a[0][1]))
+        u=int(d["u"]);sig=(str(b[0][0]),str(a[0][0]),str(d["b"][0][1]),str(d["a"][0][1]))
         if u==self.u1:
             chk(sig==self.sig1,"L1_SAME_U_CHANGED")
             self.clock["B"]=t;self.count["l1_duplicate"]+=1
