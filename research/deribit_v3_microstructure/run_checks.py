@@ -12,6 +12,10 @@ import unittest
 ROOT=Path(__file__).resolve().parents[2]
 def deny(*args, **kwargs): raise RuntimeError('NETWORK_FORBIDDEN')
 if __name__=='__main__':
+    import argparse
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--out',default='research/deribit_v3_microstructure/verification')
+    args=parser.parse_args()
     socket.socket.connect=deny
     socket.socket.connect_ex=deny
     socket.create_connection=deny
@@ -24,7 +28,7 @@ if __name__=='__main__':
     result=unittest.TextTestRunner(verbosity=2).run(suite)
     import offline_compare
     replay=offline_compare.compute()
-    out=ROOT/'research/deribit_v3_microstructure/verification'
+    out=ROOT/args.out
     out.mkdir(exist_ok=True)
     receipt=dict(python=platform.python_version(),tested_parent_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
         tests=result.testsRun, failures=len(result.failures), errors=len(result.errors),
