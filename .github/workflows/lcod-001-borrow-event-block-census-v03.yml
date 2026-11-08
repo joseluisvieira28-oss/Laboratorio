@@ -1,0 +1,40 @@
+name: LCOD-001 Borrow-event block census V0.3
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_BORROW_EVENT_CENSUS_V03_FREEZE.md'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_borrow_event_block_census_v03.py'
+      - '.github/workflows/lcod-001-borrow-event-block-census-v03.yml'
+permissions:
+  contents: write
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --disable-pip-version-check --quiet web3
+      - run: python research/liquidation_convexity_oracle_distance_001/lcod_borrow_event_block_census_v03.py
+      - name: Persist receipt
+        if: always()
+        run: |
+          if [ -f artifacts/lcod_borrow_event_block_census_v03.json ]; then
+            cp artifacts/lcod_borrow_event_block_census_v03.json research/liquidation_convexity_oracle_distance_001/LCOD_BORROW_EVENT_BLOCK_CENSUS_V03_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/liquidation_convexity_oracle_distance_001/LCOD_BORROW_EVENT_BLOCK_CENSUS_V03_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "LCOD-001: record per-spoke Borrow census V0.3 [skip ci]"
+              git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcod-borrow-event-block-census-v03
+          path: artifacts/lcod_borrow_event_block_census_v03.json
+          if-no-files-found: error
