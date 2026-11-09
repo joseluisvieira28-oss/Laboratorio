@@ -156,6 +156,13 @@ class CloudRunnerTests(unittest.TestCase):
             self.assertEqual(result["status"], "COHORT_COMPLETE")
             self.assertNotIn("evidence_commit", result)
 
+    def test_staging_branch_cannot_collect_market(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, _ = repo(tmp)
+            with self.assertRaisesRegex(ValueError, "PROSPECTIVE_REQUIRES_PRODUCTION_BRANCH"):
+                r.execute(work, "prospective", clock=lambda: DAY,
+                          branch="evidence/deribit-v3-staging-2026-11-09")
+
     def test_exclusive_day_claim(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
