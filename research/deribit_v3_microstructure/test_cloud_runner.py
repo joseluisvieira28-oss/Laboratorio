@@ -38,6 +38,10 @@ def add_receipt(root, day="2026-11-09", valid=True):
     path = prospect / (day + "-fixture")
     path.mkdir()
     manifest = []
+    for name in ("call", "put", "index", "instruments"):
+        body = r.canonical(dict(testnet=False, result=dict(fixture=True)))
+        (path / (name + ".json")).write_bytes(body)
+        manifest.append(dict(name=name, bytes=len(body), sha256=r.sha(body)))
     data = r.canonical(manifest)
     (path / "manifest.json").write_bytes(data)
     (path / "receipt.json").write_bytes(r.canonical(dict(
