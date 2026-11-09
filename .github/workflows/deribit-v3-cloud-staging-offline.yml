@@ -1,0 +1,42 @@
+name: Deribit V3 cloud staging (offline only)
+
+on:
+  push:
+    branches:
+      - research/deribit-v3-cloud-staging-2026-11-09
+  pull_request:
+    branches:
+      - research/deribit-v3-microstructure-protocol-2026-11-05
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v3-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout staged code without push credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python version
+        run: python --version
+      - name: Full frozen V2, EPE and V3 offline test suite
+        run: python research/deribit_v3_microstructure/run_checks.py --out /tmp/v3-cloud-staging-verification
+      - name: Confirm no trading or prospective execution
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("/tmp/v3-cloud-staging-verification/receipt.json")
+          r = json.loads(p.read_text())
+          assert r["status"] == "PASS"
+          assert r["forward_sessions"] == 0 and r["market_requests"] == 0
+          assert r["live_go"] is False
+          print("OFFLINE_STAGING_PASS; market_requests=0; forward_sessions=0")
+          PY
