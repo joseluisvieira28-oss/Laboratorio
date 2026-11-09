@@ -40,3 +40,39 @@ jobs:
           assert r["live_go"] is False
           print("OFFLINE_STAGING_PASS; market_requests=0; forward_sessions=0")
           PY
+
+  isolated-github-evidence-write:
+    if: github.event_name == 'push' && github.event.head_commit.message == 'ci: trigger isolated persistence check'
+    needs: offline-tests
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout pinned staging source without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: source
+          persist-credentials: false
+      - name: Checkout isolated staging evidence branch
+        uses: actions/checkout@v4
+        with:
+          ref: evidence/deribit-v3-staging-2026-11-09
+          path: evidence
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Configure Git author for synthetic receipts only
+        run: |
+          git -C evidence config user.name "github-actions[bot]"
+          git -C evidence config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Dry-run immutable evidence push (NO MARKET, NO FORWARD)
+        run: |
+          python source/research/deribit_v3_microstructure/cloud_runner.py \
+            --mode dryrun \
+            --evidence-checkout evidence \
+            --evidence-branch evidence/deribit-v3-staging-2026-11-09
+      - name: Confirm local evidence is clean after remote commit
+        run: |
+          test -z "$(git -C evidence status --porcelain)"
+          echo "STAGING_GITHUB_EVIDENCE_PUSH_PASS: dryrun only"
