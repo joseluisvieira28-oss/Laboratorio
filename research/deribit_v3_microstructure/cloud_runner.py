@@ -150,12 +150,16 @@ def publish(repo, evidence_dir, label, branch=BRANCH):
     return local
 
 
-def execute(evidence_checkout, mode, clock=utc_now, sleeper=time.sleep, publish_fn=publish):
+def execute(evidence_checkout, mode, clock=utc_now, sleeper=time.sleep, publish_fn=publish, branch=BRANCH):
     """No automatic execution: caller must explicitly choose dryrun/prospective."""
+    if branch != BRANCH and not branch.startswith("evidence/deribit-v3-staging-"):
+        raise ValueError("DISALLOWED_EVIDENCE_BRANCH")
+    if mode == "prospective" and branch != BRANCH:
+        raise ValueError("PROSPECTIVE_REQUIRES_PRODUCTION_BRANCH")
     repo = Path(evidence_checkout).resolve()
     if _git(repo, "status", "--porcelain"):
         raise ValueError("DIRTY_EVIDENCE_CHECKOUT")
-    if _git(repo, "symbolic-ref", "--short", "HEAD") != BRANCH:
+    if _git(repo, "symbolic-ref", "--short", "HEAD") != branch:
         raise ValueError("WRONG_EVIDENCE_BRANCH")
     root = repo / REL
     root.mkdir(parents=True, exist_ok=True)
@@ -190,7 +194,7 @@ def execute(evidence_checkout, mode, clock=utc_now, sleeper=time.sleep, publish_
             verify_existing(root)
     else:
         raise ValueError("INVALID_MODE")
-    result["evidence_commit"] = publish_fn(repo, root, label)
+    result["evidence_commit"] = publish_fn(repo, root, label, branch=branch)
     result["persistence"] = "PUSH_AND_REMOTE_SHA_VERIFIED"
     return result
 
@@ -199,5 +203,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--evidence-checkout", required=True)
     p.add_argument("--mode", required=True, choices=["dryrun", "prospective"])
+    p.add_argument("--evidence-branch", default=BRANCH)
     args = p.parse_args()
-    print(json.dumps(execute(args.evidence_checkout, args.mode), indent=2))
+    print(json.dumps(execute(args.evidence_checkout, args.mode, branch=args.evidence_branch), indent=2))
