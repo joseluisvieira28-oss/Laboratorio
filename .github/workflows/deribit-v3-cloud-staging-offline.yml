@@ -1,0 +1,115 @@
+name: Deribit V3 cloud staging (offline only)
+
+on:
+  push:
+    branches:
+      - research/deribit-v3-cloud-staging-2026-11-09
+  pull_request:
+    branches:
+      - research/deribit-v3-microstructure-protocol-2026-11-05
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v3-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout staged code without push credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python version
+        run: python --version
+      - name: Full frozen V2, EPE and V3 offline test suite
+        run: python research/deribit_v3_microstructure/run_checks.py --out /tmp/v3-cloud-staging-verification
+      - name: Confirm no trading or prospective execution
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("/tmp/v3-cloud-staging-verification/receipt.json")
+          r = json.loads(p.read_text())
+          assert r["status"] == "PASS"
+          assert r["forward_sessions"] == 0 and r["market_requests"] == 0
+          assert r["live_go"] is False
+          print("OFFLINE_STAGING_PASS; market_requests=0; forward_sessions=0")
+          PY
+
+  isolated-github-evidence-write:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/research/deribit-v3-cloud-staging-2026-11-09' &&
+      github.event.head_commit.message == 'test-cloud-push: one-shot synthetic evidence'
+    needs: offline-tests
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout pinned staging source without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: source
+          persist-credentials: false
+      - name: Checkout isolated staging evidence branch
+        uses: actions/checkout@v4
+        with:
+          ref: evidence/deribit-v3-staging-2026-11-09
+          path: evidence
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Configure Git author for synthetic receipts only
+        run: |
+          git -C evidence config user.name "github-actions[bot]"
+          git -C evidence config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Dry-run immutable evidence push (NO MARKET, NO FORWARD)
+        run: |
+          python source/research/deribit_v3_microstructure/cloud_runner.py \
+            --mode dryrun \
+            --evidence-checkout evidence \
+            --evidence-branch evidence/deribit-v3-staging-2026-11-09
+      - name: Confirm local evidence is clean after remote commit
+        run: |
+          test -z "$(git -C evidence status --porcelain)"
+          echo "STAGING_GITHUB_EVIDENCE_PUSH_PASS: dryrun only"
+
+  artifact-fallback-simulation:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/research/deribit-v3-cloud-staging-2026-11-09' &&
+      github.event.head_commit.message == 'test-cloud-artifact: synthetic fallback'
+    needs: offline-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - name: Prepare synthetic failure data only
+        run: |
+          mkdir -p evidence/research/deribit_v3_microstructure/forward_evidence/recovery_fixture
+          echo '{"kind":"SYNTHETIC_GIT_PUSH_FAILURE","prospective_v3":false,"orders":0,"net_pnl":null}' > evidence/research/deribit_v3_microstructure/forward_evidence/recovery_fixture/fixture.json
+      - name: Deliberately simulate push failure (no actual GitHub push)
+        id: simulate
+        continue-on-error: true
+        run: |
+          echo "SIMULATED_PUSH_FAILURE_ONLY"
+          exit 27
+      - name: Recover synthetic files as GitHub Actions artifact
+        if: steps.simulate.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deribit-v3-synthetic-recovery-${{ github.run_id }}
+          path: evidence/research/deribit_v3_microstructure/forward_evidence/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Assert simulated Git push failed before recovery
+        run: |
+          test "${{ steps.simulate.outcome }}" = "failure"
+          echo "SYNTHETIC_ARTIFACT_FALLBACK_PASS"
