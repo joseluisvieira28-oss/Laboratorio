@@ -12,7 +12,7 @@ Draft PR #343 stacked on V3 draft #341. Main, original V2 freeze, EPE and existi
 
 ## Changes since that confirmed 76/76 run
 - Cloud runner now restricts synthetic staging evidence branches to **dryrun only**, never `prospective`; adds fail-closed early wake-up and four hashed sources for successful receipts. New test written.
-- A one-shot GitHub Actions job with `contents:write` has been declared, gated to exact trigger commit message `ci: trigger isolated persistence check`. Trigger commit `02fd4855b6b2ece2d2957bd275d7fd94a7741884` exists. **No successful runner-driven GitHub evidence push has yet been verified.** Do not label this gate PASS.
+- A one-shot GitHub Actions job with `contents:write` has been declared, gated to exact trigger commit message `ci: trigger isolated persistence check`. Trigger commit `02fd4855b6b2ece2d2957bd275d7fd94a7741884` exists. **NOW VERIFIED 2026-11-09:** the named one-shot push created a *new* synthetic dryrun file in the GitHub staging evidence branch through the Actions job dependency, and the remote file was reread through the GitHub connector. This proves one automated push/readback, not schedule timeliness or prospective market capture.
 - The final post-change 77-test suite has not been independently confirmed as PASS. The earlier 76/76 PASS is valid only for its tested source SHA.
 
 ## Activation gates still closed
@@ -24,3 +24,12 @@ Draft PR #343 stacked on V3 draft #341. Main, original V2 freeze, EPE and existi
 6. Product-specific BTC_USDC daily expiry delivery fee remains UNVERIFIED: `net_pnl=null`; real trading permanently separate and NO-GO until independent economic proof.
 
 **No scheduler was activated and no forward data counted.** The staging fixture has `prospective_v3=false`, `orders=0`, `net_pnl=null`, `market_requests=0`.
+
+## Staging remote persistence proof — 2026-11-09
+- Trigger source commit: `0b74ee8112a7cc606d1d8c1f3da1c0a0276b1af8`, exact message `test-cloud-push: one-shot synthetic evidence`.
+- Target: `evidence/deribit-v3-staging-2026-11-09`; comparison against the prior branch head `2efb581bd18a96a8649d0bd333122872fe5434ff` returned `ahead_by=1`, showing a new Git commit and a newly added file.
+- Added file: `research/deribit_v3_microstructure/forward_evidence/dryrun/20261109T070945463375.json`.
+- File was reread from GitHub, content `{"kind":"SYNTHETIC_STORAGE_TEST", "at":"2026-11-09T07:09:45.463375+00:00", "prospective_v3":false, "orders":0, "net_pnl":null}` and Git blob SHA `8edd0732c3a30b6ccb703d693d8b602d61f41d02`.
+- The staging write job specifies `needs: offline-tests`, therefore successful new remote evidence supports that the job gate completed. The connector's commit-run listing is restricted and did not expose a job log or exact latest test count; **do not claim a precise 77/77 without those logs**. Earlier 76/76 confirmed by logs remains a distinct tested revision.
+- A separate previous synthetic receipt was written and reread via the connector at `2efb581`; do not mistake that connector test for the automated push.
+- This demonstrates one successful Actions-to-GitHub storage cycle but **does not demonstrate** repeat scheduling, failure recovery under a real production race, immutable external time anchoring or independent forward economic proof. Auto-prospective remains NOT ACTIVATED, 0/20, LIVE NO-GO.
