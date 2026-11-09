@@ -89,6 +89,9 @@ def _check_attempt(folder):
     if receipt.get("net_pnl") is not None or receipt.get("orders") != 0 or receipt.get("live_go") is not False:
         raise ValueError("UNEXPECTED_TRADING_ECONOMICS")
     if receipt.get("status") == "TECHNICAL_PASS":
+        if {m["name"] for m in manifest} != {"call", "put", "index", "instruments"} or any(
+                "sha256" not in m for m in manifest):
+            raise ValueError("INCOMPLETE_SUCCESSFUL_SOURCES")
         if receipt.get("mode") != "prospective" or receipt.get("prospective_v3") is not True or receipt.get("valid_technical") is not True:
             raise ValueError("INVALID_FORWARD_CLASSIFICATION")
     return receipt
@@ -168,6 +171,8 @@ def execute(evidence_checkout, mode, clock=utc_now, sleeper=time.sleep, publish_
         if prior >= 20:
             return dict(status="COHORT_COMPLETE", valid_sessions=prior, prospective_v3=False)
         at, status = clock_gate(clock, sleeper)
+        if status == "BEFORE":
+            raise ValueError("CLOCK_STILL_BEFORE_FROZEN_WINDOW")
         if status == "MISSED_WINDOW":
             path = root / "missed_windows" / (at.date().isoformat() + ".json")
             immutable(path, canonical(dict(status=status, utc=at.isoformat(),
