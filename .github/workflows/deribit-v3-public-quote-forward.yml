@@ -13,20 +13,20 @@ concurrency:
 
 jobs:
   quote-only:
-    if: ${{ github.repository == 'joseluisvieira28-oss/Laboratorio' && vars.DERIBIT_V3_FORWARD_ENABLED == 'true' && vars.DERIBIT_V3_FORWARD_APPROVED_SHA == '08a1806c23f1b7c3564d8f5fbfd1a80dbb40c272' }}
+    if: ${{ github.repository == 'joseluisvieira28-oss/Laboratorio' && vars.DERIBIT_V3_FORWARD_ENABLED == 'true' && vars.DERIBIT_V3_FORWARD_APPROVED_SHA == 'a16e13136db33a84191c25e5186fbbaa5da74058' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     permissions:
       contents: write
     steps:
       - name: Checkout audited immutable V3 collector (no credentials)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: 08a1806c23f1b7c3564d8f5fbfd1a80dbb40c272
+          ref: a16e13136db33a84191c25e5186fbbaa5da74058
           path: source
           persist-credentials: false
       - name: Restore dedicated persistent evidence branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: evidence/deribit-v3-forward
           path: evidence
@@ -52,14 +52,21 @@ jobs:
             --root evidence/research/deribit_v3_microstructure/forward_evidence
       - name: Verify evidence checkout clean following remote commit
         run: test -z "$(git -C evidence status --porcelain)"
-      - name: Preserve raw attempts when publication or verification fails
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
+      - name: Seal one-day recovery bundle when publication or verification fails
+        if: ${{ failure() || cancelled() }}
+        run: |
+          mkdir -p recovery
+          python source/research/deribit_v3_microstructure/recovery.py pack \
+            --root evidence/research/deribit_v3_microstructure/forward_evidence \
+            --day "$(date -u +%F)" --out recovery/evidence.zip | tee recovery/receipt.json
+      - name: Preserve bounded public evidence recovery bundle
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deribit-v3-uncommitted-recovery-${{ github.run_id }}
-          path: evidence/research/deribit_v3_microstructure/forward_evidence/
-          if-no-files-found: warn
-          retention-days: 30
+          path: recovery/
+          if-no-files-found: error
+          retention-days: 7
 
 # Activation requires BOTH repository variables exactly matching the pinned SHA.
 # DO NOT set variables or merge this PR before release gates and final review.
