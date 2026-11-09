@@ -1,0 +1,46 @@
+# NOT ACTIVE. Review and copy to .github/workflows on main ONLY after separate authorization.
+# Replace PINNED_SOURCE_SHA with a reviewed 40-hex commit containing V3 and cloud_runner.py.
+# The repo-scoped GITHUB_TOKEN must have permission to push to the dedicated evidence branch.
+# Existing main workflows and V2 must remain untouched.
+name: Deribit V3 public quote capture — gated
+on:
+  schedule:
+    - cron: "2 8 * * *" # 08:02 UTC; actual GitHub start may be delayed or skipped.
+
+permissions:
+  contents: write  # Git evidence branch only, NEVER exchange credentials.
+
+concurrency:
+  group: deribit-v3-public-quote-cohort
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout reviewed immutable collector source (no credentials)
+        uses: actions/checkout@v4
+        with:
+          ref: PINNED_SOURCE_SHA
+          path: source
+          persist-credentials: false
+      - name: Restore persistent single-writer evidence Git branch
+        uses: actions/checkout@v4
+        with:
+          ref: evidence/deribit-v3-forward
+          path: evidence
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Configure evidence-only Git author
+        run: |
+          git -C evidence config user.name "github-actions[bot]"
+          git -C evidence config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Fail-closed public quote attempt; zero execution API
+        run: |
+          python source/research/deribit_v3_microstructure/cloud_runner.py \
+            --mode prospective \
+            --evidence-checkout evidence \
+            --evidence-branch evidence/deribit-v3-forward
+      - name: Verify local working tree clean after evidence push
+        run: test -z "$(git -C evidence status --porcelain)"
