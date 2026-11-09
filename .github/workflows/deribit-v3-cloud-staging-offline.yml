@@ -79,3 +79,37 @@ jobs:
         run: |
           test -z "$(git -C evidence status --porcelain)"
           echo "STAGING_GITHUB_EVIDENCE_PUSH_PASS: dryrun only"
+
+  artifact-fallback-simulation:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/research/deribit-v3-cloud-staging-2026-11-09' &&
+      github.event.head_commit.message == 'test-cloud-artifact: synthetic fallback'
+    needs: offline-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - name: Prepare synthetic failure data only
+        run: |
+          mkdir -p evidence/research/deribit_v3_microstructure/forward_evidence/recovery_fixture
+          echo '{"kind":"SYNTHETIC_GIT_PUSH_FAILURE","prospective_v3":false,"orders":0,"net_pnl":null}' > evidence/research/deribit_v3_microstructure/forward_evidence/recovery_fixture/fixture.json
+      - name: Deliberately simulate push failure (no actual GitHub push)
+        id: simulate
+        continue-on-error: true
+        run: |
+          echo "SIMULATED_PUSH_FAILURE_ONLY"
+          exit 27
+      - name: Recover synthetic files as GitHub Actions artifact
+        if: steps.simulate.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deribit-v3-synthetic-recovery-${{ github.run_id }}
+          path: evidence/research/deribit_v3_microstructure/forward_evidence/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Assert simulated Git push failed before recovery
+        run: |
+          test "${{ steps.simulate.outcome }}" = "failure"
+          echo "SYNTHETIC_ARTIFACT_FALLBACK_PASS"
