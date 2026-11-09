@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   quote-only:
-    if: ${{ github.repository == 'joseluisvieira28-oss/Laboratorio' && vars.DERIBIT_V3_FORWARD_ENABLED == 'true' && vars.DERIBIT_V3_FORWARD_APPROVED_SHA == '5f18e1dfe118252bf580ef663b533bda8bbd86af' }}
+    if: ${{ github.repository == 'joseluisvieira28-oss/Laboratorio' && vars.DERIBIT_V3_FORWARD_ENABLED == 'true' && vars.DERIBIT_V3_FORWARD_APPROVED_SHA == '08a1806c23f1b7c3564d8f5fbfd1a80dbb40c272' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     permissions:
@@ -22,7 +22,7 @@ jobs:
       - name: Checkout audited immutable V3 collector (no credentials)
         uses: actions/checkout@v4
         with:
-          ref: 5f18e1dfe118252bf580ef663b533bda8bbd86af
+          ref: 08a1806c23f1b7c3564d8f5fbfd1a80dbb40c272
           path: source
           persist-credentials: false
       - name: Restore dedicated persistent evidence branch
@@ -36,34 +36,35 @@ jobs:
         run: |
           git -C evidence config user.name "github-actions[bot]"
           git -C evidence config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Verify complete restored archive before any public source request
+        run: |
+          python source/research/deribit_v3_microstructure/v3_archive_audit.py \
+            --root evidence/research/deribit_v3_microstructure/forward_evidence
       - name: Fail closed outside UTC window; public quotes only
         run: |
           python source/research/deribit_v3_microstructure/cloud_runner.py \
             --mode prospective \
             --evidence-checkout evidence \
             --evidence-branch evidence/deribit-v3-forward
-      - name: Independently audit all recorded prospective technical PASS receipts
+      - name: Independently verify every accepted session after publication
         run: |
-          python - <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-          source = Path("source/research/deribit_v3_microstructure")
-          sys.path.insert(0, str(source))
-          from v3_forward_audit import audit
-          root = Path("evidence/research/deribit_v3_microstructure/forward_evidence/prospective")
-          accepted = 0
-          for receipt_path in sorted(root.glob("*/receipt.json")):
-              receipt = json.loads(receipt_path.read_bytes())
-              if receipt.get("prospective_v3") is True:
-                  audit(receipt_path.parent, source)
-                  accepted += 1
-          assert accepted <= 20, "COHORT_CAP"
-          print(f"INDEPENDENT_FORWARD_QUOTE_AUDIT_PASS: {accepted} of 20")
-          PY
+          python source/research/deribit_v3_microstructure/v3_archive_audit.py \
+            --root evidence/research/deribit_v3_microstructure/forward_evidence
       - name: Verify evidence checkout clean following remote commit
         run: test -z "$(git -C evidence status --porcelain)"
+      - name: Preserve raw attempts when publication or verification fails
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: deribit-v3-uncommitted-recovery-${{ github.run_id }}
+          path: evidence/research/deribit_v3_microstructure/forward_evidence/
+          if-no-files-found: warn
+          retention-days: 30
 
 # Activation requires BOTH repository variables exactly matching the pinned SHA.
 # DO NOT set variables or merge this PR before release gates and final review.
 # No exchange credentials/private requests/orders/PNL. All failures retained.
+
+# GitHub artifacts are a SHORT-LIVED fallback only; they NEVER count as archived
+# forward observations until raw receipts are restored to the dedicated branch,
+# verified independently, and all original day claims have been reconciled.
