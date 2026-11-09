@@ -1,0 +1,50 @@
+name: Deribit V3 public quote forward — OFF unless explicitly enabled
+
+on:
+  schedule:
+    - cron: '2 8 * * *'  # UTC; runner may be delayed or skipped
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deribit-v3-public-quote-forward-single-writer
+  cancel-in-progress: false
+
+jobs:
+  quote-only:
+    if: ${{ github.repository == 'joseluisvieira28-oss/Laboratorio' && vars.DERIBIT_V3_FORWARD_ENABLED == 'true' && vars.DERIBIT_V3_FORWARD_APPROVED_SHA == '0b74ee8112a7cc606d1d8c1f3da1c0a0276b1af8' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout audited immutable V3 collector (no credentials)
+        uses: actions/checkout@v4
+        with:
+          ref: 0b74ee8112a7cc606d1d8c1f3da1c0a0276b1af8
+          path: source
+          persist-credentials: false
+      - name: Restore dedicated persistent evidence branch
+        uses: actions/checkout@v4
+        with:
+          ref: evidence/deribit-v3-forward
+          path: evidence
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Set audit-only Git author
+        run: |
+          git -C evidence config user.name "github-actions[bot]"
+          git -C evidence config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Fail closed outside UTC window; public quotes only
+        run: |
+          python source/research/deribit_v3_microstructure/cloud_runner.py \
+            --mode prospective \
+            --evidence-checkout evidence \
+            --evidence-branch evidence/deribit-v3-forward
+      - name: Verify evidence checkout clean following remote commit
+        run: test -z "$(git -C evidence status --porcelain)"
+
+# Activation requires BOTH repository variables exactly matching the pinned SHA.
+# DO NOT set variables or merge this PR before release gates and final review.
+# No exchange credentials/private requests/orders/PNL. All failures retained.
