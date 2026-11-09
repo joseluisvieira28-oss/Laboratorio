@@ -43,6 +43,38 @@ jobs:
           print("OFFLINE_STAGING_PASS; market_requests=0; forward_sessions=0")
           PY
 
+  recovery-artifact-roundtrip:
+    if: github.event_name == 'pull_request'
+    needs: offline-tests
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Prepare tiny synthetic recovery bundle (no market)
+        id: prepare
+        run: python research/deribit_v3_microstructure/cloud_recovery_drill.py prepare --directory /tmp/v3-recovery-upload
+      - name: Upload synthetic bundle under confirmed zero-dollar budget
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v3-recovery-drill-${{ github.run_id }}
+          path: /tmp/v3-recovery-upload/evidence.zip
+          retention-days: 7
+          if-no-files-found: error
+      - name: Download the same synthetic bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: v3-recovery-drill-${{ github.run_id }}
+          path: /tmp/v3-recovery-download
+      - name: Restore, republish locally and independently audit fresh clone
+        env:
+          EXPECTED_SHA256: ${{ steps.prepare.outputs.sha256 }}
+        run: python research/deribit_v3_microstructure/cloud_recovery_drill.py restore --directory /tmp/v3-recovery-download --sha256 "$EXPECTED_SHA256"
+
   isolated-github-evidence-write:
     if: >-
       github.event_name == 'push' &&
