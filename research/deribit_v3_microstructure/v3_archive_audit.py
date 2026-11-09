@@ -15,10 +15,19 @@ def demand(condition,reason):
 def audit_archive(root, source_dir=None):
     root=Path(root)
     source_dir=Path(source_dir) if source_dir else Path(__file__).resolve().parent
+    for reserved in (root/'reservations').glob('*.json'):
+        day=reserved.stem
+        demand(json.loads(reserved.read_bytes())==dict(day=day,status='RESERVED_BEFORE_MARKET',orders=0),
+               'INVALID_RESERVATION')
+        complete=root/'completions'/(day+'.json')
+        demand(complete.is_file(),'PENDING_RECOVERY_BLOCKS_COLLECTION')
+        record=json.loads(complete.read_bytes())
+        attempt=record.get('attempt','')
+        demand('/' not in attempt and '\\' not in attempt and attempt.startswith(day+'-'),'INVALID_COMPLETION')
+        raw=root/'prospective'/attempt/'receipt.json'
+        demand(raw.is_file() and hashlib.sha256(raw.read_bytes()).hexdigest()==record.get('receipt_sha256'),
+               'RECOVERY_RECEIPT_MISMATCH')
     prospective=root/'prospective'
-    if not prospective.is_dir():
-        return dict(status='ARCHIVE_AUDIT_PASS', independent_valid=0, invalid_attempts=0,
-                    claimed_days=0, missed_windows=0, live_go=False, net_pnl=None)
     claim_files=list(prospective.glob('*.claim'))
     claims={}
     for f in claim_files:
@@ -29,7 +38,7 @@ def audit_archive(root, source_dir=None):
     days=set()
     valid=0
     invalid=0
-    for folder in sorted(p for p in prospective.iterdir() if p.is_dir()):
+    for folder in sorted(p for p in prospective.glob('*') if p.is_dir()):
         receipt_file=folder/'receipt.json'
         manifest_file=folder/'manifest.json'
         demand(receipt_file.is_file() and manifest_file.is_file(),

@@ -99,6 +99,7 @@ def _check_attempt(folder):
 
 def verify_existing(root):
     """Preflight restored cohort, fail closed on incomplete or altered evidence."""
+    verify_reservations(root)
     prospective = root / "prospective"
     if not prospective.exists():
         return 0
@@ -123,8 +124,27 @@ def verify_existing(root):
     return valid
 
 
+def verify_reservations(root):
+    """A remotely reserved day cannot disappear after a failed final push."""
+    for reservation in (root / 'reservations').glob('*.json'):
+        day = reservation.stem
+        saved = json.loads(reservation.read_bytes())
+        if saved != dict(day=day, status='RESERVED_BEFORE_MARKET', orders=0):
+            raise ValueError('INVALID_RESERVATION')
+        completion = root / 'completions' / (day + '.json')
+        if not completion.is_file():
+            raise ValueError('PENDING_RECOVERY_BLOCKS_COLLECTION')
+        record = json.loads(completion.read_bytes())
+        attempt = record.get('attempt', '')
+        if '/' in attempt or '\\' in attempt or not attempt.startswith(day + '-'):
+            raise ValueError('INVALID_COMPLETION')
+        receipt = root / 'prospective' / attempt / 'receipt.json'
+        if not receipt.is_file() or sha(receipt.read_bytes()) != record.get('receipt_sha256'):
+            raise ValueError('RECOVERY_RECEIPT_MISMATCH')
+
+
 def _git(repo, *args):
-    proc = subprocess.run(["git", "-C", str(repo), *args], text=True, capture_output=True)
+    proc = subprocess.run(["git", "-c", "core.longpaths=true", "-C", str(repo), *args], text=True, capture_output=True)
     if proc.returncode:
         raise RuntimeError("GIT_FAILURE: " + " ".join(args[:2]) + ": " + proc.stderr.strip()[:350])
     return proc.stdout.strip()
@@ -164,6 +184,14 @@ def execute(evidence_checkout, mode, clock=utc_now, sleeper=time.sleep, publish_
     root = repo / REL
     root.mkdir(parents=True, exist_ok=True)
     prior = verify_existing(root)
+    if mode == 'prospective' and prior >= 20:
+        return dict(status='COHORT_COMPLETE', valid_sessions=prior, prospective_v3=False)
+    # Git must never normalize exact source bytes, even on Windows clones.
+    attributes = root / '.gitattributes'
+    if not attributes.exists():
+        immutable(attributes, b'* -text\n')
+    elif attributes.read_bytes() != b'* -text\n':
+        raise ValueError('UNSAFE_EVIDENCE_GIT_ATTRIBUTES')
     if mode == "dryrun":
         at = clock().astimezone(UTC)
         dest = root / "dryrun" / (at.strftime("%Y%m%dT%H%M%S%f") + ".json")
@@ -184,9 +212,17 @@ def execute(evidence_checkout, mode, clock=utc_now, sleeper=time.sleep, publish_
             label = "missed " + at.date().isoformat()
             result = dict(mode=mode, status=status, prospective_v3=False, valid_sessions=prior, live_go=False)
         else:
+            # Persist a blocking reservation BEFORE any market call. A failed
+            # final upload leaves this reservation on Git, stopping later days.
+            day = at.date().isoformat()
+            immutable(root / 'reservations' / (day + '.json'), canonical(
+                dict(day=day, status='RESERVED_BEFORE_MARKET', orders=0)))
+            publish_fn(repo, root, 'reserve ' + day, branch=branch)
             sys.path.insert(0, str(V3))
             import collector
             attempt, receipt = collector.collect(root, mode="prospective", clock=clock)
+            immutable(root / 'completions' / (day + '.json'), canonical(dict(
+                attempt=attempt.name, receipt_sha256=sha((attempt / 'receipt.json').read_bytes()))))
             label = "capture " + at.date().isoformat()
             result = dict(mode=mode, status=receipt["status"], prospective_v3=receipt["prospective_v3"],
                           valid_sessions=prior + int(receipt["prospective_v3"]),
