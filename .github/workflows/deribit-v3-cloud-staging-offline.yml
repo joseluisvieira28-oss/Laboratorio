@@ -21,8 +21,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout staged code without push credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Python version
         run: python --version
@@ -38,6 +39,7 @@ jobs:
           assert r["status"] == "PASS"
           assert r["forward_sessions"] == 0 and r["market_requests"] == 0
           assert r["live_go"] is False
+          print(json.dumps({k: r[k] for k in ('tested_parent_commit', 'python', 'tests', 'failures', 'errors', 'hashes')}, sort_keys=True))
           print("OFFLINE_STAGING_PASS; market_requests=0; forward_sessions=0")
           PY
 
@@ -53,13 +55,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout pinned staging source without credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
           path: source
           persist-credentials: false
       - name: Checkout isolated staging evidence branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: evidence/deribit-v3-staging-2026-11-09
           path: evidence
@@ -103,7 +105,7 @@ jobs:
           exit 27
       - name: Recover synthetic files as GitHub Actions artifact
         if: steps.simulate.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deribit-v3-synthetic-recovery-${{ github.run_id }}
           path: evidence/research/deribit_v3_microstructure/forward_evidence/
