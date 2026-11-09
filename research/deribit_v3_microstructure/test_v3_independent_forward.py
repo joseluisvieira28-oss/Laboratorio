@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-import audit_forward
+import v3_forward_audit as audit_forward
 import test_collector
 
 
