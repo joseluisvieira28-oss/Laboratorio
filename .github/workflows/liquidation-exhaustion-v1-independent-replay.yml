@@ -1,0 +1,50 @@
+# Run once on addition of THIS workflow only; no schedules or trading endpoints.
+name: Liquidation Exhaustion V1 — independent raw artifact replay
+on:
+  push:
+    branches:
+      - research/liquidation-exhaustion-v1-2026-11-04
+    paths:
+      - .github/workflows/liquidation-exhaustion-v1-independent-replay.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-source-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact previously captured immutable artifact ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --location --silent --show-error \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/13340661055/zip" \
+            --output original_source_artifact.zip
+      - name: Independently rebuild source receipt from 28k+ raw frames (no returns)
+        run: |
+          python research/liquidation_exhaustion_v1/independent_raw_source_replay.py original_source_artifact.zip > source_replay_receipt.json
+          python - <<'PY'
+          import json
+          o=json.load(open("source_replay_receipt.json"))
+          assert o["artifact_sha256"]=="522ebfb68bef0f27cb7cdfbf400fc5cfeb3e603ba3576d6eff88889daadb6b51"
+          assert o["raw_sha256"]=="28f5d1734be719482bc427f77ec65957cfcd187aff06b872618b00579d2c5898"
+          assert o["raw_frames"]==28889
+          assert o["liquidation_children_by_symbol"]=={"BTCUSDT":9,"ETHUSDT":3}
+          assert o["book_contiguous_updates"]=={"BTCUSDT":8866,"ETHUSDT":8935}
+          assert o["max_prior_book_age_ms"]<=21
+          assert o["full_exchange_liquidation_census_certified"] is False
+          assert o["economic_edge_certified"] is False
+          print("INDEPENDENT_SOURCE_REPLAY_REAL_ARTIFACT_PASS; NO ECONOMICS TESTED")
+          PY
+      - name: Preserve independent replay receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liquidation-exhaustion-v1-independent-replay-verdict
+          path: source_replay_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
