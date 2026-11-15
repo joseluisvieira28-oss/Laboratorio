@@ -24,10 +24,11 @@ class ByteBudget:
     def decision(self, gzip_writer: BinaryIO, raw_written: int, next_line: bytes) -> str | None:
         """Return terminal gate reason BEFORE accepting next raw record.
 
-        gzip.GzipFile.tell() returns UNCOMPRESSED position and must never be
-        used as the compressed storage cursor. gzip_writer.fileobj.tell()
-        measures the physically buffered compressed output. The reserve
-        covers deflate's pending bytes, gzip footer and final receipt.
+        gzip.GzipFile.tell() returns UNCOMPRESSED position. The underlying
+        fileobj.tell() is the compressed cursor, but can lag because zlib
+        buffers output. Mandatory flush() makes it current before the gate.
+        This is an offline safety candidate; its per-record flush overhead
+        must be benchmarked before any future capture integration.
         """
         if not isinstance(next_line, bytes):
             raise TypeError("Serialized raw record must be bytes")
@@ -36,14 +37,19 @@ class ByteBudget:
         if raw_written + len(next_line) + self.final_record_reserve > self.max_uncompressed:
             return "UNCOMPRESSED_CAP"
         sink = getattr(gzip_writer, "fileobj", None)
-        if sink is None or not hasattr(sink, "tell"):
+        if sink is None or not hasattr(sink, "tell") or not hasattr(gzip_writer, "flush"):
             return "COMPRESSED_POSITION_UNAVAILABLE"
         try:
+            # CRITICAL: without a sync flush the underlying cursor can lag
+            # enough for the final gzip file to exceed the frozen bound.
+            gzip_writer.flush()
             physically_written = sink.tell()
-        except (OSError, ValueError):
+        except (OSError, ValueError, TypeError):
             return "COMPRESSED_POSITION_UNAVAILABLE"
         if physically_written < 0:
             return "COMPRESSED_POSITION_UNAVAILABLE"
+        # Worst-case bound for the NEXT record plus conservative trailer and
+        # final receipt reserve; no scientific outcome depends on this guard.
         next_worst_case = len(next_line) + (len(next_line) // 100) + 1024
         if physically_written + next_worst_case + self.reserve > self.max_compressed:
             return "COMPRESSED_CAP"
