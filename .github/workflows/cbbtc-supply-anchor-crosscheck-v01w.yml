@@ -1,0 +1,22 @@
+name: CBBTC-001 supply anchor crosscheck V0.1W
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/SUPPLY_ANCHOR_CROSSCHECK_TRIGGER_V0.1W.md'
+
+jobs:
+  crosscheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run exact EIP-1898 supply anchor crosscheck
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_supply_anchor_crosscheck_v01w.mjs

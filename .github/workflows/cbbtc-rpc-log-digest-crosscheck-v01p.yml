@@ -1,0 +1,21 @@
+name: CBBTC-001 log digest crosscheck V0.1P
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_log_digest_crosscheck_v01p.mjs'
+      - '.github/workflows/cbbtc-rpc-log-digest-crosscheck-v01p.yml'
+  workflow_dispatch:
+jobs:
+  crosscheck:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_log_digest_crosscheck_v01p.mjs

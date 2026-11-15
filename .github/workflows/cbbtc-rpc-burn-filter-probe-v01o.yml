@@ -1,0 +1,21 @@
+name: CBBTC-001 burn-filter probe V0.1O
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_burn_filter_probe_v01o.mjs'
+      - '.github/workflows/cbbtc-rpc-burn-filter-probe-v01o.yml'
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_rpc_burn_filter_probe_v01o.mjs

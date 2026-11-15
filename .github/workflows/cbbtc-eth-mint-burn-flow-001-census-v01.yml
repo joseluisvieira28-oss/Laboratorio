@@ -1,0 +1,58 @@
+name: CBBTC-ETH-MINT-BURN-FLOW-001 flow census V0.1
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/CENSUS_TRIGGER_V0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbbtc-eth-mint-burn-flow-001-census-v01
+  cancel-in-progress: true
+
+jobs:
+  census:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save ethers@6.15.0
+      - name: Require SOURCE_PASS
+        run: |
+          python - <<'PY'
+          import json
+          p="research/cbbtc_eth_mint_burn_flow_001/SOURCE_GATE_RECEIPT_V0.1.json"
+          x=json.load(open(p))
+          assert x["classification"]=="SOURCE_PASS", x
+          PY
+      - name: Build frozen outcome-blind full flow census
+        env:
+          ETH_RPC_URL: https://ethereum-rpc.publicnode.com
+        run: node research/cbbtc_eth_mint_burn_flow_001/cbbtc_eth_flow_census_v01.mjs
+      - name: Persist exact census evidence
+        shell: bash
+        run: |
+          cp artifacts/census/CBBTC_ETH_FLOW_CENSUS_RECEIPT_V0.1.json research/cbbtc_eth_mint_burn_flow_001/FLOW_CENSUS_RECEIPT_V0.1.json
+          cp artifacts/census/CBBTC_ETH_FLOW_LEDGER_V0.1.json research/cbbtc_eth_mint_burn_flow_001/FLOW_LEDGER_V0.1.json
+          cp artifacts/census/CBBTC_ETH_DAILY_FLOW_V0.1.json research/cbbtc_eth_mint_burn_flow_001/DAILY_FLOW_V0.1.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/cbbtc_eth_mint_burn_flow_001/FLOW_CENSUS_RECEIPT_V0.1.json research/cbbtc_eth_mint_burn_flow_001/FLOW_LEDGER_V0.1.json research/cbbtc_eth_mint_burn_flow_001/DAILY_FLOW_V0.1.json
+          git commit -m "CBBTC-ETH-MINT-BURN-FLOW-001: persist outcome-blind flow census [skip ci]"
+          git push origin HEAD:cbbtc-eth-mint-burn-flow-001-source-gate-v01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-eth-flow-census-v01
+          path: artifacts/census/*
+          if-no-files-found: error

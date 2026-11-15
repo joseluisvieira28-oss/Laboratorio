@@ -1,0 +1,59 @@
+name: CBBTC-ETH-MINT-BURN-FLOW-001 Discovery V0.1
+
+on:
+  push:
+    branches:
+      - cbbtc-eth-mint-burn-flow-001-source-gate-v01
+    paths:
+      - 'research/cbbtc_eth_mint_burn_flow_001/DISCOVERY_TRIGGER_V0.1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cbbtc-eth-mint-burn-flow-001-discovery-v01
+  cancel-in-progress: true
+
+jobs:
+  discovery:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require frozen outcome-blind sample PASS
+        run: |
+          python - <<'PY'
+          import json
+          p="research/cbbtc_eth_mint_burn_flow_001/DISCOVERY_FLOW_PREDICTOR_SAMPLE_RECEIPT_V0.1.json"
+          x=json.load(open(p))
+          assert x["classification"]=="FLOW_PREDICTOR_SAMPLE_PASS", x
+          assert x["market_returns_opened"] is False, x
+          assert x["protected_2026_opened"] is False, x
+          PY
+      - name: Run frozen 2025 BTC mechanism Discovery
+        run: python research/cbbtc_eth_mint_burn_flow_001/cbbtc_flow_discovery_v01.py
+      - name: Persist Discovery result
+        shell: bash
+        run: |
+          cp research/cbbtc_eth_mint_burn_flow_001/FLOW_DISCOVERY_RESULT_V0.1.json /tmp/cbbtc_discovery.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin cbbtc-eth-mint-burn-flow-001-source-gate-v01
+          git checkout -B cbbtc-discovery-persist origin/cbbtc-eth-mint-burn-flow-001-source-gate-v01
+          cp /tmp/cbbtc_discovery.json research/cbbtc_eth_mint_burn_flow_001/FLOW_DISCOVERY_RESULT_V0.1.json
+          git add research/cbbtc_eth_mint_burn_flow_001/FLOW_DISCOVERY_RESULT_V0.1.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "CBBTC-ETH-MINT-BURN-FLOW-001: persist Discovery result [skip ci]"
+          git push origin HEAD:cbbtc-eth-mint-burn-flow-001-source-gate-v01
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cbbtc-flow-discovery-v01
+          path: research/cbbtc_eth_mint_burn_flow_001/FLOW_DISCOVERY_RESULT_V0.1.json
+          if-no-files-found: warn
