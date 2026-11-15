@@ -1,0 +1,103 @@
+{
+  "bursts": {
+    "binance": {
+      "BTCUSDT": {
+        "bursts": {
+          "5000": {
+            "notional": {
+              "p75": 8807.811999999998
+            }
+          }
+        }
+      }
+    },
+    "bybit": {
+      "BTCUSDT": {
+        "bursts": {
+          "5000": {
+            "notional": {
+              "p95": 69395.44230000001
+            },
+            "side_concentration": {
+              "p75": 1
+            }
+          }
+        }
+      },
+      "ETHUSDT": {
+        "bursts": {
+          "5000": {
+            "notional": {
+              "p95": 49585.26119999999
+            }
+          }
+        }
+      },
+      "SOLUSDT": {
+        "bursts": {
+          "5000": {
+            "notional": {
+              "p95": 41424.18
+            }
+          }
+        }
+      }
+    }
+  },
+  "decision": "CALIBRATION_SAMPLE",
+  "eligibility": {
+    "bybit_btc_events": 164,
+    "bybit_events": 647,
+    "clock_regressions": 0,
+    "raw_event_log_sha256": "ed4e8096b75625193558af72956fc7ef5cdec16b6280d1ef7cce474282be1a4d",
+    "scheduled_seconds": 62400,
+    "shard_count": 4,
+    "span_days": 9.092194641203704,
+    "uptime_by_source_pct": {
+      "binance": 100,
+      "bybit": 100,
+      "mexc": 99.99861783340545
+    },
+    "uptime_pct": 99.99861783340545
+  },
+  "eligible_for_freeze": true,
+  "freeze_mapping": {
+    "alt_propagation.notional_thresholds.ETHUSDT": "Bybit ETHUSDT 5s p95",
+    "alt_propagation.notional_thresholds.SOLUSDT": "Bybit SOLUSDT 5s p95",
+    "binance_confirmation.notional_threshold": "Binance BTCUSDT 5s p75",
+    "btc_ignition.notional_threshold": "Bybit BTCUSDT 5s p95",
+    "btc_ignition.side_concentration_threshold": "Bybit BTCUSDT 5s side concentration p75"
+  },
+  "mexc_price_outcomes_opened": false,
+  "outcome_blind": true,
+  "pnl_inspected": false,
+  "schema": "licp001.aggregated_calibration_freeze_receipt.v1",
+  "source_artifacts": [
+    {
+      "artifact_digest": "sha256:80d8fdada9a207523169a13f3a95dc09e5d710d90a1c281880fd025898075ff3",
+      "artifact_id": 10909113556,
+      "run_id": 36234941600
+    },
+    {
+      "artifact_digest": "sha256:6c842c1968e195f8b3f07f14f9657df5267433763ff43ba382c8aa3d8f04f070",
+      "artifact_id": 10918394152,
+      "run_id": 36261304688
+    },
+    {
+      "artifact_digest": "sha256:7c59a410d3c75a5abc3c7e96f8c3f455eaf3ec1c7373ee72ab65d74d6e04bd66",
+      "artifact_id": 10925794842,
+      "run_id": 36280706720
+    },
+    {
+      "artifact_digest": "sha256:a9ee6042f7cfafa3ca00811e8c41abf846c34a8d770ebef09ea31ab754764398",
+      "artifact_id": 11344428835,
+      "run_id": 37308484735
+    }
+  ],
+  "source_semantics": {
+    "binance": "lossy largest-liquidation forceOrder snapshot confirmation only; not complete liquidation volume",
+    "bybit": "primary allLiquidation sensor",
+    "mexc": "target depth health only during calibration"
+  },
+  "status": "LICP001_AGGREGATED_OUTCOME_BLIND_CALIBRATION"
+}

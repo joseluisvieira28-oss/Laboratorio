@@ -1,0 +1,29 @@
+name: licp-hist-002-discovery-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/licp_hist_002_discovery_v01.py'
+      - 'research/liquidation_cascade/LICP_HIST_002_DISCOVERY_HOLDOUT_PROTOCOL_FREEZE_V0_1.md'
+      - '.github/workflows/licp-hist-002-discovery-v01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pandas pyarrow
+      - name: Run frozen Aug-Oct 2025 cross-venue Discovery
+        run: python research/liquidation_cascade/licp_hist_002_discovery_v01.py
+      - name: Print receipt
+        if: always()
+        run: cat research/liquidation_cascade/receipts/licp_hist_002_discovery_v01.json || true

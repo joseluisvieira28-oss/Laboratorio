@@ -1,0 +1,15 @@
+# LICP-001 — RECOVERED V03 RECEIPT + ONE PROSPECTIVE SHARD AUTHORITY — 2026-10-10
+Pre-continuation frozen scientific authority on branch `liquidation-cascade-propagation-v0.1`.
+
+## Previous complete independent proof
+- LICP technical identity fix formally frozen `LICP_001_ALT_SIBLING_IDENTITY_TECHNICAL_CORRECTION_2026_10_10.md`; audited original artifacts `37789379322`, `37930397916` and `37937441095` in source-only run [38036270557](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38036270557) SUCCESS. **ETH and SOL secondary propagation siblings on shared BTC ignition ID** correctly distinguished; strict primary collision detection remains unchanged.
+- Canonical branch patched ledger and its independent read-only archival CI [38036431594](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/38036431594) **SUCCESS**, four synthetic regressions passed and genuine BTC primary historic baseline unchanged. The original failed V03 37937441095 is NOT a new observation after this patch; its immutable previously recorded original `current/licp001_forward_observation_v01.json` was rejected solely because of a secondary sibling ledger-key false conflict.
+- Re-adjudication without any changed economic rules: original baseline last green 37930397916 **10** independent BTC episodes, 2 UTC dates; add previously recorded immutable latest failed 37937441095 => **12** independent BTC episodes across 2026-10-05, 2026-10-08, 2026-10-09 (3 dates). **FORWARD_INSUFFICIENT** because 12<20. These are already-opened forward outcomes, not invented/retried trades. No loosening first20/90% valid outcome/60s/16 and 32bps thresholds.
+
+## Exact next collection move preauthorized by the operator
+For the canonical V03 GitHub workflow, add the **exact previously validated** artifact read:
+`gh run download 37937441095 -n licp001-forward-durable-v03-37937441095-1 -D prior/recovered-37937441095`; assert file `prior/recovered-37937441095/current/licp001_forward_observation_v01.json` exists. Do not include any other failed or redundant V01/V02 workflow, do not duplicate receipts: existing content-SHA copy to `all_receipts` and strict ledger identity dedup protect replay.
+
+Changing ONLY the frozen workflow's documented source restoration and an informational UTC comment triggers **exactly one** 600-second read-only future shard using its existing `concurrency` group, no cron or repeated watch. Its frozen Bybit/Binance public forced-order confirmation, MEXC public BBO, OI public context, source freshness, BTC 120-second dedup, first20/3 date/90% gate and 16/32bps costs unchanged. No order, private exchange endpoint, account, wallet, money, Render, main merge, alert/webhook, horizon tuning, or 2026 sealed holdout opening.
+
+If its new run finishes with a conflict, reject ALL new credit and preserve original 12 verified; inspect evidence before any another shard. If run finishes clean, report independent BTC count and dates; do not call `SURVIVES` or `NO_EDGE` before >=20 and >=3 UTC dates plus valid outcomes as in original freeze. No automatic repeat work is promised.

@@ -1,0 +1,144 @@
+name: licp001-calibration-chain-v01
+
+on:
+  push:
+    branches:
+      - liquidation-cascade-propagation-v0.1
+    paths:
+      - 'research/liquidation_cascade/LICP_001_CALIBRATION_CHAIN_START_V0_1.json'
+  workflow_dispatch:
+    inputs:
+      remaining_after_current:
+        description: 'Number of additional 5h45 blocks to dispatch after this run'
+        required: true
+        default: '0'
+      chain_id:
+        description: 'Immutable calibration chain identifier'
+        required: true
+        default: 'LICP001-CAL-20260926'
+      capture_seconds:
+        description: 'Outcome-blind capture duration'
+        required: true
+        default: '20700'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Resolve frozen chain parameters
+        id: chain
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_REMAINING: ${{ inputs.remaining_after_current }}
+          INPUT_CHAIN_ID: ${{ inputs.chain_id }}
+          INPUT_CAPTURE_SECONDS: ${{ inputs.capture_seconds }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          if os.environ["EVENT_NAME"] == "push":
+              p=pathlib.Path("research/liquidation_cascade/LICP_001_CALIBRATION_CHAIN_START_V0_1.json")
+              j=json.loads(p.read_text())
+              remaining=int(j["remaining_after_current"])
+              chain_id=str(j["chain_id"])
+              seconds=int(j["capture_seconds"])
+          else:
+              remaining=int(os.environ["INPUT_REMAINING"])
+              chain_id=str(os.environ["INPUT_CHAIN_ID"])
+              seconds=int(os.environ["INPUT_CAPTURE_SECONDS"])
+          assert 0 <= remaining <= 29, remaining
+          assert seconds == 20700, seconds
+          assert chain_id == "LICP001-CAL-20260926", chain_id
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write(f"remaining={remaining}\n")
+              f.write(f"chain_id={chain_id}\n")
+              f.write(f"seconds={seconds}\n")
+          print({"remaining_after_current":remaining,"chain_id":chain_id,"capture_seconds":seconds})
+          PY
+      - name: Collect outcome-blind calibration block
+        env:
+          CAPTURE_SECONDS: ${{ steps.chain.outputs.seconds }}
+        run: |
+          mkdir -p /tmp/licp001-block
+          python research/liquidation_cascade/licp001_forward_collector_v01.py             --seconds "$CAPTURE_SECONDS"             --outdir /tmp/licp001-block
+      - name: Stamp immutable chain provenance
+        env:
+          CHAIN_ID: ${{ steps.chain.outputs.chain_id }}
+          REMAINING: ${{ steps.chain.outputs.remaining }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path("/tmp/licp001-block/chain_metadata.json")
+          p.write_text(json.dumps({
+            "schema":"licp001.calibration_chain.v1",
+            "chain_id":os.environ["CHAIN_ID"],
+            "github_run_id":os.environ["GITHUB_RUN_ID"],
+            "github_run_attempt":os.environ["GITHUB_RUN_ATTEMPT"],
+            "head_sha":os.environ["GITHUB_SHA"],
+            "remaining_after_current":int(os.environ["REMAINING"]),
+            "outcome_blind":True
+          },indent=2,sort_keys=True)+"\n")
+          PY
+      - name: Fail closed on source or evidence defect
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib
+          d=pathlib.Path("/tmp/licp001-block")
+          r=json.loads((d/"health.json").read_text())
+          assert r.get("schema")=="licp001.health.v2"
+          assert r.get("outcome_blind") is True
+          scheduled=float(r.get("scheduled_seconds",0))
+          assert scheduled==20700
+          h=r["health"]
+          for v in ("bybit","binance","mexc"):
+              assert int(h[v].get("acks",0))>=1, ("ACK_MISSING",v)
+              assert int(h[v].get("clock_regressions",0))==0, ("CLOCK_REGRESSION",v)
+              assert float(h[v].get("connected_seconds",0))/scheduled>=0.95, ("UPTIME_FAIL",v)
+          assert int(h["bybit"].get("malformed",0))==0
+          assert int(h["binance"].get("malformed",0))==0
+          assert int(h["mexc"].get("depth_updates",0))>0
+          events=d/"liquidations.jsonl"
+          gaps=d/"gaps.jsonl"
+          event_bytes=events.read_bytes() if events.exists() else b""
+          gap_bytes=gaps.read_bytes() if gaps.exists() else b""
+          assert hashlib.sha256(event_bytes).hexdigest()==r["event_log_sha256"]
+          assert hashlib.sha256(gap_bytes).hexdigest()==r["gaps_log_sha256"]
+          txt=event_bytes.decode("utf-8","ignore").lower()
+          for forbidden in ("forward_return","pnl","mfe","mae","entry_bid","exit_ask","future_price"):
+              assert forbidden not in txt, forbidden
+          print(json.dumps({
+            "bybit_events":h["bybit"]["events"],
+            "binance_events":h["binance"]["events"],
+            "mexc_depth_updates":h["mexc"]["depth_updates"],
+            "event_log_sha256":r["event_log_sha256"],
+            "gaps_log_sha256":r["gaps_log_sha256"]
+          },indent=2))
+          PY
+      - name: Build feature-only summary
+        run: |
+          if test -s /tmp/licp001-block/liquidations.jsonl; then
+            python research/liquidation_cascade/licp001_calibrate_v01.py               /tmp/licp001-block/liquidations.jsonl               --out /tmp/licp001-block/calibration.json
+          fi
+      - name: Upload immutable calibration block
+        uses: actions/upload-artifact@v4
+        with:
+          name: licp001-calibration-block-${{ steps.chain.outputs.chain_id }}-${{ github.run_id }}
+          path: /tmp/licp001-block/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Record branch-dispatch limitation
+        run: |
+          echo "BLOCK_COMPLETE"
+          echo "Feature-branch workflows cannot self-dispatch because the workflow is absent from main."
+          echo "Artifact is valid; no automatic follow-on dispatch attempted."

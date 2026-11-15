@@ -1,0 +1,71 @@
+name: licp001-aggregate-calibration-blocks-v01
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Download immutable calibration block artifacts
+        run: |
+          mkdir -p /tmp/licp-blocks
+          gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" > /tmp/artifacts-pages.json
+          python - <<'PY'
+          import json, pathlib, subprocess
+          raw=pathlib.Path('/tmp/artifacts-pages.json').read_text()
+          # gh --paginate may concatenate JSON documents; robustly decode sequentially.
+          dec=json.JSONDecoder(); pos=0; arts=[]
+          while pos < len(raw):
+              while pos<len(raw) and raw[pos].isspace(): pos+=1
+              if pos>=len(raw): break
+              obj,end=dec.raw_decode(raw,pos); pos=end
+              arts.extend(obj.get('artifacts',[]))
+          selected=[a for a in arts if a.get('name','').startswith('licp001-calibration-block-') and not a.get('expired')]
+          if not selected: raise SystemExit('NO_CALIBRATION_BLOCK_ARTIFACTS')
+          for a in sorted(selected,key=lambda x:x['created_at']):
+              d=pathlib.Path('/tmp/licp-blocks')/str(a['id']); d.mkdir()
+              z=d/'artifact.zip'
+              with z.open('wb') as f:
+                  subprocess.check_call(['gh','api',f"/repos/${GITHUB_REPOSITORY}/actions/artifacts/{a['id']}/zip"],stdout=f)
+              subprocess.check_call(['unzip','-q',str(z),'-d',str(d)])
+              z.unlink()
+          print('downloaded',len(selected),'blocks')
+          PY
+      - name: Aggregate and verify evidence
+        run: |
+          python -m research.liquidation_cascade.licp001_aggregate_calibration_v01             /tmp/licp-blocks --out /tmp/licp001_aggregate_receipt.json
+      - name: Generate frozen-config candidate only when eligible
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, sys
+          p=pathlib.Path('/tmp/licp001_aggregate_receipt.json')
+          r=json.loads(p.read_text())
+          if not r.get('eligible_for_freeze'):
+              print('NOT_ELIGIBLE_FOR_FREEZE')
+              sys.exit(0)
+          subprocess.check_call([
+            sys.executable,'research/liquidation_cascade/freeze_licp001_trigger_v01.py',
+            '--receipt',str(p),
+            '--config','research/liquidation_cascade/LICP_001_TRIGGER_CONFIG_V0_1.json',
+            '--output','/tmp/LICP_001_TRIGGER_CONFIG_CANDIDATE.json'
+          ])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: licp001-aggregate-calibration-${{ github.run_id }}
+          path: |
+            /tmp/licp001_aggregate_receipt.json
+            /tmp/LICP_001_TRIGGER_CONFIG_CANDIDATE.json
+          if-no-files-found: warn
+          retention-days: 30
