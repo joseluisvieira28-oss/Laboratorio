@@ -1,0 +1,34 @@
+name: Deribit V2 public economics and separate Decimal audit NO TRADE
+on:
+  push:
+    branches: [research/deribit-diamante-v2-2026-11-02]
+    paths: [.github/workflows/deribit-diamante-v2-one-shot.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  public-feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Adversarial cost, provenance and missing settlement tests
+        run: python -m unittest discover -s research/deribit_diamante_v2 -p 'test_*.py'
+      - name: Original immutable source artifact, never resampled
+        uses: actions/download-artifact@v4
+        with:
+          name: deribit-actual-btc-usdc-linear-0p01-option-book-original-source-economic-v01
+          run-id: 41456328296
+          github-token: ${{ github.token }}
+          path: original
+      - name: Exactly eight bounded public production GETs, fixed 6Nov same-session comparison
+        run: python research/deribit_diamante_v2/probe.py probe --out evidence/fresh
+      - name: Independent original SHA replay and new Decimal closed-form calculations
+        run: python research/deribit_diamante_v2/audit.py --original original --fresh evidence/fresh --out evidence/independent.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deribit-diamante-v2-public-economics-${{ github.run_id }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 90

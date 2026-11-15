@@ -1,0 +1,144 @@
+{
+  "url": "https://docs.deribit.com/specifications/deribit_openapi.json",
+  "sha256": "d6f9c44990222ff6e78b21862a37996a1230e50a9dc4bb4063e98ebeaa7a3e34",
+  "public_book_methods": {
+    "/public/get_order_book": {
+      "parameters": [
+        "instrument_name",
+        "depth"
+      ],
+      "description": "Retrieves the order book (bids and asks) for a given instrument, along with other market values such as best bid/ask prices, last trade price, mark price, and index price.\n\nThe order book depth can be controlled using the `depth` parameter, which accepts values from 1 to 10000. The response includes price levels sorted by price (bids descending, asks ascending).\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_order_book)\n\n"
+    },
+    "/public/get_order_book_by_instrument_id": {
+      "parameters": [
+        "instrument_id",
+        "depth"
+      ],
+      "description": "Retrieves the order book (bids and asks) for a given instrument ID, along with other market values such as best bid/ask prices, last trade price, mark price, and index price.\n\nThis method is similar to `get_order_book` but uses instrument ID instead of instrument name. The order book depth can be controlled using the `depth` parameter, which accepts values from 1 to 10000.\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_order_book_by_instrument_id)\n\n"
+    },
+    "/public/get_book_summary_by_currency": {
+      "parameters": [
+        "currency",
+        "kind"
+      ],
+      "description": "Retrieves summary information such as open interest, 24-hour volume, best bid/ask prices, last trade price, and other market statistics for all instruments in a given currency.\n\nResults can be filtered by instrument kind (future, option, etc.). This method provides a quick overview of market activity across all instruments for a currency.\n\n**Note:** For real-time updates, we recommend using the WebSocket subscription to `ticker.{instrument_name}.{interval}` instead of polling this endpoint.\n\n**\ud83d\udcd6 Related Articles:** \n- [Using the currency Parameter](https://docs.deribit.com/articles/currency-parameter)\n- [Options Data Collection Best Practices](https://docs.deribit.com/articles/options-data-collection-best-practices)\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpubli"
+    },
+    "/public/get_book_summary_by_instrument": {
+      "parameters": [
+        "instrument_name"
+      ],
+      "description": "Retrieves summary information such as open interest, 24-hour volume, best bid/ask prices, last trade price, mark price, and other market statistics for a specific instrument.\n\nThis method provides a quick overview of current market activity and liquidity for a single instrument.\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_book_summary_by_instrument)\n\n"
+    },
+    "/public/get_historical_volatility": {
+      "parameters": [
+        "currency"
+      ],
+      "description": "Provides historical volatility data for a given cryptocurrency. Historical volatility measures the degree of price variation over a past period and is useful for risk assessment and option pricing.\n\nThe response includes volatility statistics calculated from historical price movements. This data can be used for portfolio risk analysis and understanding market conditions.\n\n**\ud83d\udcd6 Related Article:** [Options Data Collection Best Practices](https://docs.deribit.com/articles/options-data-collection-best-practices)\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_historical_volatility)\n\n"
+    },
+    "/public/get_funding_rate_history": {
+      "parameters": [
+        "instrument_name",
+        "start_timestamp",
+        "end_timestamp"
+      ],
+      "description": "Retrieves hourly historical funding rate (interest rate) data for a PERPETUAL instrument over a specified time period. Funding rates are periodic payments exchanged between long and short positions in perpetual contracts.\n\nThe response includes hourly funding rate values, which can be used to analyze funding rate trends and calculate historical funding costs. This method is applicable only for PERPETUAL instruments.\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_funding_rate_history)\n\n"
+    },
+    "/public/get_index_chart_data": {
+      "parameters": [
+        "index_name",
+        "range"
+      ],
+      "description": "Returns historical price index chart data for the specified index name and time range. The data is formatted for use in charting applications and shows price index values over time.\n\nUse the `range` parameter to specify the time period for which to retrieve chart data. This method is useful for visualizing price index trends and historical movements.\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_index_chart_data)\n\n"
+    },
+    "/public/get_mark_price_history": {
+      "parameters": [
+        "instrument_name",
+        "start_timestamp",
+        "end_timestamp"
+      ],
+      "description": "Retrieves 5-minute historical mark price data for an instrument. Mark prices are used for margin calculations and position valuations.\n\n**Note:** Currently, mark price history is available only for a subset of options that participate in volatility index calculations. All other instruments, including futures and perpetuals, will return an empty list.\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_mark_price_history)\n\n"
+    },
+    "/public/get_apr_history": {
+      "parameters": [
+        "currency",
+        "limit",
+        "before"
+      ],
+      "description": "Retrieves historical Annual Percentage Rate (APR) data for yield-generating tokens. APR represents the annualized return rate for holding these tokens on Deribit.\n\nThis method is only applicable to yield-generating tokens: `USDE`, `STETH`, `USDC`, and `BUILD`. Use the `limit` parameter to specify the number of days to retrieve (default 365, maximum 365), and `before` to retrieve APR history before a specific epoch day.\n\n**\ud83d\udcd6 Related Support Article:** [Yield reward-bearing coins](https://support.deribit.com/hc/en-us/articles/31424939199261-Yield-reward-bearing-coins)\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_apr_history)\n\n"
+    },
+    "/public/get_last_trades_by_instrument": {
+      "parameters": [
+        "instrument_name",
+        "start_seq",
+        "end_seq",
+        "start_timestamp",
+        "end_timestamp",
+        "count",
+        "sorting"
+      ],
+      "description": "Retrieves the latest trades that have occurred for a specific instrument. Returns trade details including price, amount, direction, timestamp, and trade ID.\n\nResults can be filtered by sequence number range or timestamp range. Use the `count` parameter to limit the number of trades returned, and `sorting` to control the order (ascending or descending by trade ID).\n\n**Note:** For spot instruments routed to Coinbase Exchange, this call is not supported. Use [Get product trades](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-trades) directly for full trade history.\n\n**\ud83d\udcd6 Related Article:** [Spot Trading: Deribit and Coinbase-Routed Instruments](https://docs.deribit.com/articles/spot-trading-venues)\n\n[Try in API console](https://test.deribit.com/api_conso"
+    },
+    "/public/get_last_trades_by_instrument_and_time": {
+      "parameters": [
+        "instrument_name",
+        "start_timestamp",
+        "end_timestamp",
+        "count",
+        "sorting"
+      ],
+      "description": "Retrieves the latest trades that have occurred for a specific instrument within a specified time range. Returns trade details including price, amount, direction, timestamp, and trade ID.\n\nUse the `count` parameter to limit the number of trades returned, and `sorting` to control the order (ascending or descending by trade ID). This method is useful for analyzing trading activity over specific time periods.\n\n**Note:** For spot instruments routed to Coinbase Exchange, this call is not supported. Use [Get product trades](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-trades) directly for full trade history.\n\n**\ud83d\udcd6 Related Article:** [Spot Trading: Deribit and Coinbase-Routed Instruments](https://docs.deribit.com/articles/spot-trading-venues)\n\n[Try in API c"
+    },
+    "/public/get_last_trades_by_currency": {
+      "parameters": [
+        "currency",
+        "kind",
+        "start_id",
+        "end_id",
+        "start_timestamp",
+        "end_timestamp",
+        "count",
+        "sorting"
+      ],
+      "description": "Retrieves the latest trades that have occurred for instruments in a specific currency. Returns trade details including price, amount, direction, timestamp, and trade ID for all instruments in the currency.\n\nResults can be filtered by instrument kind and trade ID range or timestamp range. Use the `count` parameter to limit the number of trades returned, and `sorting` to control the order (ascending or descending by trade ID).\n\n**Note:** For currencies with spot instruments routed to Coinbase Exchange, this call is not supported when `kind` is `spot` or `any` \u2014 and `any` is the default when `kind` is omitted. A currency counts as routed when it is the base or the quote of a routed pair. Other kinds are unaffected. Use [Get product trades](https://docs.cdp.coinbase.com/api-reference/exchange-"
+    },
+    "/public/get_last_trades_by_currency_and_time": {
+      "parameters": [
+        "currency",
+        "kind",
+        "start_timestamp",
+        "end_timestamp",
+        "count",
+        "sorting"
+      ],
+      "description": "Retrieves the latest trades that have occurred for instruments in a specific currency within a specified time range. Returns trade details including price, amount, direction, timestamp, and trade ID.\n\nResults can be filtered by instrument kind. Use the `count` parameter to limit the number of trades returned, and `sorting` to control the order (ascending or descending by trade ID).\n\n**Note:** For currencies with spot instruments routed to Coinbase Exchange, this call is not supported when `kind` is `spot` or `any` \u2014 and `any` is the default when `kind` is omitted. A currency counts as routed when it is the base or the quote of a routed pair. Other kinds are unaffected. Use [Get product trades](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-trades) di"
+    },
+    "/public/get_funding_chart_data": {
+      "parameters": [
+        "instrument_name",
+        "length"
+      ],
+      "description": "Retrieves funding rate chart data points for a PERPETUAL instrument within a given time period. The data is formatted for use in charting applications and includes funding rate values at regular intervals.\n\nUse the `length` parameter to specify the time period for which to retrieve chart data. This method is useful for visualizing funding rate trends over time.\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2Fget_funding_chart_data)\n\n"
+    },
+    "/public/get_tradingview_chart_data": {
+      "parameters": [
+        "instrument_name",
+        "start_timestamp",
+        "end_timestamp",
+        "resolution"
+      ],
+      "description": "Retrieves publicly available market data formatted for generating TradingView-compatible candle charts. The data includes open, high, low, close (OHLC) prices and volume for specified time intervals.\n\nUse the `chart_resolution` parameter to specify the candle interval (e.g., 1m, 5m, 1h, 1d). This method provides the standard format used by TradingView and other charting platforms.\n\n**Note:** For spot instruments routed to Coinbase Exchange, this call is not supported. Use [Get product candles](https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-candles) instead.\n\n**\ud83d\udcd6 Related Article:** [Spot Trading: Deribit and Coinbase-Routed Instruments](https://docs.deribit.com/articles/spot-trading-venues)\n\n[Try in API console](https://test.deribit.com/api_console?me"
+    },
+    "/public/get_delivery_prices": {
+      "parameters": [
+        "index_name",
+        "offset",
+        "count",
+        "start_timestamp",
+        "end_timestamp"
+      ],
+      "description": "Retrieves historical delivery prices for a given index. Delivery prices are the settlement prices used when futures or options contracts expire and are settled.\n\nResults can be paginated using the `offset` and `count` parameters. Optionally, results can be limited to a date range using `start_timestamp` and `end_timestamp` \u2014 each is mapped to the UTC calendar date of the delivery and both bounds are inclusive; `records_total` reflects the filtered set. This method is useful for analyzing historical settlement prices and understanding how contracts have been settled over time.\n\n**\ud83d\udcd6 Related Article:** [Options Data Collection Best Practices](https://docs.deribit.com/articles/options-data-collection-best-practices)\n\n[Try in API console](https://test.deribit.com/api_console?method=%2Fpublic%2F"
+    }
+  },
+  "historical_execution_backtest_available": false,
+  "scope": "No free official executable quote archive identified in inspected API; not a universal proof of absence."
+}
