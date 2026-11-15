@@ -1,0 +1,25 @@
+name: V2.5 audit-only gzip byte-budget regression
+on:
+  push:
+    branches:
+      - audit/v25-gzip-byte-budget-source-only-2026-11-15
+    paths:
+      - research/source_reliability_v25/**
+      - .github/workflows/v25-gzip-budget-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert no source runner or network dependency
+        shell: bash
+        run: |
+          test -f research/source_reliability_v25/compressed_budget.py
+          test -f research/source_reliability_v25/test_compressed_budget.py
+          test ! -f research/source_reliability_v25/capture.py
+      - name: Run synthetic offline gzip accounting tests
+        run: python -m unittest discover -s research/source_reliability_v25 -p 'test_*.py' -v
