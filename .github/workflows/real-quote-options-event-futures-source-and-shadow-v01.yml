@@ -1,0 +1,50 @@
+name: Crypto Lab True Options RFQ vs MEXC Event Futures — No-Trade Quote-First Economic Source Gate V01
+on:
+  push:
+    branches:
+      - research/real-quote-options-event-futures-economic-gate-v01-2026-11-02
+    paths:
+      - .github/workflows/real-quote-options-event-futures-source-and-shadow-v01.yml
+permissions:
+  contents: read
+jobs:
+  official-kraken-public-source-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile original source code
+        run: python -m py_compile research/real_quote_economics_v01/kraken_public_derivatives_metadata_source_v01.py
+      - name: Two bounded unauthenticated public Kraken derivatives metadata GETs, NOT OPTIONS RFQ
+        run: python -u research/real_quote_economics_v01/kraken_public_derivatives_metadata_source_v01.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-lab-kraken-public-derivatives-metadata-only-source-v01
+          path: artifacts/real_quote_economics_v01/public_kraken_source/
+          if-no-files-found: warn
+  offline-fail-closed-option-and-event-quote-shadow-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact deterministic synthetic safety unit tests — no exchange, no account
+        run: |
+          python -m py_compile research/real_quote_economics_v01/readonly_payout_and_options_rfq_economic_gate_v01.py
+          python -u research/real_quote_economics_v01/readonly_payout_and_options_rfq_economic_gate_v01.py --selftest
+      - name: Default real-data-absent admission check MUST BLOCK
+        run: |
+          python -u research/real_quote_economics_v01/readonly_payout_and_options_rfq_economic_gate_v01.py
+          python -c "import json;z=json.load(open('artifacts/real_quote_economics_v01/shadow_economic_gate/receipt.json'));assert z['status']=='BLOCK',z"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-lab-no-trade-event-payout-option-rfq-economic-shadow-gate-v01
+          path: artifacts/real_quote_economics_v01/shadow_economic_gate/
+          if-no-files-found: warn
