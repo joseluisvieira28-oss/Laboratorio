@@ -1,0 +1,33 @@
+name: LCOD-001 SQD SDK BLUECHIP long-range smoke
+on:
+  push:
+    branches: [liquidation-convexity-oracle-distance-001-source-gate-v0.1]
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_sqd_sdk_bluechip_smoke_v01.mjs'
+      - '.github/workflows/lcod-001-sqd-sdk-bluechip-smoke-v01.yml'
+permissions:
+  contents: write
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save @subsquid/evm-stream@0.1.5
+      - run: node research/liquidation_convexity_oracle_distance_001/lcod_sqd_sdk_bluechip_smoke_v01.mjs
+      - name: Persist
+        if: always()
+        run: |
+          if [ -f artifacts/lcod_sqd_sdk_bluechip_smoke_v01.json ]; then
+            cp artifacts/lcod_sqd_sdk_bluechip_smoke_v01.json research/liquidation_convexity_oracle_distance_001/LCOD_SQD_SDK_BLUECHIP_SMOKE_RECEIPT.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add research/liquidation_convexity_oracle_distance_001/LCOD_SQD_SDK_BLUECHIP_SMOKE_RECEIPT.json
+            if ! git diff --cached --quiet; then
+              git commit -m "LCOD-001: record BLUECHIP SQD SDK long-range smoke [skip ci]"
+              git push origin HEAD:liquidation-convexity-oracle-distance-001-source-gate-v0.1
+            fi
+          fi

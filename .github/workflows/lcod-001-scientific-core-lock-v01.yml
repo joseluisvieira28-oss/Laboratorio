@@ -1,0 +1,30 @@
+name: LCOD-001 scientific core lock V0.1
+
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_SCIENTIFIC_CORE_LOCK_V0.1.json'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_verify_scientific_core_lock_v01.py'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_active_population_prepare_v08.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_active_population_chunk_v08.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_active_population_aggregate_v08.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_full_same_block_component_reconstruction_v01.mjs'
+      - 'research/liquidation_convexity_oracle_distance_001/canonical_stress_curve.py'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_open_canonical_curve_v01.py'
+      - '.github/workflows/lcod-001-scientific-core-lock-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+      - name: Verify frozen scientific core
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_verify_scientific_core_lock_v01.py

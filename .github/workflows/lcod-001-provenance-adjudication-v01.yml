@@ -1,0 +1,28 @@
+name: LCOD-001 provenance adjudication verification V0.1
+
+on:
+  push:
+    branches:
+      - liquidation-convexity-oracle-distance-001-source-gate-v0.1
+    paths:
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_FORWARD_PROVENANCE_ADJUDICATION_001.json'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_PROVENANCE_ADJUDICATION_ADDENDUM_V0.1.md'
+      - 'research/liquidation_convexity_oracle_distance_001/LCOD_SCIENTIFIC_CORE_LOCK_V0.1.json'
+      - 'research/liquidation_convexity_oracle_distance_001/forward_snapshots/LCOD_FORWARD_SNAPSHOT_BLOCK_26055124.json'
+      - 'research/liquidation_convexity_oracle_distance_001/lcod_verify_forward_provenance_adjudication_v01.py'
+      - '.github/workflows/lcod-001-provenance-adjudication-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: liquidation-convexity-oracle-distance-001-source-gate-v0.1
+          fetch-depth: 0
+      - name: Verify observation 001 provenance adjudication
+        run: python research/liquidation_convexity_oracle_distance_001/lcod_verify_forward_provenance_adjudication_v01.py
