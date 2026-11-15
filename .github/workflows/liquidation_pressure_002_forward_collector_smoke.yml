@@ -1,0 +1,36 @@
+name: LIQUIDATION-PRESSURE-002 Forward Collector Smoke
+
+on:
+  pull_request:
+    paths:
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/forward_collector_v0_1.py'
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/calibrate_source_thresholds_v0_1.py'
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/ECONOMIC_MVE_FREEZE_V0.1.md'
+      - '.github/workflows/liquidation_pressure_002_forward_collector_smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collector-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned websocket client
+        run: pip install websockets==15.0.1
+      - name: Collect 120 seconds of raw forward evidence
+        run: python labs/LIQUIDATION_PRESSURE_002_FORWARD/forward_collector_v0_1.py --seconds 120
+      - name: Validate orderbook snapshot-delta replay integrity
+        run: python labs/LIQUIDATION_PRESSURE_002_FORWARD/validate_orderbook_replay_v0_1.py
+      - name: Validate calibration plumbing without emitting canonical threshold
+        run: python labs/LIQUIDATION_PRESSURE_002_FORWARD/calibrate_source_thresholds_v0_1.py --engineering-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LIQUIDATION-PRESSURE-002-FORWARD-COLLECTOR-SMOKE
+          path: labs/LIQUIDATION_PRESSURE_002_FORWARD/evidence/

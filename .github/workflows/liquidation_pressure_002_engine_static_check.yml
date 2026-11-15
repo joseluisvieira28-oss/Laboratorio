@@ -1,0 +1,24 @@
+name: LIQUIDATION-PRESSURE-002 Engine Static Check
+
+on:
+  pull_request:
+    paths:
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/economic_engine_v0_1.py'
+      - 'labs/LIQUIDATION_PRESSURE_002_FORWARD/ENGINE_IMPLEMENTATION_FREEZE_V0.1.md'
+      - '.github/workflows/liquidation_pressure_002_engine_static_check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile frozen engine without opening outcomes
+        run: python -m py_compile labs/LIQUIDATION_PRESSURE_002_FORWARD/economic_engine_v0_1.py
