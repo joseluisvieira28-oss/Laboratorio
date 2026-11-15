@@ -32,10 +32,12 @@ Original frozen source:
 ## Proposed source-side technical correction
 
 `compressed_budget.py` exposes a conservative **pre-write** decision for
-both separate byte budgets. It checks `gzip_writer.fileobj.tell()` as the
-compressed output cursor, not `gzip_writer.tell()`, reserves room for
-pending deflate bytes and final source receipts, and rejects unknown cursor
-states. This candidate is *not yet integrated with a collector*.
+both separate byte budgets. It checks `gzip_writer.fileobj.tell()` as the compressed output cursor,
+not `gzip_writer.tell()`. Because zlib may buffer compressed output, the
+candidate also tracks **unflushed raw bytes** and assumes all of them could
+be incompressible. It sync-flushes at a bounded raw interval (128 KiB) or
+near the compressed limit, leaving a conservative margin for final receipts.
+This candidate is *not yet integrated with a collector*.
 
 A future new-source/protocol integration must:
 1. Pin a new experiment and code identity first; keep old V2.4 immutable.
@@ -62,3 +64,19 @@ and overlarge source record. No market data, API endpoints or credentials.
 
 DEFECT_CONFIRMED; CANDIDATE_GUARD_UNIT_TESTED; INTEGRATION_NOT_PROVEN.
 No PnL, no source pass, no live authority.
+
+## Independent CI regression history
+
+- First GitHub CI run `43768507373`: **FAIL**. The initial guard used
+  `fileobj.tell()` without considering pending zlib output; incompressible
+  data exceeded the cap. The failure is intentionally preserved.
+- Second run `43768672125`: **SUCCESS**, 6 synthetic tests after forcing
+  a gzip sync flush before each check.
+- Third optimized implementation uses conservative accounting of raw bytes
+  pending in zlib and periodic sync (rather than flushing every record).
+  A 20,000-record deterministic synthetic local benchmark showed a
+  compressed-size ratio ~1.001 vs batched gzip, whereas sync-per-record was
+  ~1.41. Benchmarks are illustrative and are **NOT production validation**.
+- Additional offline tests cover 20 random high-entropy streams and a
+  conservative compression-ratio property. Do not trigger a source capture
+  from this audit branch.
