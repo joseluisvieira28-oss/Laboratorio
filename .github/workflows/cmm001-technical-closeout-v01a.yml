@@ -1,0 +1,48 @@
+name: CMM-001 Technical Closeout V0.1A
+
+on:
+  push:
+    branches:
+      - cross-market-mispricing-001-discovery-v0.1a-closeout
+    paths:
+      - "cmm001/CMM001_TECHNICAL_CLOSEOUT_REPAIR_V01A.md"
+      - "cmm001/technical_closeout_repair_v01a.py"
+      - ".github/workflows/cmm001-technical-closeout-v01a.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cmm001-technical-closeout-v01a
+  cancel-in-progress: false
+
+jobs:
+  closeout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout immutable evidence branch
+        uses: actions/checkout@v4
+        with:
+          ref: cross-market-mispricing-001-discovery-v0.1a-closeout
+
+      - name: Assert repair script has no network imports
+        run: |
+          if grep -En 'urllib|requests|httpx|aiohttp|socket|curl|wget' cmm001/technical_closeout_repair_v01a.py; then
+            echo "Network-capable code detected in technical repair."
+            exit 1
+          fi
+
+      - name: Reproduce terminal closeout from immutable ledger only
+        run: |
+          python3 cmm001/technical_closeout_repair_v01a.py
+
+      - name: Preserve repaired closeout
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmm001/discovery_results/CMM001_DISCOVERY_RESULT_V01A_TECHNICAL_CLOSEOUT.json
+          git add cmm001/discovery_results/CMM001_DISCOVERY_CLOSEOUT_V01A.md
+          git add cmm001/discovery_results/CMM001_TECHNICAL_REPAIR_RECEIPT_V01A.json
+          git commit -m "cmm001: record immutable-ledger technical closeout v0.1a [skip ci]"
+          git push
