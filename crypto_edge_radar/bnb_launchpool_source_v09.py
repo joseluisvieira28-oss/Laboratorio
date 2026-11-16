@@ -96,7 +96,7 @@ def retry_after_seconds(value: str | None, now: datetime) -> int:
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
         n = int((parsed.astimezone(timezone.utc) - now).total_seconds())
-        return min(MAX_RETRY_AFTER_SECONDS, max(0, n))
+        return max(0, n)
     except (TypeError, ValueError, OverflowError):
         return DEFAULT_429_COOLDOWN_SECONDS
 
