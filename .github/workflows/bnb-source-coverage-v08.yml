@@ -1,0 +1,42 @@
+name: BNB Launchpool Source Coverage V8 — Read Only
+on:
+  push:
+    branches:
+      - bnb-launchpool-source-coverage-v08-2026-11-16
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-coverage-v08:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Freeze and compile safety gates
+        run: |
+          test -f governance/BNB_LAUNCHPOOL_SOURCE_COVERAGE_V08_2026-11-16.md
+          python -m py_compile crypto_edge_radar/bnb_launchpool_source_coverage_v08.py
+          python -m py_compile crypto_edge_radar/tests/test_bnb_source_coverage_v08.py
+      - name: Offline source coverage regression tests
+        run: |
+          cd crypto_edge_radar
+          python -m unittest discover -s tests -p 'test_bnb_source_coverage_v08.py' -v
+      - name: Public Binance catalog multi-page audit — no market data
+        run: |
+          cd crypto_edge_radar
+          python bnb_launchpool_source_coverage_v08.py
+      - name: Secondary category source-coverage sentinel
+        run: |
+          cd crypto_edge_radar
+          python bnb_launchpool_cross_catalog_v08.py
+      - name: Preserve source-only JSON, including blocked runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnb-source-coverage-v08-${{ github.run_id }}
+          path: crypto_edge_radar/artifacts/bnb_launchpool/source_coverage_v08
+          if-no-files-found: warn
+          retention-days: 90
