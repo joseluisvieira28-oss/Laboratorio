@@ -28,6 +28,10 @@ jobs:
         run: |
           cd crypto_edge_radar
           python bnb_launchpool_source_coverage_v08.py
+      - name: Secondary category source-coverage sentinel
+        run: |
+          cd crypto_edge_radar
+          python bnb_launchpool_cross_catalog_v08.py
       - name: Preserve source-only JSON, including blocked runs
         if: always()
         uses: actions/upload-artifact@v4
