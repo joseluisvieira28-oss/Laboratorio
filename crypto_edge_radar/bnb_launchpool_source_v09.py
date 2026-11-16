@@ -33,7 +33,6 @@ STATE_DIR = Path("artifacts/bnb_launchpool/source_v09/state")
 RECEIPT_DIR = Path("artifacts/bnb_launchpool/source_v09/receipts")
 MIN_CATALOG_INTERVAL_SECONDS = 900
 DEFAULT_429_COOLDOWN_SECONDS = 3600
-MAX_RETRY_AFTER_SECONDS = 86400
 MAX_BYTES = 2_000_000
 
 def utc(dt: datetime) -> str:
@@ -89,7 +88,7 @@ def retry_after_seconds(value: str | None, now: datetime) -> int:
         return DEFAULT_429_COOLDOWN_SECONDS
     try:
         n = int(value.strip())
-        return min(MAX_RETRY_AFTER_SECONDS, max(0, n))
+        return max(0, n)
     except (TypeError, ValueError):
         pass
     try:
