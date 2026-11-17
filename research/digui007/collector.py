@@ -128,6 +128,62 @@ def assess(pool):
         pool["flag_status"]="PARTIAL_DATA_UNVERIFIED" if not flags else "CAUTION_PARTIAL_DATA"
     return pool
 
+def carryforward_from_prior(pools):
+    """Longitudinal sampling, fixed by SHA-256, never selected using future prices.
+    Only observe pool attr; a drop is a warning, never a fraud label.
+    """
+    entries={}
+    prior_path=pathlib.Path(os.environ.get("DIGUI007_PRIOR_PATH","digui007-prior/snapshot.json"))
+    prior_loaded=False
+    if prior_path.is_file():
+        try:
+            prior=json.loads(prior_path.read_text(encoding="utf-8"))
+            for item in prior.get("tracking",[]):
+                key=item.get("mint")
+                if key and item.get("pool_address"):entries[key]=item
+            prior_loaded=True
+        except (ValueError,OSError):
+            pass
+    now=dt.datetime.now(dt.timezone.utc)
+    for p in pools.values():
+        mint=p["mint"]
+        # Stable random-like 8% entry cohort; hash computed from address only.
+        if int(hashlib.sha256(mint.encode()).hexdigest()[:8],16)%100>=8:continue
+        entries.setdefault(mint,{"mint":mint,"pool_address":p["pool_address"],
+            "first_seen":p.get("created_at_claimed") or utc(),
+            "source":"GeckoTerminal-new-pools","samples":[]})
+    selected=[]
+    for e in entries.values():
+        try:
+            first=dt.datetime.fromisoformat(e["first_seen"].replace("Z","+00:00"))
+            age=(now-first).total_seconds()
+            if age<0 or age>36*3600:continue
+        except (ValueError,TypeError,AttributeError):continue
+        selected.append(e)
+    # Cap allocation oldest-first so continued samples survive to >=24h.
+    selected.sort(key=lambda e:(e["first_seen"],e["mint"]))
+    selected=selected[:40]
+    receipts=[]
+    for ent in selected:
+        pool_addr=ent["pool_address"]
+        rec=request("https://api.geckoterminal.com/api/v2/networks/solana/pools/"+pool_addr)
+        attrs=(((rec.get("response") or {}).get("data") or {}).get("attributes") or {})
+        sample={"observed_at":rec["received_at"],"http_status":rec["http_status"],
+          "price_usd":attrs.get("base_token_price_usd"),
+          "reserve_usd":attrs.get("reserve_in_usd"),
+          "volume_usd":attrs.get("volume_usd"),"error":rec["error"],
+          "source_hash":rec["body_sha256"]}
+        ent.setdefault("samples",[]).append(sample)
+        try:
+            first_liq=next(float(s["reserve_usd"]) for s in ent["samples"]
+                           if s.get("reserve_usd") is not None and float(s["reserve_usd"])>0)
+            last_liq=float(sample["reserve_usd"])
+            sample["liquidity_drop_from_first_pct"]=round(100*(1-last_liq/first_liq),2)
+            sample["liq_drop_gt_80pct"]=last_liq < .2*first_liq
+        except (StopIteration,TypeError,ValueError,ZeroDivisionError):pass
+        receipts.append({"mint":ent["mint"],"pool_address":pool_addr,"receipt":rec})
+    return selected,receipts,prior_loaded
+
 def collect():
     started=utc()
     gecko_receipts=[request(GECKO.format(page)) for page in [1,2]]
@@ -165,11 +221,14 @@ def collect():
         receipts["mint_rpc"].append({"mint":mint,"account":acc,"largest":largest})
         assess(pool)
     for pool in list(pools.values())[MAX_ENRICH:]: assess(pool)
+    tracked,tracking_receipts,prior_loaded=carryforward_from_prior(pools)
     output={"version":"digui-007.1","collected_after":started,"completed_at":utc(),
        "universe":"GeckoTerminal latest two pages only; NOT full Pump.fun launch universe",
        "gecko_raw_pools_seen":gecko_seen,"distinct_base_mints":len(pools),
        "enriched":min(len(pools),MAX_ENRICH),"launch_coverage":launch_coverage,
-       "observations":list(pools.values()),"receipts":receipts,
+       "observations":list(pools.values()),"tracking":tracked,
+       "tracking_previous_loaded":prior_loaded,
+       "tracking_receipts":tracking_receipts,"receipts":receipts,
        "no_orders":True,"no_private_keys":True,"no_future_labels":True,
        "quality_gates":{"full_universe":False,"asof_onchain":False,"risk_validated":False,
          "economic_edge":False,"proven_execution":False}}
@@ -192,6 +251,7 @@ def main():
       "risk_flag_counts":{flag:sum(flag in v["flags"] for v in output["observations"]) for flag in sorted({f for v in output["observations"] for f in v["flags"]})},
       "partial_or_unknown":sum("PARTIAL" in v["flag_status"] or v["flag_status"]=="unknown" for v in output["observations"]),
       "no_liquidity_data":sum(v["gecko_liquidity_usd"] is None for v in output["observations"]),
+      "tracking_count":len(output["tracking"]),"prior_loaded":output["tracking_previous_loaded"],
       "errors":{"gecko":[r["error"] for r in output["receipts"]["gecko"]],
                 "pump_rpc":output["receipts"]["rpc_pump_recent"]["error"]},
       "economic_status":"NO-GO","orders_sent":0},ensure_ascii=False))
