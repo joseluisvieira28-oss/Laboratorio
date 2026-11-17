@@ -11,6 +11,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,7 +65,7 @@ def assess_csv(data: bytes, pool: str, expected_blob: str) -> dict:
                                  ("initialValue", "lossVersusHODLExact", "event_feesUSD")]
             position = row["position_id"]
             identifier = row["id"]
-            if not all((initial > 0, position, identifier)):
+            if not all(math.isfinite(v) for v in (event_ts, initial, il, fees)) or not all((initial > 0, position, identifier)):
                 invalid_numeric += 1
                 continue
             rows.append({"ts": event_ts, "id": identifier, "position": position,
