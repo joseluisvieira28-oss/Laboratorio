@@ -37,7 +37,8 @@ def collect():
             nxt=ms(y+1,1) if m==12 else ms(y,m+1)
             req={"type":"candleSnapshot","req":{"coin":coin,"interval":"1h","startTime":ms(y,m),"endTime":nxt-1}}
             try:
-                raw=request("https://api.hyperliquid.xyz/info",req)
+                cache=RAW/f"HL_{coin}_1h_{mo}.json.gz"
+                raw=gzip.decompress(cache.read_bytes()) if cache.exists() else request("https://api.hyperliquid.xyz/info",req)
                 digest=hashlib.sha256(raw).hexdigest()
                 obj=json.loads(raw)
                 if not isinstance(obj,list):raise ValueError("not a list")
@@ -56,7 +57,8 @@ def collect():
             sym=coin+"USDT"
             path=f"https://data.binance.vision/data/futures/um/monthly/markPriceKlines/{sym}/1h/{sym}-1h-{mo}.zip"
             try:
-                raw=request(path)
+                cache=RAW/f"BIN_{coin}_mark_1h_{mo}.zip"
+                raw=cache.read_bytes() if cache.exists() else request(path)
                 digest=hashlib.sha256(raw).hexdigest()
                 (RAW/f"BIN_{coin}_mark_1h_{mo}.zip").write_bytes(raw)
                 with zipfile.ZipFile(io.BytesIO(raw)) as z:
