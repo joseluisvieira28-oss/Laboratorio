@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.request import Request,urlopen
 getcontext().prec=58
 RPC="https://arb1.arbitrum.io/rpc"
+PUBLIC_ARCHIVE_ENDPOINTS=("https://arb1.arbitrum.io/rpc","https://arbitrum-one-rpc.publicnode.com")
 POOL="0xbe3ad6a5669dc0b8b12febc03608860c31e2eef6"
 SEL={"global0":"0xf3058399","global1":"0x46141319",
      "slot0":"0x3850c7bd","L":"0x1a686502"}
@@ -129,9 +130,20 @@ def main():
        "source_fixture_sha256":hashlib.sha256(raw).hexdigest(),
        "no_trades":True,"capital_chf":0,"economic_verdict":"NO_LIVE_GO",
        "status":"SOURCE_BLOCKED","analysis":None}
-    try:output["analysis"]=collect(f);output["status"]="BLOCK_PINNED_POOL_GLOBAL_FEEGROWTH_OBSERVED"
-    except (ValueError,RuntimeError,OSError,KeyError,TypeError) as e:
-        output["source_blocker"]=type(e).__name__+":"+str(e)[:180]
+    output["attempts"]=[]
+    for endpoint in PUBLIC_ARCHIVE_ENDPOINTS:
+        global RPC
+        RPC=endpoint
+        try:
+            output["analysis"]=collect(f)
+            output["status"]="BLOCK_PINNED_POOL_GLOBAL_FEEGROWTH_OBSERVED"
+            output["accepted_endpoint"]=endpoint
+            break
+        except (ValueError,RuntimeError,OSError,KeyError,TypeError) as e:
+            output["attempts"].append({"endpoint":endpoint,
+                "error_type":type(e).__name__,"reason":str(e)[:180]})
+    if output["analysis"] is None:
+        output["source_blocker"]="NO_PUBLIC_ARCHIVE_ENDPOINT_SERVED_FEE_GROWTH"
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(output,indent=2,ensure_ascii=False),encoding="utf-8")
     print(json.dumps({"status":output["status"],"cases":len(output["analysis"]["fee_growth_global_historical"]) if output["analysis"] else 0,
