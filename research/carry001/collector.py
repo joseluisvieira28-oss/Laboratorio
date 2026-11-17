@@ -47,13 +47,13 @@ def process_binance(coin):
         filename=f"{symbol}-fundingRate-{month}.zip"
         url=f"https://data.binance.vision/data/futures/um/monthly/fundingRate/{symbol}/{filename}"
         try:
-            raw=raw_request(url)
+            raw=pathlib.Path(RAW/filename).read_bytes() if (RAW/filename).exists() else raw_request(url)
             digest=hashlib.sha256(raw).hexdigest()
             path=RAW/filename;path.write_bytes(raw)
             with zipfile.ZipFile(io.BytesIO(raw)) as z:
                 if len(z.namelist())!=1 or not z.namelist()[0].endswith(".csv"):
                     raise ValueError("invalid archive")
-                rows=list(csv.DictReader(io.StringIO(z.read(z.namelist()[0]).decode("utf8-sig"))))
+                rows=list(csv.DictReader(io.StringIO(z.read(z.namelist()[0]).decode("utf-8-sig"))))
             good=0
             for r in rows:
                 timestamp=int(r["calc_time"])
@@ -78,7 +78,8 @@ def process_hl(coin):
     cursor=START_MS;rows={};provenance=[];n=0
     while cursor<END_MS and n<130:
         body={"type":"fundingHistory","coin":coin,"startTime":cursor,"endTime":END_MS-1}
-        raw=raw_request("https://api.hyperliquid.xyz/info",body)
+        cached=RAW/f"HL_{coin}_page_{n:03}.json.gz"
+        raw=gzip.decompress(cached.read_bytes()) if cached.exists() else raw_request("https://api.hyperliquid.xyz/info",body)
         digest=hashlib.sha256(raw).hexdigest()
         payload=json.loads(raw)
         if not isinstance(payload,list):raise ValueError("HL response non-array")
