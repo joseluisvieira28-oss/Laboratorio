@@ -21,7 +21,7 @@ COST=lambda slip:2*(B_TAKER+H_TAKER)+4*slip
 COINS=("BTC","ETH","SOL")
 STRATEGIES=("shortBN_longHL_fixed","shortHL_longBN_fixed","prev_week_sign",
             "prev_week_fee_gate","trailing4_fee_gate","oracle_hindsight_NOT_TRADABLE")
-def dtstr(ms):return dt.datetime.fromtimestamp(ms/1000,tzinfo=UTC).isoformat()
+def dtstr(ms):return dt.datetime.fromtimestamp(ms/1000,tz=UTC).isoformat()
 def timeweek(ms):
     return ANCHOR+((ms-ANCHOR)//WEEK)*WEEK
 def read_rates():
