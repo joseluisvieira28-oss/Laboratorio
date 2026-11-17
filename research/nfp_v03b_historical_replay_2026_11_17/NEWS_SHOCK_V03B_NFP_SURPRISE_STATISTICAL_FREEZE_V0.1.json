@@ -1,0 +1,150 @@
+{
+  "document_type": "NEWS_SHOCK_V03B_NFP_SURPRISE_STATISTICAL_FREEZE_V0.1",
+  "version": "V0.1",
+  "lab_id": "NEWS_SHOCK_LAB_V03B_NFP_SURPRISE",
+  "status": "FROZEN_PRE_CRYPTO_OUTCOME",
+  "frozen_at_utc_date": "2026-09-13",
+  "authority_chain": {
+    "master_consensus_fingerprint": "0133168b2355daaf71c2e3f1a0c7259e10f01b0c6b17b458c2771347bd5090c3",
+    "parent_cpi_v03a_statistical_freeze_fingerprint": "945924528dde46a7e596ac77cec32e8deeff62adb42859f7e52abf63b6d5a37f"
+  },
+  "cohort": {
+    "discovery_years": [
+      2022,
+      2023,
+      2024
+    ],
+    "event_count": 36,
+    "validation_2025": "LOCKED_NOT_ACCESSED",
+    "holdout_2026": "LOCKED_NOT_ACCESSED"
+  },
+  "actuals_contract": {
+    "authority": "OFFICIAL_BLS_EMPLOYMENT_SITUATION_ARCHIVED_FIRST_RELEASE_ONLY",
+    "archive_template": "https://www.bls.gov/news.release/archives/empsit_MMDDYYYY.htm",
+    "fields": [
+      "headline_nonfarm_payroll_change_k",
+      "unemployment_rate_pct",
+      "average_hourly_earnings_mom_pct"
+    ],
+    "payroll_revisions_in_primary_score": false,
+    "ahe_rule": "USE_EXPLICIT_BLS_MOM_PERCENT_IF_PRESENT; OTHERWISE_DERIVE_FROM_BLS_CENTS_CHANGE_AND_CURRENT_LEVEL_AND_ROUND_HALF_UP_TO_0.1_PERCENT",
+    "embargo_date_and_0830_ET_must_match_event": true,
+    "no_later_revised_time_series_substitution": true
+  },
+  "surprise_signal": {
+    "raw_surprises": {
+      "payroll": "actual_payroll_k - consensus_payroll_k",
+      "unemployment": "consensus_unemployment_pct - actual_unemployment_pct",
+      "ahe": "actual_ahe_mom_pct - consensus_ahe_mom_pct"
+    },
+    "component_encoding": "SIGN_ONLY_-1_0_PLUS1",
+    "reason": "FIELDS_HAVE_INCOMPATIBLE_NATIVE_SCALES_AND_NO_FROZEN_PRE_RELEASE_DISPERSION_SERIES; SIGN_VOTE_AVOIDS_DIMENSIONALLY_INVALID_RAW_AVERAGING_AND_MAGNITUDE_TUNING",
+    "equal_component_weight": true,
+    "composite": "(sign_payroll + sign_unemployment + sign_ahe) / 3",
+    "label_rule": {
+      "positive": "HOTTER",
+      "negative": "COOLER",
+      "exact_zero": "NEUTRAL"
+    },
+    "shock_sign": {
+      "HOTTER": 1,
+      "COOLER": -1,
+      "NEUTRAL": 0
+    },
+    "directional_mapping": {
+      "HOTTER": "CRYPTO_DOWN",
+      "COOLER": "CRYPTO_UP",
+      "NEUTRAL": "NO_DIRECTIONAL_TEST"
+    },
+    "magnitude_threshold": "NONE",
+    "standardization": "NONE",
+    "revisions": "EXCLUDED"
+  },
+  "market_data_contract": {
+    "source": "OFFICIAL_BINANCE_PUBLIC_DATA_ONLY",
+    "market_type": "SPOT",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "timeframe": "1m",
+    "discovery_years": [
+      2022,
+      2023,
+      2024
+    ],
+    "checksum_required": true,
+    "no_interpolation": true,
+    "no_synthetic_candles": true,
+    "validation_2025_access": false,
+    "2026_access": false
+  },
+  "event_timing_contract": {
+    "release_time": "08:30:00 America/New_York",
+    "primary_entry": "OPEN_OF_08:31_AMERICA_NEW_YORK_1M_CANDLE",
+    "primary_exit": "OPEN_OF_08:45_AMERICA_NEW_YORK_1M_CANDLE",
+    "holding_interval": "08:31_TO_08:45_OPEN_TO_OPEN",
+    "alternate_primary_horizons": "FORBIDDEN"
+  },
+  "return_and_cost_contract": {
+    "gross_return_bps": "10000 * (exit_price / entry_price - 1)",
+    "aligned_gross_bps": "-shock_sign * gross_return_bps",
+    "fixed_round_trip_cost_bps": "10",
+    "aligned_net_bps": "aligned_gross_bps - 10",
+    "leverage": "NONE",
+    "stop_loss": "NONE",
+    "take_profit": "NONE"
+  },
+  "primary_discovery_test": {
+    "statistic": "MEAN_ALIGNED_GROSS_BPS",
+    "alternative": "GREATER_THAN_ZERO",
+    "alpha": "0.05",
+    "preserve_realized_HOTTER_COOLER_counts": true,
+    "neutral_events_excluded_from_directional_inference": true,
+    "permutation_policy": {
+      "if_unique_assignments_lte": 5000000,
+      "method": "EXACT_ENUMERATION",
+      "otherwise": "DETERMINISTIC_MONTE_CARLO_FIXED_COUNT_PERMUTATION",
+      "monte_carlo_repetitions": 1000000,
+      "monte_carlo_seed": 20260913,
+      "monte_carlo_p_value": "(1 + exceedances) / (1 + repetitions)"
+    },
+    "multiple_testing_policy": "INTERSECTION_UNION_STYLE_GATE_BOTH_PRE_SPECIFIED_ASSETS_MUST_PASS; NO_ASSET_SELECTION"
+  },
+  "discovery_survival_criteria": {
+    "per_asset": [
+      "mean_aligned_net_bps > 0",
+      "median_aligned_gross_bps > 0",
+      "one_sided_fixed_count_permutation_p <= 0.05",
+      "every_leave_one_out_mean_aligned_net_bps > 0"
+    ],
+    "both_assets_required": true,
+    "both_pass": "DISCOVERY_SURVIVES_ELIGIBLE_FOR_SEPARATE_2025_VALIDATION_AUTHORIZATION",
+    "any_failure": "NO_EDGE_STOP"
+  },
+  "no_rescue_rules": [
+    "NO_ALTERNATE_COMPONENT_WEIGHTS",
+    "NO_PAYROLL_ONLY_OR_WAGES_ONLY_OR_UNEMPLOYMENT_ONLY_RESCUE",
+    "NO_MAGNITUDE_THRESHOLDING",
+    "NO_TOP_SURPRISE_SUBSET",
+    "NO_ALTERNATE_HORIZONS",
+    "NO_ALTERNATE_ENTRY_DELAY",
+    "NO_SUBPERIOD_OR_REGIME_SPLIT",
+    "NO_OUTLIER_DELETION_OR_WINSORIZATION",
+    "NO_BEST_SYMBOL_SELECTION",
+    "NO_COST_CHANGE",
+    "NO_DIRECTIONAL_USE_OF_NEUTRAL_EVENTS",
+    "NO_2025_VALIDATION_ACCESS_DURING_DISCOVERY",
+    "NO_2026_ACCESS",
+    "NO_REVISIONS_RESCUE",
+    "PRIMARY_FAILURE_CLOSES_HYPOTHESIS_AS_NO_EDGE_UNDER_THIS_DEFINITION"
+  ],
+  "governance": {
+    "research_only": true,
+    "fail_closed": true,
+    "no_tuning_after_outcomes": true,
+    "market_outcomes_accessed_at_freeze": false,
+    "live_trading_authorized": false
+  },
+  "fingerprint": "29a983d6714934b068e130b0bd9598ca7b7090636567d814cd03c4a911982143"
+}
