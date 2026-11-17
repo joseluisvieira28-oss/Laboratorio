@@ -25,6 +25,9 @@ jobs:
       - name: Frozen Arbitrum fee share math and historical in-range candles (no trading)
         run: |
           python research/lp_net_004/arbitrum_static_fee_share_scenario.py --fixture research/lp_net_004/FROZEN_ARBITRUM_T0_LP_CAPITAL_SHARE.json --output lp-net-004-evidence/arbitrum_static_fee_share_and_past_30d.json
+      - name: Block-pinned historical 24h pool global fee growth (no position fills)
+        run: |
+          python research/lp_net_004/fee_growth_24h_block_pinned.py --fixture research/lp_net_004/FROZEN_ARBITRUM_T0_LP_CAPITAL_SHARE.json --output lp-net-004-evidence/arbitrum_block_pinned_fee_growth_24h.json
       - name: Archive raw field provenance and all failed source gates
         if: always()
         uses: actions/upload-artifact@v4
