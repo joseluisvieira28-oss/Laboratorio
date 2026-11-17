@@ -1,0 +1,30 @@
+name: CARRY-001 Research Funding Basis (no-trades)
+on:
+  pull_request:
+    paths:
+      - "research/carry001/**"
+      - ".github/workflows/carry-001-funding.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Probe official public data sources
+        run: python research/carry001/probe.py
+      - name: Historical research (only if present)
+        run: |
+          if [ -f research/carry001/study.py ]; then python research/carry001/study.py; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: carry001-evidence-${{ github.run_id }}
+          path: carry001-evidence/
+          if-no-files-found: warn
+          retention-days: 90
