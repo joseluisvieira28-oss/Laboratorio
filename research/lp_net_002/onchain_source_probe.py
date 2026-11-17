@@ -12,6 +12,11 @@ from urllib.request import Request, urlopen
 
 MANAGER="0xc36442b4a4522e871399cd717abdd847ab11fe88"
 POOL="0x6c6bc977e13df9b0de53b251522280bb72383700"
+FACTORY="0x1f98431c8ad98523631ae4a59f267346ea31f984"
+DAI="0x6b175474e89094c44da98b954eedeac495271d0f"
+USDC="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+POSITION_SELECTOR="0x99fbab88"
+GET_POOL_SELECTOR="0x1698ee82"
 INCREASE="0x3067048beee31b25b2f1681f88dac838c8bba36af25bfb2b7cf7473a5847e35f"
 DECREASE="0x26f6a048ee9138f2c0ce266f322cb99228e8d619ae2bff30c67f8dcf9d2377b4"
 COLLECT="0x40d0efd1a53d60ecbf40971b9daf7dc90178c3aadc7aab1765632738fa8b8f01"
@@ -86,11 +91,32 @@ def probe_one(url:str,target:dict)->dict:
  if blockinfo is None or int(blockinfo["number"],16)!=block:raise RuntimeError("Missing block")
  ts=int(blockinfo["timestamp"],16)
  same=ts==target["source_event_timestamp"]
+ identity={"state":"ARCHIVE_NFT_POSITION_NOT_CHECKED"}
+ try:
+  # Use pre-withdrawal block to avoid a potentially burned NFT in the target block.
+  state=get_rpc(url,"eth_call",[{"to":MANAGER,"data":POSITION_SELECTOR+format(tid,"064x")},hex(block-1)])
+  state_words=words(state)
+  if len(state_words)!=12:raise ValueError("Unexpected positions() output")
+  token0="0x"+format(state_words[2],"064x")[-40:]
+  token1="0x"+format(state_words[3],"064x")[-40:]
+  tier=state_words[4]
+  if (token0,token1,tier)!=(DAI,USDC,500):raise ValueError("NFT token pair or tier mismatch")
+  pool_call=GET_POOL_SELECTOR+format(int(DAI,16),"064x")+format(int(USDC,16),"064x")+format(500,"064x")
+  returned_pool=words(get_rpc(url,"eth_call",[{"to":FACTORY,"data":pool_call},hex(block-1)]))
+  if len(returned_pool)!=1:raise ValueError("Unexpected factory getPool() output")
+  factory_pool="0x"+format(returned_pool[0],"064x")[-40:]
+  if factory_pool!=POOL:raise ValueError("Factory pool identity mismatch")
+  identity={"state":"NFT_PAIR_AND_FACTORY_POOL_VERIFIED","token0":token0,"token1":token1,
+            "fee_tier":tier,"factory_pool":factory_pool}
+ except (OSError,RuntimeError,ValueError,KeyError,TypeError,OverflowError) as exc:
+  identity={"state":"NFT_POOL_IDENTITY_NOT_VERIFIED",
+            "reason_type":type(exc).__name__,"reason":str(exc)[:150]}
  return {**target,"state":("TIMESTAMP_MISMATCH" if not same else
                             "SOURCE_EVENTS_PRESENT" if items else "NO_LOGS_AT_DECLARED_BLOCK"),
          "timestamp_matches_csv":same,"block_hash":blockinfo["hash"],"observed_timestamp":ts,
          "manager_address_verified_as_log_emitter":bool(items),
-         "pool_identity_verified_from_nft_position":False,
+         "pool_identity_verified_from_nft_position":identity["state"]=="NFT_PAIR_AND_FACTORY_POOL_VERIFIED",
+         "position_pool_identity":identity,
          "events":sorted(items,key=lambda x:(x["tx_index"],x["log_index"])),
          "receipts":receipts,"raw_collect_fee_is_separable":False,"net_profit_usd":None}
 
