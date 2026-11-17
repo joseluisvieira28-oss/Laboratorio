@@ -31,6 +31,9 @@ jobs:
       - name: Independent opening receipt, DAI-USDC pool Mint and gas proof
         run: |
           python research/lp_net_002/opening_receipt_proof.py --lifecycle lp-net-002-evidence/nft_lifecycle_indexed.json --output lp-net-002-evidence/opening_receipt_proof.json
+      - name: Diagnose Uniswap pool Mint event mismatch without economic promotion
+        run: |
+          python research/lp_net_002/opening_pool_event_diag.py --lifecycle lp-net-002-evidence/nft_lifecycle_indexed.json --output lp-net-002-evidence/opening_pool_event_diag.json
       - name: Archive source receipt, including source-blocked state
         if: always()
         uses: actions/upload-artifact@v4
