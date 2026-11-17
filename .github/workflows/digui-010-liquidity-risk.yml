@@ -27,6 +27,8 @@ jobs:
           if [ -f research/digui010/analysis.py ]; then python research/digui010/analysis.py; fi
       - name: Adversarial liquidity-only loss test (post-hoc)
         run: python research/digui010/adversarial.py
+      - name: Adversarial absolute liquidity and opportunity-cost audit
+        run: python research/digui010/safety_audit.py
       - name: Archive read-only results
         if: always()
         uses: actions/upload-artifact@v4
