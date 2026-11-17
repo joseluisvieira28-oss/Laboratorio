@@ -32,7 +32,7 @@ def verify(t):
     tx=load(BASE+t["txhash"])
     if not isinstance(tx,dict):raise ValueError("Invalid tx record")
     if tx.get("hash","").lower()!=t["txhash"]:raise ValueError("Tx hash mismatch")
-    if intval(tx["block"])!=t["block"]:raise ValueError("Tx block mismatch")
+    if intval(tx.get("block_number",tx.get("block")))!=t["block"]:raise ValueError("Tx block mismatch")
     result={"transaction_hash":t["txhash"],"token_id":t["token_id"],"block":t["block"],
             "transaction_source":"Blockscout v2","tx_meta_provenance":"SEPARATE_INDEXER",
             "status":str(tx.get("status")),"gas_used":None,"gas_price_wei":None,
