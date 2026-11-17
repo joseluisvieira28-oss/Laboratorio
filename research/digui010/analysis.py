@@ -62,7 +62,7 @@ def sample():
        FROM valid
        GROUP BY mint
     ) SELECT x.*,m.migrated_at
-    FROM x LEFT JOIN mm m USING(mint)"""
+    FROM x LEFT JOIN (SELECT mint,MIN(migrated_at) migrated_at FROM mm GROUP BY mint) m USING(mint)"""
     df=con.sql(sql).df()
     con.close()
     total=len(df)
@@ -140,7 +140,7 @@ def metric(y,p):
     y=np.asarray(y);p=np.asarray(p)
     return {"n":len(y),"positives":int(y.sum()),"prev":float(y.mean()),
        "average_precision":float(average_precision_score(y,p)),
-       "auc":float(roc_auc_score(y,p)) if y.nunique()>1 else None,
+       "auc":float(roc_auc_score(y,p)) if len(np.unique(y))>1 else None,
        "brier":float(brier_score_loss(y,p))}
 
 def policy(test,score,threshold,accept_if,desc):
