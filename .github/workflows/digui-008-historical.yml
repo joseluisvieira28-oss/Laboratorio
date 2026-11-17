@@ -22,6 +22,8 @@ jobs:
       - name: Run historical evaluation if available
         run: |
           if [ -f research/digui008/analysis.py ]; then python research/digui008/analysis.py; fi
+      - name: Adversarial ablation and first-trade sensitivity (post-hoc)
+        run: python research/digui008/adversarial.py
       - name: Archive real data metrics
         if: always()
         uses: actions/upload-artifact@v4
