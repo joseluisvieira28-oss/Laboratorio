@@ -241,6 +241,10 @@ def collect():
     return output
 
 def main():
+    # Stop calling public APIs after the predeclared ~30-day 2026 observation window.
+    if dt.datetime.now(dt.timezone.utc).date()>dt.date(2026,12,17):
+        print("DIGUI007_WINDOW_CLOSED: no API calls or trading")
+        return 0
     output=collect()
     outdir=pathlib.Path(os.environ.get("DIGUI007_OUTPUT_DIR","digui007-evidence"))
     outdir.mkdir(parents=True,exist_ok=True)
