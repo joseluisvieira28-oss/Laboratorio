@@ -1,0 +1,32 @@
+name: DIGUI-008 Historical Independent Audit
+on:
+  pull_request:
+    paths:
+      - "research/digui008/**"
+      - ".github/workflows/digui-008-historical.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install "huggingface_hub>=0.25,<2" "pyarrow>=17,<26" "numpy>=1.26,<3" "pandas>=2.2,<4" "scikit-learn>=1.4,<2"
+      - name: Verify pinned dataset schema
+        run: python research/digui008/probe.py
+      - name: Run historical evaluation if available
+        run: |
+          if [ -f research/digui008/analysis.py ]; then python research/digui008/analysis.py; fi
+      - name: Archive real data metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digui008-evidence-${{ github.run_id }}
+          path: digui008-evidence/
+          retention-days: 90
+          if-no-files-found: warn
