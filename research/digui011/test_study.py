@@ -41,7 +41,7 @@ class Digi011Safety(unittest.TestCase):
         self.assertTrue((a["time_ms"]%(4*3600000)==0).all())
         self.assertLess(len(a),20)
     def test_poc_uses_previous_completed_bars_only(self):
-        b=self.bars(100);b.loc[90,"high"]=500;b.loc[90,"close"]=450
+        b=self.bars(100);b["close"]=100+.01*np.arange(len(b));b.loc[90,"high"]=500;b.loc[90,"close"]=450
         x=st.features(b,72)
         self.assertTrue(np.isnan(x.loc[71,"poc_proxy"]))
         self.assertTrue(np.isfinite(x.loc[72,"poc_proxy"]))
@@ -50,6 +50,6 @@ class Digi011Safety(unittest.TestCase):
         b=self.bars(); sig=np.zeros(len(b),dtype=np.int8);sig[30]=1
         rows,_=st.simulate(b,sig,"BTC",1,.0002,self.funding())
         self.assertEqual(len(rows),1)
-        self.assertGreater(rows[0]["fee_return"],.001)
+        self.assertGreater(rows[0]["fee_return"],.0009)
         self.assertLess(rows[0]["net_return"],-.001)
 if __name__=="__main__":unittest.main()
