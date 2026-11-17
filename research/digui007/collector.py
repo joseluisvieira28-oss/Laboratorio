@@ -150,21 +150,16 @@ def collect():
        "rpc_pump_recent":{"url":SOLANA_RPC,"requested_at":rpc_receipt["requested_at"],
            "received_at":rpc_receipt["received_at"],"http_status":rpc_receipt["http_status"],
            "body_sha256":rpc_receipt["body_sha256"],"error":rpc_receipt["error"]},
-       "dex":[],"mint_rpc":[]}
+       "dex":[],"mint_rpc":[],"pump_rpc_response":rpc_receipt.get("response")}
     for mint, pool in list(pools.items())[:MAX_ENRICH]:
         dex_receipt=request(DEX.format(mint))
         payload=dex_receipt.get("response")
         pool["dex"]=choose_dex(payload,mint,pool["pool_address"])
-        receipts["dex"].append({k:v for k,v in dex_receipt.items() if k!="response"})
+        receipts["dex"].append(dex_receipt)
         acc=rpc("getAccountInfo",[mint,{"encoding":"jsonParsed","commitment":"finalized"}],2)
         largest=rpc("getTokenLargestAccounts",[mint,{"commitment":"finalized"}],3)
         pool["onchain"]=decode_chain(acc.get("response"),largest.get("response"))
-        receipts["mint_rpc"].append({"mint":mint,"account":{"error":acc["error"],
-            "status":acc["http_status"],"requested_at":acc["requested_at"],
-            "received_at":acc["received_at"],"hash":acc["body_sha256"]},
-            "largest":{"error":largest["error"],"status":largest["http_status"],
-            "requested_at":largest["requested_at"],"received_at":largest["received_at"],
-            "hash":largest["body_sha256"]}})
+        receipts["mint_rpc"].append({"mint":mint,"account":acc,"largest":largest})
         assess(pool)
     for pool in list(pools.values())[MAX_ENRICH:]: assess(pool)
     output={"version":"digui-007.1","collected_after":started,"completed_at":utc(),
