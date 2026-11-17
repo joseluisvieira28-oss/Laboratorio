@@ -21,7 +21,7 @@ COST=lambda slip:2*(B_TAKER+H_TAKER)+4*slip
 COINS=("BTC","ETH","SOL")
 STRATEGIES=("shortBN_longHL_fixed","shortHL_longBN_fixed","prev_week_sign",
             "prev_week_fee_gate","trailing4_fee_gate","oracle_hindsight_NOT_TRADABLE")
-def dtstr(ms):return dt.datetime.fromtimestamp(ms/1000,tz=UTC).isoformat()
+def dtstr(ms):return dt.datetime.fromtimestamp(ms/1000,tzinfo=UTC).isoformat()
 def timeweek(ms):
     return ANCHOR+((ms-ANCHOR)//WEEK)*WEEK
 def read_rates():
@@ -165,8 +165,8 @@ def main():
             # Extra ensure trailing four are consecutive only if each in date range
             if not history or history[-1]["week_ms"]!=week["week_ms"]-WEEK:continue
             basis=pricebasis(coin,week["week_ms"],candles)
-            phase=("train" if week["week_ms"]<int(dt.datetime(2025,7,1,tz=UTC).timestamp()*1000)
-               else "validation" if week["week_ms"]<int(dt.datetime(2026,1,1,tz=UTC).timestamp()*1000)
+            phase=("train" if week["week_ms"]<int(dt.datetime(2025,7,1,tzinfo=UTC).timestamp()*1000)
+               else "validation" if week["week_ms"]<int(dt.datetime(2026,1,1,tzinfo=UTC).timestamp()*1000)
                else "test")
             for slip in SLIPS:
                 cost=COST(slip)
