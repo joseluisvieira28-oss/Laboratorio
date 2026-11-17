@@ -1,0 +1,29 @@
+name: LP-NET-002 | bounded public onchain source probe
+on:
+  pull_request:
+    paths:
+      - 'research/lp_net_002/**'
+      - '.github/workflows/lp-net-002-source-only.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  forensic-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline deterministic tests (no network)
+        run: python -m unittest discover -s research/lp_net_002 -p 'test_*.py' -v
+      - name: Public Ethereum read-only receipt probe
+        run: |
+          mkdir -p lp-net-002-evidence
+          python research/lp_net_002/onchain_source_probe.py --output lp-net-002-evidence/ethereum_receipt.json
+      - name: Archive source receipt, including source-blocked state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp-net-002-source-only-receipt
+          path: lp-net-002-evidence/*.json
+          if-no-files-found: warn
+          retention-days: 30
