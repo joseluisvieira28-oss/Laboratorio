@@ -28,6 +28,9 @@ jobs:
       - name: Bounded historical NFT liquidity and transfer log lifecycle source probe
         run: |
           python research/lp_net_002/lifecycle_indexed_probe.py --output lp-net-002-evidence/nft_lifecycle_indexed.json
+      - name: Independent opening receipt, DAI-USDC pool Mint and gas proof
+        run: |
+          python research/lp_net_002/opening_receipt_proof.py --lifecycle lp-net-002-evidence/nft_lifecycle_indexed.json --output lp-net-002-evidence/opening_receipt_proof.json
       - name: Archive source receipt, including source-blocked state
         if: always()
         uses: actions/upload-artifact@v4
