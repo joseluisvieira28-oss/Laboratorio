@@ -18,7 +18,7 @@ jobs:
       - name: Public Ethereum read-only receipt probe
         run: |
           mkdir -p lp-net-002-evidence
-          python research/lp_net_002/onchain_source_probe.py --output lp-net-002-evidence/ethereum_receipt.json
+          python research/lp_net_002/onchain_source_probe.py --rpc https://rpcfree.com/ethereum-rpc --rpc https://ethereum-rpc.blockreq.com/v1/rpc/public --rpc https://rpc-eth.blockmachine.io --output lp-net-002-evidence/ethereum_receipt.json
       - name: Archive source receipt, including source-blocked state
         if: always()
         uses: actions/upload-artifact@v4
