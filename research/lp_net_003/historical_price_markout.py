@@ -84,7 +84,7 @@ def get_prices(ts):
 def dec(d,k):return Decimal(d[k])
 def compute(p,entry,exit_,pe,px):
     if pe["status"]!="PASS" or px["status"]!="PASS":
-        return {"state":"PRICE_SOURCE_BLOCKED","reason":pe["errors"]+px["errors"],
+        return {"state":"PRICE_SOURCE_BLOCKED","reason":pe.get("errors",[])+px.get("errors",[]),
                 "real_dollar_result":None}
     v0=sum(dec(p,"initial_"+a.lower())*dec(pe["prices"][a],"price_usd") for a in ("DAI","USDC"))
     hold1=sum(dec(p,"initial_"+a.lower())*dec(px["prices"][a],"price_usd") for a in ("DAI","USDC"))
