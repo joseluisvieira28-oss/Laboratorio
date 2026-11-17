@@ -1,0 +1,45 @@
+name: DIGUI-011 Structure 1h 4h Historical (Research Only)
+on:
+  pull_request:
+    paths:
+      - "research/digui011/**"
+      - ".github/workflows/digui-011-historical.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numerical research dependencies
+        run: python -m pip install "numpy>=1.26,<3" "pandas>=2.2,<4"
+      - name: No-lookahead, fee, funding, gap and stop-first offline tests
+        run: python -m unittest discover -s research/digui011 -p 'test_*.py' -v
+      - name: Reuse CARRY-001 independently verified settled Binance funding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p carry001-evidence
+          gh run download 44124154333 --repo "$GITHUB_REPOSITORY" --name carry001-evidence-44124154333 --dir carry001-evidence
+          test -s carry001-evidence/extended_funding_events.csv
+      - name: Collect 123 authentic USD-M monthly Kline archives 2023-2026
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python research/digui011/collector.py
+      - name: Run frozen historical strategy tests with actual funding
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python research/digui011/study.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: digui011-evidence-${{ github.run_id }}
+          path: digui011-evidence/
+          retention-days: 90
+          if-no-files-found: warn
