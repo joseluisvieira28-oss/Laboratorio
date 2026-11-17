@@ -1,0 +1,37 @@
+name: NFP V03B historical replay 2022-2024 (research-only)
+on:
+  push:
+    branches:
+      - audit/nfp-v03b-historical-replay-2026-11-17
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historical-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUNBUFFERED: '1'
+    defaults:
+      run:
+        working-directory: research/nfp_v03b_historical_replay_2026_11_17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen scorer requirements
+        run: python -m pip install 'beautifulsoup4>=4.12' 'numpy>=1.24'
+      - name: Replay frozen 36-event 2022-2024 Discovery with source checks
+        run: |
+          python news_shock_v03b_nfp_master_discovery.py \
+            --worklist T02_PUBLIC_SAFE_WORKLIST.json \
+            --out results
+      - name: Preserve source and economic receipts on success or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfp-v03b-2022-2024-replay-receipts
+          path: research/nfp_v03b_historical_replay_2026_11_17/results/
+          if-no-files-found: warn
+          retention-days: 10
