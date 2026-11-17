@@ -1,0 +1,36 @@
+name: NFP V03B mirror-sourced diagnostic replay (not strict)
+on:
+  push:
+    branches:
+      - audit/nfp-v03b-historical-replay-2026-11-17
+permissions:
+  contents: read
+jobs:
+  noncanonical-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUNBUFFERED: '1'
+    defaults:
+      run:
+        working-directory: research/nfp_v03b_historical_replay_2026_11_17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install frozen scorer requirements
+        run: python -m pip install 'beautifulsoup4>=4.12' 'numpy>=1.24'
+      - name: Replay original frozen economic rules with BLS text mirror TRANSPORT ONLY
+        run: |
+          python mirror_transport_historical_replay.py \
+            --worklist T02_PUBLIC_SAFE_WORKLIST.json \
+            --out mirror_diagnostic_results
+      - name: Preserve diagnostic receipts on success or source block
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfp-v03b-2022-2024-mirror-diagnostic-receipts
+          path: research/nfp_v03b_historical_replay_2026_11_17/mirror_diagnostic_results/
+          if-no-files-found: warn
+          retention-days: 10
