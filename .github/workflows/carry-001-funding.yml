@@ -10,7 +10,7 @@ permissions:
 jobs:
   research:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,9 +18,15 @@ jobs:
           python-version: '3.11'
       - name: Probe official public data sources
         run: python research/carry001/probe.py
-      - name: Historical research (only if present)
-        run: |
-          if [ -f research/carry001/study.py ]; then python research/carry001/study.py; fi
+      - name: Verify historic price sources
+        run: python research/carry001/price_probe.py
+      - name: Retrieve full settlement history Sep 2024 - Oct 2026
+        run: python research/carry001/collector.py
+      - name: Retrieve separate price CANDLES for indicative basis
+        continue-on-error: true
+        run: python research/carry001/price_collector.py
+      - name: Historical previous-week strategy and real-cost stress
+        run: python research/carry001/study.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
