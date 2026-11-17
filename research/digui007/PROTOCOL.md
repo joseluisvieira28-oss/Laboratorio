@@ -7,8 +7,8 @@
 - At each run, query first **two pages** of GeckoTerminal Solana newly created pools, time-stamp start and end, save original JSON and SHA-256.
 - Read up to **four** detected base mints with DEX Screener token-pairs and Solana mainnet **read-only** RPC (`getAccountInfo`, `getTokenLargestAccounts`); include full raw responses and hash. Failure is preserved as `PARTIAL_DATA_UNVERIFIED`, **never** marked "safe".
 - Optionally query latest **1000** finalized signatures referencing the official Pump.fun creation program as a coverage *diagnostic* only. A signature is not proof of a newly created mint; 1000-page truncation and public RPC rate-limits can occur.
-- Archive one `snapshot.json` and `snapshot.sha256` per GitHub Actions run. Hourly/two-hourly artifacts are **not** the full launch universe. Upload on CI failures when possible.
-- Schedule `17 */2 * * *` runs **only when workflow is on default branch**, not from a draft PR. GitHub scheduled runs may be late, skipped or disabled; successful runs are counted individually. Target: >=30 elapsed calendar days of legitimate observations, not assumed from schedule config.
+- Follow a deterministic subset of exactly two mints selected at each run by SHA-256 of the mint only, tracking each for up to 36 hours (max 40 active), with fresh pool-price and liquidity observations and explicit censoring on source failures.\n- Archive one `snapshot.json` and `snapshot.sha256` per GitHub Actions run. Hourly/two-hourly artifacts are **not** the full launch universe. Upload on CI failures when possible.
+- Schedule runs every 2 hours only on calendar dates Nov 17–30 and Dec 1–17 (with a 2026 programmatic API shutoff), and runs **only when workflow is on default branch**, not from a draft PR. GitHub scheduled runs may be late, skipped or disabled; successful runs are counted individually. Target: >=30 elapsed calendar days of legitimate observations, not assumed from schedule config.
 
 ## Data quality and explicit limits
 - GeckoTerminal `new_pools` is a discovery feed for AMM pools, NOT the entire Pump.fun creation history and excludes coins that never have a tradeable pool or age out before collection.
