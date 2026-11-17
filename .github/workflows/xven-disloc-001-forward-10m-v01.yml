@@ -1,0 +1,23 @@
+name: xven-disloc-001-forward-10m-v01
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forward-observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'websockets>=13,<16'
+      - name: Observe Binance-MEXC cross-venue gaps for 10 minutes
+        run: python -m research.microstructure_scalping.xven_disloc_001_forward_10m_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/xven_disloc_001_forward_10m_v01.json || true

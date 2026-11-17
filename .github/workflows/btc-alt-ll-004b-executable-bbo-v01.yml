@@ -1,0 +1,29 @@
+name: btc-alt-ll-004b-executable-bbo-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/btc_alt_ll_004b_executable_v01.py'
+      - 'research/microstructure_scalping/BTC_ALT_LL_004B_EXECUTABLE_FREEZE_V0_1.md'
+      - '.github/workflows/btc-alt-ll-004b-executable-bbo-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  executable-bbo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run frozen SOL executable-BBO validation
+        run: python -m research.microstructure_scalping.btc_alt_ll_004b_executable_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/btc_alt_ll_004b_executable_v01.json || true

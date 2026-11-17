@@ -1,0 +1,28 @@
+name: microstructure-trade-l2-join-v01
+
+on:
+  push:
+    branches:
+      - microstructure-scalping-lab-v0.1
+    paths:
+      - 'research/microstructure_scalping/probe_trade_l2_join_v01.py'
+      - '.github/workflows/microstructure-trade-l2-join-v01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trade-l2-join:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit trade/L2 historical clock alignment
+        run: python -m research.microstructure_scalping.probe_trade_l2_join_v01
+      - name: Print receipt
+        if: always()
+        run: cat research/microstructure_scalping/receipts/trade_l2_join_v01.json || true
