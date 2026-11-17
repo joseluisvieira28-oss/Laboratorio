@@ -1,0 +1,32 @@
+name: LP-NET-004 | 9 frozen L2 pools onchain source audit
+on:
+  pull_request:
+    paths:
+      - 'research/lp_net_004/**'
+      - '.github/workflows/lp-net-004-l2-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: lp-net-004-source-only-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline 9-pool source and economic guard tests
+        run: python -m unittest discover -s research/lp_net_004 -p 'test_*.py' -v
+      - name: Historical source time stamp and 3 L2 onchain pool snapshots (no trades)
+        run: |
+          mkdir -p lp-net-004-evidence
+          python research/lp_net_004/forward_l2_source_probe.py --universe research/lp_net_004/FROZEN_L2_CANDIDATE_UNIVERSE_2026-11-17.json --output lp-net-004-evidence/l2_frozen_pools_snapshot.json
+      - name: Archive raw field provenance and all failed source gates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp-net-004-nine-L2-source-positions
+          path: lp-net-004-evidence/*.json
+          if-no-files-found: warn
+          retention-days: 45
