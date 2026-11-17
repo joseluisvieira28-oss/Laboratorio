@@ -36,6 +36,8 @@ jobs:
         continue-on-error: true
         run: |
           if [ -s carry001-evidence/price_candles.csv ]; then echo "Verified prior price CSV reused"; else python research/carry001/price_collector.py; fi
+      - name: Audit older 2023-2024 funding sources (independent robustness)
+        run: python research/carry001/prehistory.py
       - name: Historical previous-week strategy and real-cost stress
         run: python research/carry001/study.py
       - uses: actions/upload-artifact@v4
