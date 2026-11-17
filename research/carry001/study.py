@@ -25,7 +25,9 @@ def dtstr(ms):return dt.datetime.fromtimestamp(ms/1000,tz=UTC).isoformat()
 def timeweek(ms):
     return ANCHOR+((ms-ANCHOR)//WEEK)*WEEK
 def read_rates():
-    rows=list(csv.DictReader((OUT/"funding_events.csv").open()))
+    source = OUT/"extended_funding_events.csv" if (OUT/"extended_funding_events.csv").is_file() else OUT/"funding_events.csv"
+    rows=list(csv.DictReader(source.open()))
+    print("RESEARCH_RATE_SOURCE",str(source),"rows",len(rows),flush=True)
     m=collections.defaultdict(lambda:collections.defaultdict(lambda:{"B":[],"H":[]}))
     raw_counts=collections.Counter()
     for r in rows:
