@@ -93,17 +93,20 @@ def choose_dex(pairs,mint,pool_addr):
        "selected_pool_matches_gecko":chosen.get("pairAddress")==pool_addr}
 
 def decode_chain(account,largest):
-    if not isinstance(account,dict) or not isinstance(largest,dict):return None
+    if not isinstance(account,dict):return None
     info=(((account.get("result") or {}).get("value") or {}).get("data") or {}).get("parsed") or {}
     i=info.get("info") or {}
+    if not i:return None
     supply=float(i.get("supply") or 0)
-    a=(largest.get("result") or {}).get("value") or []
+    a=((largest.get("result") or {}).get("value") or []) if isinstance(largest,dict) else []
     amounts=[float(row.get("amount") or 0) for row in a]
     return {"mint_authority_active":i.get("mintAuthority") is not None,
         "freeze_authority_active":i.get("freezeAuthority") is not None,
-        "mint_data_seen":bool(i),"supply_base_units":str(i.get("supply")),
+        "mint_data_seen":True,"supply_base_units":str(i.get("supply")),
         "top20_token_accounts_pct":round(100*sum(amounts)/supply,4) if supply>0 and a else None,
-        "top_accounts_count":len(a),"note":"token accounts are NOT unique beneficial owners; pool/bonding accounts can dominate"}
+        "top_accounts_count":len(a),
+        "concentration_source":"UNAVAILABLE" if not a else "PUBLIC_TOKEN_ACCOUNTS_ONLY",
+        "note":"token accounts are NOT unique beneficial owners; pool/bonding accounts can dominate"}
 
 def assess(pool):
     flags=[]
@@ -186,6 +189,9 @@ def main():
       "distinct_mints":output["distinct_base_mints"],
       "enriched":output["enriched"],
       "rpc_count":output["launch_coverage"]["recent_signatures_count"],
+      "risk_flag_counts":{flag:sum(flag in v["flags"] for v in output["observations"]) for flag in sorted({f for v in output["observations"] for f in v["flags"]})},
+      "partial_or_unknown":sum("PARTIAL" in v["flag_status"] or v["flag_status"]=="unknown" for v in output["observations"]),
+      "no_liquidity_data":sum(v["gecko_liquidity_usd"] is None for v in output["observations"]),
       "errors":{"gecko":[r["error"] for r in output["receipts"]["gecko"]],
                 "pump_rpc":output["receipts"]["rpc_pump_recent"]["error"]},
       "economic_status":"NO-GO","orders_sent":0},ensure_ascii=False))
