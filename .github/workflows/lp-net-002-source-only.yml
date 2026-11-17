@@ -25,6 +25,9 @@ jobs:
       - name: Independent Blockscout v2 receipt cross-check
         run: |
           python research/lp_net_002/independent_blockscout_probe.py --output lp-net-002-evidence/independent_blockscout_receipt.json
+      - name: Bounded historical NFT liquidity and transfer log lifecycle source probe
+        run: |
+          python research/lp_net_002/lifecycle_indexed_probe.py --output lp-net-002-evidence/nft_lifecycle_indexed.json
       - name: Archive source receipt, including source-blocked state
         if: always()
         uses: actions/upload-artifact@v4
