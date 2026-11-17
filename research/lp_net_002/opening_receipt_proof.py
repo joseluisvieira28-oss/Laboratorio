@@ -11,7 +11,7 @@ BASE="https://api.routescan.io/v2/network/mainnet/evm/1/etherscan/api"
 BLOCKSCOUT="https://eth.blockscout.com/api/v2/transactions/"
 MANAGER="0xc36442b4a4522e871399cd717abdd847ab11fe88"
 POOL="0x6c6bc977e13df9b0de53b251522280bb72383700"
-POOL_MINT="0x7a53080ba414158be7ec69b987b5fb7d07dee101fee854cb46c5bde7cfbca2e6"
+POOL_MINT="0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde"
 
 def get_json(url):
     r=Request(url,headers={"Accept":"application/json","User-Agent":"LP-NET-002-MINT/0.1"})
