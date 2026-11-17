@@ -60,7 +60,7 @@ def collect():
                 digest=hashlib.sha256(raw).hexdigest()
                 (RAW/f"BIN_{coin}_mark_1h_{mo}.zip").write_bytes(raw)
                 with zipfile.ZipFile(io.BytesIO(raw)) as z:
-                    arr=list(csv.reader(io.StringIO(z.read(z.namelist()[0]).decode("utf8-sig"))))
+                    arr=list(csv.reader(io.StringIO(z.read(z.namelist()[0]).decode("utf-8-sig"))))
                 n=0
                 for row in arr:
                     try:tm=check_hour(row[0])
