@@ -22,6 +22,9 @@ jobs:
       - name: Independent indexed Ethereum explorer source fallback
         run: |
           python research/lp_net_002/indexed_explorer_probe.py --output lp-net-002-evidence/indexed_explorer_receipt.json
+      - name: Independent Blockscout v2 receipt cross-check
+        run: |
+          python research/lp_net_002/independent_blockscout_probe.py --output lp-net-002-evidence/independent_blockscout_receipt.json
       - name: Archive source receipt, including source-blocked state
         if: always()
         uses: actions/upload-artifact@v4
