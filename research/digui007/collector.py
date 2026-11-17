@@ -145,10 +145,11 @@ def carryforward_from_prior(pools):
         except (ValueError,OSError):
             pass
     now=dt.datetime.now(dt.timezone.utc)
-    for p in pools.values():
+    # Take exactly two addresses per observation, chosen by public-key SHA-256,
+    # not by their popularity, prior returns, liquidity or other observed results.
+    new_cohort=sorted(pools.values(),key=lambda p:hashlib.sha256(p["mint"].encode()).hexdigest())[:2]
+    for p in new_cohort:
         mint=p["mint"]
-        # Stable random-like 8% entry cohort; hash computed from address only.
-        if int(hashlib.sha256(mint.encode()).hexdigest()[:8],16)%100>=8:continue
         entries.setdefault(mint,{"mint":mint,"pool_address":p["pool_address"],
             "first_seen":p.get("created_at_claimed") or utc(),
             "source":"GeckoTerminal-new-pools","samples":[]})
@@ -210,13 +211,18 @@ def collect():
            "received_at":rpc_receipt["received_at"],"http_status":rpc_receipt["http_status"],
            "body_sha256":rpc_receipt["body_sha256"],"error":rpc_receipt["error"]},
        "dex":[],"mint_rpc":[],"pump_rpc_response":rpc_receipt.get("response")}
+    largest_throttled=False
     for mint, pool in list(pools.items())[:MAX_ENRICH]:
         dex_receipt=request(DEX.format(mint))
         payload=dex_receipt.get("response")
         pool["dex"]=choose_dex(payload,mint,pool["pool_address"])
         receipts["dex"].append(dex_receipt)
         acc=rpc("getAccountInfo",[mint,{"encoding":"jsonParsed","commitment":"finalized"}],2)
-        largest=rpc("getTokenLargestAccounts",[mint,{"commitment":"finalized"}],3)
+        largest=(rpc("getTokenLargestAccounts",[mint,{"commitment":"finalized"}],3)
+                 if not largest_throttled else {"response":None,"error":"SKIPPED_AFTER_RATE_LIMIT",
+                   "http_status":None,"requested_at":utc(),"received_at":utc(),
+                   "body_sha256":None})
+        if largest["http_status"]==429:largest_throttled=True
         pool["onchain"]=decode_chain(acc.get("response"),largest.get("response"))
         receipts["mint_rpc"].append({"mint":mint,"account":acc,"largest":largest})
         assess(pool)
