@@ -34,6 +34,9 @@ jobs:
       - name: Diagnose Uniswap pool Mint event mismatch without economic promotion
         run: |
           python research/lp_net_002/opening_pool_event_diag.py --lifecycle lp-net-002-evidence/nft_lifecycle_indexed.json --output lp-net-002-evidence/opening_pool_event_diag.json
+      - name: Offline reconciled NFT native DAI USDC cashflow ledger
+        run: |
+          python research/lp_net_002/reconcile_verified_native_ledger.py --lifecycle lp-net-002-evidence/nft_lifecycle_indexed.json --opening lp-net-002-evidence/opening_receipt_proof.json --exits lp-net-002-evidence/indexed_explorer_receipt.json --independent lp-net-002-evidence/independent_blockscout_receipt.json --output lp-net-002-evidence/reconciled_native_ledger.json
       - name: Archive source receipt, including source-blocked state
         if: always()
         uses: actions/upload-artifact@v4
