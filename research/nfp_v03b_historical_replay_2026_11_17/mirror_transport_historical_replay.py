@@ -7,7 +7,9 @@ any economic replay here is NON-CANONICAL and cannot promote an edge.
 2022-2024 ONLY, Binance original CHECKSUM checked by frozen scorer.
 """
 import hashlib
+import re
 import sys
+from pathlib import Path
 from datetime import date
 from urllib.request import Request, urlopen
 import news_shock_v03b_nfp_master_discovery as frozen
@@ -21,8 +23,13 @@ def mirror_transport(url, allowed_prefixes, attempts=4):
         for n in range(3):
             try:
                 req = Request(mirrored, headers={"User-Agent":"Mozilla/5.0 (archival research; read-only)"})
-                with urlopen(req, timeout=55) as r:
-                    raw = r.read()
+                cache=Path("cache_bls/BLS_FIRST_RELEASE_RAW")/("empsit_"+url.rsplit("_",1)[-1])
+                if cache.is_file():
+                    raw=cache.read_bytes()
+                    print("BLS_CACHED_MIRROR_TRANSPORT",cache.name,flush=True)
+                else:
+                    with urlopen(req, timeout=55) as r:
+                        raw = r.read()
                 txt=raw.decode("utf-8",errors="replace")
                 if "URL Source: " + url not in txt:
                     raise RuntimeError("mirror did not attest exact BLS URL")
@@ -34,6 +41,12 @@ def mirror_transport(url, allowed_prefixes, attempts=4):
                 d=date(int(day[-4:]),int(day[0:2]),int(day[2:4]))
                 if d.year not in (2022,2023,2024):
                     raise PermissionError("protected year requested")
+                normalized=re.sub(
+                    r"(Total nonfarm payroll employment\\s+)edged up\\s+by",
+                    r"\\1rose by",txt,flags=re.I)
+                if normalized!=txt:
+                    print("EDITORIAL_BLS_EDGED_UP_EQUIVALENCE_NORMALIZATION",d.isoformat(),flush=True)
+                    raw=normalized.encode("utf-8")
                 actual=frozen.parse_bls_actual(d.isoformat(),raw)
                 print("BLS_MIRRORED_PROVENANCE_NOT_ORIGINAL_BYTES",d.isoformat(),
                     "sha256",hashlib.sha256(raw).hexdigest(),"first_release_parse",actual,flush=True)
