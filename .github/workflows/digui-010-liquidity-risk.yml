@@ -25,6 +25,8 @@ jobs:
       - name: Run predefined risk-avoidance study if available
         run: |
           if [ -f research/digui010/analysis.py ]; then python research/digui010/analysis.py; fi
+      - name: Adversarial liquidity-only loss test (post-hoc)
+        run: python research/digui010/adversarial.py
       - name: Archive read-only results
         if: always()
         uses: actions/upload-artifact@v4
