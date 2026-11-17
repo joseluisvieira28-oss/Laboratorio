@@ -1,0 +1,31 @@
+name: NFP V03B source transport diagnostics (read-only)
+on:
+  push:
+    branches:
+      - audit/nfp-v03b-historical-replay-2026-11-17
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe public source transports without opening trade outcomes
+        run: |
+          python - <<'PY'
+          import urllib.request,urllib.error
+          urls={
+           'bls_official':'https://www.bls.gov/news.release/archives/empsit_01072022.htm',
+           'bls_www_query':'https://www.bls.gov/news.release/archives/empsit_01072022.htm?output=1',
+           'bls_alt_www':'https://bls.gov/news.release/archives/empsit_01072022.htm',
+           'jina_first_release_text':'https://r.jina.ai/https://www.bls.gov/news.release/archives/empsit_01072022.htm',
+           'binance_official_checksum':'https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-2022-01-07.zip.CHECKSUM',
+          }
+          for label,url in urls.items():
+           try:
+            req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (data provenance research; no accounts)'})
+            with urllib.request.urlopen(req,timeout=12) as r:
+             b=r.read(4096)
+             print(f'{label}: HTTP={r.status} TEXT_HINT={b[:120]!r}',flush=True)
+           except Exception as e: print(f'{label}: BLOCKED {type(e).__name__}: {str(e)[:100]}',flush=True)
+          PY
