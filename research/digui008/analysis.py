@@ -70,7 +70,7 @@ def audited_tokens():
           "initial_buy_sol","initial_price_sol","is_mayhem_mode",
           "is_cashback_enabled","initial_holder_count","initial_top10_pct_corrected",
           "initial_gini","dev_buy_pct_corrected","creator_past_tokens",
-          "creator_past_rugs","entry_price_20s_usd"]
+          "creator_past_rugs","entry_price_20s_usd","first_trade_price_sol"]
     src=pq.read_table(get("tokens.parquet"),columns=cols).to_pandas()
     original=len(src)
     src["detected_at"]=ftime(src.detected_at)
