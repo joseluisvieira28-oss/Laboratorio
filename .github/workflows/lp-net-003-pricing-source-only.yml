@@ -26,6 +26,9 @@ jobs:
       - name: First point-in-time pool snapshot with dual public sources
         run: |
           python research/lp_net_003/frozen_pool_snapshot.py --output lp-net-003-evidence/frozen_pool_pit_snapshot.json
+      - name: Diagnose provider coverage without changing frozen selection
+        run: |
+          python research/lp_net_003/pool_coverage_diagnostic.py --output lp-net-003-evidence/pool_coverage_diagnostic.json
       - name: Archive source receipts and fail-closed economic outputs
         if: always()
         uses: actions/upload-artifact@v4
