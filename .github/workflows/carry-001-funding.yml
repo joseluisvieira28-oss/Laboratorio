@@ -17,16 +17,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Probe official public data sources
-        run: python research/carry001/probe.py
-      - name: Verify historic price sources
-        run: python research/carry001/price_probe.py
       - name: Reuse independently hashed RAW public source from first attempt
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download 44121929200 --repo "$GITHUB_REPOSITORY" --name carry001-evidence-44121929200 --dir carry001-evidence
+          gh run download 44122672805 --repo "$GITHUB_REPOSITORY" --name carry001-evidence-44122672805 --dir carry001-evidence
+      - name: Probe official public data sources
+        run: python research/carry001/probe.py
+      - name: Verify historic price sources
+        run: python research/carry001/price_probe.py
       - name: Read-only timing and fee unit tests
         run: python -m unittest discover -s research/carry001 -p 'test_*.py' -v
       - name: Rebuild settlement history if historical CSV absent
