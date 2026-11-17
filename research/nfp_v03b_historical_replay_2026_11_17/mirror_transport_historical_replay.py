@@ -42,8 +42,8 @@ def mirror_transport(url, allowed_prefixes, attempts=4):
                 if d.year not in (2022,2023,2024):
                     raise PermissionError("protected year requested")
                 normalized=re.sub(
-                    r"(Total nonfarm payroll employment\\s+)edged up\\s+by",
-                    r"\\1rose by",txt,flags=re.I)
+                    r"(Total nonfarm payroll employment\s+)edged up\s+by",
+                    r"\1rose by",txt,flags=re.I)
                 if normalized!=txt:
                     print("EDITORIAL_BLS_EDGED_UP_EQUIVALENCE_NORMALIZATION",d.isoformat(),flush=True)
                     raw=normalized.encode("utf-8")
