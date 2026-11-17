@@ -138,7 +138,7 @@ def eval_trades(rows):
        "funding_plus_indicative_basis_net_bps_on_paired_weeks":round(sum(pxnet)*1e4,3),
        "paired_basis_proxy_median_week_bps":round(statistics.median(x["basis_price_proxy"] for x in price)*1e4,3) if price else None,
        "combined_proxy_winning_weeks_pct":round(100*sum(v>0 for v in pxnet)/len(pxnet),2) if price else None,
-       "worst_standalone_leg_intraweek_pct":round(min(risk)*100,2) if risk else None,
+       "worst_standalone_leg_intraweek_pct":round(min(risk),2) if risk else None,
        "weeks_indicative_leg_adverse_beyond_18pct":sum(v<-18 for v in risk) if risk else None}
     return out
 def main():
