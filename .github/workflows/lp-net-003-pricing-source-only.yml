@@ -29,6 +29,9 @@ jobs:
       - name: Diagnose provider coverage without changing frozen selection
         run: |
           python research/lp_net_003/pool_coverage_diagnostic.py --output lp-net-003-evidence/pool_coverage_diagnostic.json
+      - name: Exploratory past-only price source recovery (not V0.1 economic authority)
+        run: |
+          python research/lp_net_003/exploratory_past_only_price_recovery.py --fixture research/lp_net_003/frozen_native_fixture.json --output lp-net-003-evidence/exploratory_past_only_price_recovery.json
       - name: Archive source receipts and fail-closed economic outputs
         if: always()
         uses: actions/upload-artifact@v4
