@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   research:
     runs-on: ubuntu-latest
@@ -20,6 +21,12 @@ jobs:
         run: python research/carry001/probe.py
       - name: Verify historic price sources
         run: python research/carry001/price_probe.py
+      - name: Reuse independently hashed RAW public source from first attempt
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 44120443119 --repo "$GITHUB_REPOSITORY" --name carry001-evidence-44120443119 --dir carry001-evidence
       - name: Retrieve full settlement history Sep 2024 - Oct 2026
         run: python research/carry001/collector.py
       - name: Retrieve separate price CANDLES for indicative basis
