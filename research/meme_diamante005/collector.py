@@ -137,10 +137,13 @@ def main():
         time.sleep(.7)
         detail,rec=http_json(detailurl)
         receipts.append(dict(source="coingecko_contract",rank=rank,**rec))
+        if rec["error"] or not isinstance(detail,dict):
+            row["screen"]=dict(status="SOURCE_BLOCKED",reasons=["COINGECKO_DETAIL_UNAVAILABLE"],http_status=rec["http_status"])
+            continue
         mint=sol_mint(detail)
         row["mint"]=mint
         if not mint:
-            row["screen"]=dict(status="UNKNOWN",reasons=["NO_OFFICIAL_SOLANA_MINT"])
+            row["screen"]=dict(status="UNKNOWN",reasons=["NO_OFFICIAL_SOLANA_MINT_IN_RETURNED_DETAIL"])
             continue
         time.sleep(.45)
         dex,rec=http_json(DEX+urllib.parse.quote(mint,safe=""))
