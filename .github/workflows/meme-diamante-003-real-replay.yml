@@ -1,0 +1,34 @@
+name: MEME-DIAMANTE-003 historical print-replay gate
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante002/real_replay.py"
+      - ".github/workflows/meme-diamante-003-real-replay.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exploratory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download two publicly licensed research-only samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme003
+          base="https://huggingface.co/datasets/Tr4m0ryp/trenches-pumpfun-forward-2026-08/resolve/main"
+          curl --retry 3 -fLsS --max-time 180 "$base/curve_paths.jsonl.gz" -o /tmp/meme003/curve_paths.jsonl.gz
+          curl --retry 3 -fLsS --max-time 180 "$base/launch_windows.jsonl.gz" -o /tmp/meme003/launch_windows.jsonl.gz
+          echo "Independent hashes:"
+          sha256sum /tmp/meme003/*.gz
+      - name: Read-only exploratory replay (no real orders)
+        run: python research/meme_diamante002/real_replay.py /tmp/meme003/curve_paths.jsonl.gz /tmp/meme003/launch_windows.jsonl.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meme003-exploratory-results
+          path: meme003-results.json
+          retention-days: 90
+          if-no-files-found: warn

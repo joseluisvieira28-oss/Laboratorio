@@ -1,0 +1,28 @@
+name: MEME-DIAMANTE-003 real-data source probe (no trading)
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante002/data_probe.py"
+      - ".github/workflows/meme-diamante-003-source-probe.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public open-data sample (no API keys, orders or purchases)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme003
+          base="https://huggingface.co/datasets/Tr4m0ryp/trenches-pumpfun-forward-2026-08/resolve/main"
+          curl --retry 3 -fLsS --max-time 220 "$base/curve_paths.jsonl.gz" -o /tmp/meme003/curve_paths.jsonl.gz
+          curl --retry 3 -fLsS --max-time 220 "$base/launch_windows.jsonl.gz" -o /tmp/meme003/launch_windows.jsonl.gz
+          curl --retry 3 -fLsS --max-time 60 "$base/MANIFEST.json" -o /tmp/meme003/MANIFEST.json
+          sha256sum /tmp/meme003/*.gz
+          ls -lh /tmp/meme003/
+      - name: Inspect real source structure without forward claims
+        run: python research/meme_diamante002/data_probe.py /tmp/meme003/curve_paths.jsonl.gz /tmp/meme003/launch_windows.jsonl.gz

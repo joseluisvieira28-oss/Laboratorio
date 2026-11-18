@@ -1,0 +1,20 @@
+name: MEME-DIAMANTE-002 offline scientific safety checks
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante002/**"
+      - ".github/workflows/meme-diamante-002-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Offline synthetic tests (NO DATA DOWNLOAD, NO ORDERS)
+        run: python -m unittest discover -s research/meme_diamante002 -p "test_*.py" -v
