@@ -1,0 +1,26 @@
+name: MEME-DIAMANTE-004 October two-hour sample coverage
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante004/launchtape_probe.py"
+      - ".github/workflows/meme-diamante-004-october-sample.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public 2h research sample, do not redistribute
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 2 --max-time 250 \
+            "https://huggingface.co/datasets/launchtape/solana-launch-tape/resolve/main/data/curvetape-2026-10-13-1400-1600utc.jsonl.gz" \
+            -o /tmp/curvetape.jsonl.gz
+          sha256sum /tmp/curvetape.jsonl.gz
+          ls -lh /tmp/curvetape.jsonl.gz
+      - name: Output aggregate-only source coverage (no raw data export)
+        run: python research/meme_diamante004/launchtape_probe.py /tmp/curvetape.jsonl.gz
