@@ -53,7 +53,7 @@ def probe(previous):
         mint=src.get("mint")
         if not mint:continue
         obj=dict(coingecko_id=src.get("coingecko_id"),mint=mint,status="UNKNOWN",size_sol=.05,
-                 quotes=[],"instant_roundtrip_cost_pct":None,"worse_threshold_cost_pct":None)
+                 quotes=[],instant_roundtrip_cost_pct=None,worse_threshold_cost_pct=None)
         rows.append(obj)
         buy,r=quote(WSOL,mint,AMOUNT_LAMPORTS)
         receipts.append(dict(coin_id=src.get("coingecko_id"),direction="buy",**r))
