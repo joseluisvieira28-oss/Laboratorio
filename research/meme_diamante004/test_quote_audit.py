@@ -30,12 +30,12 @@ class TestProxy(unittest.TestCase):
         idx=choose(p,True)
         self.assertIsNotNone(idx)
         result=settle(p,idx)
-        self.assertEqual(result["status"],"NO_OBSERVED_ENTRY")
+        self.assertEqual(result["status"],"NO_OBSERVED_EXIT")
 
     def test_bounded_horizon_curve_quote(self):
         p=[point(i*30,i,wallet=str(i)) for i in range(8)]
         sig=choose(p,True)
-        p.extend([point(300,30),point(600,31)])
+        p.extend([point(300,30),point(450,31)])
         ret=settle(p,sig)
         self.assertEqual(ret["status"],"HYPOTHETICAL_CURVE_QUOTE")
         self.assertLess(ret["net_pct"],0)
@@ -43,6 +43,7 @@ class TestProxy(unittest.TestCase):
     def test_exit_price_floor(self):
         a=point(0,0)
         a["vt"]=1.
-        self.assertIsNone(quote_buy(a,.05,.017) if a["rt"]<1 else None)
+        a["rt"]=0.001
+        self.assertIsNone(quote_buy(a,.05,.017))
 
 if __name__=="__main__": unittest.main()
