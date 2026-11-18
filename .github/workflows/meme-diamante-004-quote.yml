@@ -1,0 +1,39 @@
+name: MEME-DIAMANTE-004 costed curve-quote feasibility
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante004/**"
+      - ".github/workflows/meme-diamante-004-quote.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  historical-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Synthetic safety unit tests
+        run: python -m unittest discover -s research/meme_diamante004 -p 'test_*.py' -v
+      - name: Download previously used public noncommercial research data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme004
+          base="https://huggingface.co/datasets/Tr4m0ryp/trenches-pumpfun-forward-2026-08/resolve/main"
+          curl -fLsS --retry 2 --max-time 180 "$base/curve_paths.jsonl.gz" -o /tmp/meme004/curve_paths.jsonl.gz
+          curl -fLsS --retry 2 --max-time 180 "$base/launch_windows.jsonl.gz" -o /tmp/meme004/launch_windows.jsonl.gz
+          echo '6dfba77ddc3056d7f6d7e88fced4652b32108056ae0d1e0572ba0e4118ae5058  /tmp/meme004/curve_paths.jsonl.gz' | sha256sum --check
+          echo '908ecaf196acad44e3df7e876da6eac0e9a1aa14e314a6b12c5e3b16ad08db74  /tmp/meme004/launch_windows.jsonl.gz' | sha256sum --check
+      - name: Offline full print-replay and quote feasibility (NOT a trading strategy)
+        run: python research/meme_diamante004/quote_audit.py /tmp/meme004/curve_paths.jsonl.gz /tmp/meme004/launch_windows.jsonl.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meme004-readonly-results
+          path: meme004_results.json
+          retention-days: 90
+          if-no-files-found: warn

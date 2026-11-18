@@ -1,0 +1,32 @@
+name: MEME-DIAMANTE-004 sensitivity with ambiguous sequence records
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante004/october_order_sensitivity.py"
+      - ".github/workflows/meme-diamante-004-order-sensitivity.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sensitivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Research-only public sample (no raw data upload)
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 2 --max-time 250 \
+            "https://huggingface.co/datasets/launchtape/solana-launch-tape/resolve/main/data/curvetape-2026-10-13-1400-1600utc.jsonl.gz" \
+            -o /tmp/curvetape.jsonl.gz
+          echo "5ecb0e31a6b1050584594d02e6e5ce339407db4b9c6d9a8e63bbd80b53c8d93e  /tmp/curvetape.jsonl.gz" | sha256sum --check
+      - name: Replay SENSITIVITY only (ambiguous IDs, 0 trading)
+        run: python research/meme_diamante004/october_order_sensitivity.py /tmp/curvetape.jsonl.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meme004-order-sensitivity-summary-only
+          path: meme004_october_summary.json
+          retention-days: 90
+          if-no-files-found: warn

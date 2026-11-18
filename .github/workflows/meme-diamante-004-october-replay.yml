@@ -1,0 +1,40 @@
+name: MEME-DIAMANTE-004 October free sample curve replay
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante004/october_replay.py"
+      - "research/meme_diamante004/test_october_replay.py"
+      - "research/meme_diamante004/OCTOBER_SUBPROTOCOL.md"
+      - ".github/workflows/meme-diamante-004-october-replay.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests (synthetic)
+        run: python -m unittest discover -s research/meme_diamante004 -p 'test_october_replay.py' -v
+      - name: Free licensed sample, never publish raw data
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 2 --max-time 220 \
+            "https://huggingface.co/datasets/launchtape/solana-launch-tape/resolve/main/data/curvetape-2026-10-13-1400-1600utc.jsonl.gz" \
+            -o /tmp/curvetape.jsonl.gz
+          echo "5ecb0e31a6b1050584594d02e6e5ce339407db4b9c6d9a8e63bbd80b53c8d93e  /tmp/curvetape.jsonl.gz" | sha256sum --check
+      - name: Reproduce economic quote PROXY (NO ORDERS)
+        run: python research/meme_diamante004/october_replay.py /tmp/curvetape.jsonl.gz
+      - name: Upload only derived aggregate (never the licensed raw data)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme004-october-summary-only
+          path: meme004_october_summary.json
+          retention-days: 90
+          if-no-files-found: warn
