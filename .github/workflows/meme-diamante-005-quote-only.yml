@@ -27,9 +27,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/meme005-prior
-          gh run download 44361814385 --repo "$GITHUB_REPOSITORY" \
+          gh run download 44362407659 --repo "$GITHUB_REPOSITORY" \
             --name meme005-asof-observation --dir /tmp/meme005-prior
-          echo '07000fb43b6ccc2cf3708eb6a0c7cc0523cda95cafe3921565020f1a1a2fc733  /tmp/meme005-prior/snapshot.json' | sha256sum --check
+          echo '39ee74fb7521ca699b7e3bbbb83b37fcd133ac05fe8ee2349c79c360043889e4  /tmp/meme005-prior/snapshot.json' | sha256sum --check
       - name: Compute only GET /compute quotes (no signing, submission or swap)
         run: python research/meme_diamante005/raydium_quote_probe.py /tmp/meme005-prior/snapshot.json
       - name: Retain timestamped quote source receipts, no raw paid data
