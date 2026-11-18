@@ -1,0 +1,17 @@
+name: MEME-DIAMANTE-004 alternative free source survey
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante004/source_survey.py"
+      - ".github/workflows/meme-diamante-004-source-survey.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  survey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free public dataset metadata only (no paid APIs)
+        run: python research/meme_diamante004/source_survey.py
