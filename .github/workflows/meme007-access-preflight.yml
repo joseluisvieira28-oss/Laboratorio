@@ -1,0 +1,32 @@
+name: MEME007 Dune credential availability preflight (no API calls)
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/meme007-access-preflight.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check-credential-presence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check only whether repository credentials exist; never print values
+        shell: bash
+        env:
+          DUNE_USER_CREDENTIAL: ${{ secrets.DUNE_API_KEY }}
+          DUNE_ALT_CREDENTIAL: ${{ secrets.DUNE_API_KEY_PAID }}
+          SOLSTREAM_USER_CREDENTIAL: ${{ secrets.SOLANASTREAMING_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$DUNE_USER_CREDENTIAL" || -n "$DUNE_ALT_CREDENTIAL" ]]; then
+            echo "DUNE_ACCESS_STATUS=KEY_PRESENT_UNTESTED"
+          else
+            echo "DUNE_ACCESS_STATUS=BLOCKED_NO_GITHUB_SECRET"
+          fi
+          if [[ -n "$SOLSTREAM_USER_CREDENTIAL" ]]; then
+            echo "SOLSTREAM_ACCESS_STATUS=KEY_PRESENT_UNTESTED"
+          else
+            echo "SOLSTREAM_ACCESS_STATUS=BLOCKED_NO_GITHUB_SECRET"
+          fi
+          echo "API_CALLS=0 ORDERS=0 CREDIT_SPEND=0"

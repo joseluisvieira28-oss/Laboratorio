@@ -1,0 +1,40 @@
+name: MEME-DIAMANTE-007 exact 36-window Dune SQL preparation
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante007/**"
+      - ".github/workflows/meme-diamante-007-dune-prepare.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prepare-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic lookahead, source hash and ambiguity unit tests
+        run: python -m unittest discover -s research/meme_diamante007 -p 'test_*.py' -v
+      - name: Download immutable 36-signal price-only history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme007-history
+          gh run download 44468871997 --repo "$GITHUB_REPOSITORY" \
+            --name meme006-hist001-report --dir /tmp/meme007-history
+          echo '477b3a69edc4e2dd8a08c1d40a5a9d0e7584a0a43143791224c692b1ba4121a4  /tmp/meme007-history/report.json' | sha256sum -c -
+      - name: Compile exact historical Dune query but NEVER execute it
+        run: python research/meme_diamante007/generate_dune_sql.py /tmp/meme007-history/report.json
+      - name: Upload SQL and frozen signal manifest only
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme007-dune-sql-ready-unexecuted
+          path: meme007-dune-ready/
+          retention-days: 90
+          if-no-files-found: error
