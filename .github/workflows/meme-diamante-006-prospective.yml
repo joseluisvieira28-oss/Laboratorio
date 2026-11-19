@@ -1,0 +1,111 @@
+name: MEME-DIAMANTE-006 prospective no-trading observation
+
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante006/**"
+      - ".github/workflows/meme-diamante-006-prospective.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "37 */2 19-30 11 *"
+    - cron: "37 */2 1-23 12 *"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: meme-diamante-006-observations
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Frozen protocol unit tests (SYNTHETIC / NO TRADING)
+        run: python -m unittest discover -s research/meme_diamante006 -p 'test_*.py' -v
+
+  observe:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Guard finite 2026 UTC window
+        id: window
+        shell: bash
+        run: |
+          set -euo pipefail
+          day="$(date -u +%Y-%m-%d)"
+          if [[ "$day" < "2026-11-19" || "$day" > "2026-12-23" ]]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "MEME006_WINDOW_CLOSED: no external API calls"
+          else
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Recover original 18 Nov frozen cohort by SHA-256
+        if: steps.window.outputs.active == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme006-seed
+          gh run download 44362407659 --repo "$GITHUB_REPOSITORY" \
+            --name meme005-asof-observation --dir /tmp/meme006-seed
+          echo '39ee74fb7521ca699b7e3bbbb83b37fcd133ac05fe8ee2349c79c360043889e4  /tmp/meme006-seed/snapshot.json' | sha256sum -c -
+      - name: Restore latest COMPLETED prior ledger; no silent reset
+        if: steps.window.outputs.active == 'true' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme006-prev
+          mapfile -t runs < <(gh run list --repo "$GITHUB_REPOSITORY" \
+            --workflow .github/workflows/meme-diamante-006-prospective.yml \
+            --branch main --status success --limit 25 --json databaseId --jq '.[].databaseId')
+          if (( ${#runs[@]} == 0 )); then
+            echo "PRIOR_LEDGER=NONE" >> "$GITHUB_ENV"
+            echo "MEME006_FIRST_MAIN_RUN"
+          else
+            prior="${runs[0]}"
+            echo "Prior SUCCESS run: $prior"
+            gh run download "$prior" --repo "$GITHUB_REPOSITORY" \
+              --name meme006-ledger --dir /tmp/meme006-prev || {
+              echo "CONTINUITY_BLOCKED: latest SUCCESS run has no ledger"
+              exit 3
+            }
+            (cd /tmp/meme006-prev && sha256sum -c state.sha256) || {
+              echo "CONTINUITY_BLOCKED: previous ledger hash mismatch"
+              exit 3
+            }
+            echo "PRIOR_LEDGER=/tmp/meme006-prev/state.json" >> "$GITHUB_ENV"
+          fi
+      - name: PR smoke run is isolated, not the main prospective cohort
+        if: steps.window.outputs.active == 'true' && github.event_name == 'pull_request'
+        run: |
+          python research/meme_diamante006/collector.py /tmp/meme006-seed/snapshot.json NONE
+      - name: Main scheduled or manually triggered READ-ONLY cycle
+        if: steps.window.outputs.active == 'true' && github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/meme_diamante006/collector.py \
+            /tmp/meme006-seed/snapshot.json "$PRIOR_LEDGER"
+      - name: Retain validated JSON ledger and checksum; never user funds or raw third-party data
+        if: steps.window.outputs.active == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event_name == 'pull_request' && 'meme006-smoke' || 'meme006-ledger' }}
+          path: meme006-ledger/
+          retention-days: 90
+          if-no-files-found: error
