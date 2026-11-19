@@ -36,17 +36,27 @@ def finite(v):
 
 def fetch(url):
     start=utc(); t0=time.monotonic(); raw=None; data=None;err=None;code=None
-    try:
-        req=urllib.request.Request(url,headers={"Accept":"application/json","User-Agent":UA},method="GET")
-        with urllib.request.urlopen(req,timeout=35) as r:
-            code=r.status;raw=r.read(3_500_000)
-        data=json.loads(raw)
-    except urllib.error.HTTPError as e:
-        code=e.code;err="HTTP_"+str(e.code)
-    except (OSError,ValueError,UnicodeError) as e:
-        err=type(e).__name__+":"+str(e)[:100]
+    retry_statuses=[]
+    for attempt in range(4):
+        try:
+            req=urllib.request.Request(url,headers={"Accept":"application/json","User-Agent":UA},method="GET")
+            with urllib.request.urlopen(req,timeout=35) as r:
+                code=r.status;raw=r.read(3_500_000)
+            data=json.loads(raw);err=None
+            break
+        except urllib.error.HTTPError as e:
+            code=e.code;err="HTTP_"+str(e.code)
+            if e.code==429 and attempt<3:
+                retry_statuses.append(429)
+                time.sleep(15+10*attempt)
+                continue
+            break
+        except (OSError,ValueError,UnicodeError) as e:
+            err=type(e).__name__+":"+str(e)[:100]
+            break
     rec=dict(url=url,requested_at=start,received_at=utc(),
              response_status=code,response_sha256=hashlib.sha256(raw).hexdigest() if raw else None,
+             retry_429_count=len(retry_statuses),
              bytes=len(raw) if raw else 0,elapsed_ms=round(1000*(time.monotonic()-t0)),error=err)
     return data,rec
 
@@ -100,7 +110,7 @@ def candles(pool):
             break
         prev=oldest
         if oldest<=START_TS-30*3600:break
-        time.sleep(1.5)
+        time.sleep(4.0)
     return result,receipts,invalid,dup
 
 def returns(series,obs_ts):
@@ -202,7 +212,7 @@ def analyze(seed_path):
             candles_latest_utc=dt.datetime.fromtimestamp(times[-1],dt.timezone.utc).isoformat() if times else None,
             observed_gaps=gap_count,invalid_rows=invalid,duplicate_timestamp_rows=dup,
             candidate_events=len(events),observation_metrics=counts))
-        time.sleep(1.5)
+        time.sleep(6.0)
     totals={}
     for group in ("DISCOVERY","HISTORIC_SPLIT_AFTER_2026_10_23","ALL"):
         selected=[e for e in event_rows if group=="ALL" or e["date_group"]==group]
