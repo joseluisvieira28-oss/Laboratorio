@@ -1,0 +1,41 @@
+name: MEME-DIAMANTE-007 historical swap source feasibility
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante007/**"
+      - ".github/workflows/meme-diamante-007-source-feasibility.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Offline invariants and false-completeness checks
+        run: python -m unittest discover -s research/meme_diamante007 -p 'test_*.py' -v
+      - name: Recover exact six mints from immutable MEME005 snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme007-seed
+          gh run download 44362407659 --repo "$GITHUB_REPOSITORY" \
+            --name meme005-asof-observation --dir /tmp/meme007-seed
+          echo "39ee74fb7521ca699b7e3bbbb83b37fcd133ac05fe8ee2349c79c360043889e4  /tmp/meme007-seed/snapshot.json" | sha256sum -c -
+      - name: Probe free historical source indexes and recent trades; GET only
+        run: python research/meme_diamante007/source_probe.py /tmp/meme007-seed/snapshot.json
+      - name: Keep source hashes and schema only, not raw wallet IDs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme007-free-source-probe
+          path: meme007-source-evidence/
+          retention-days: 90
+          if-no-files-found: warn
