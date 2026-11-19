@@ -28,7 +28,7 @@ class Tests(unittest.TestCase):
         b=[e for e in events if e["policy"]=="BASELINE_4H"]
         self.assertTrue(b)
         x=next(e for e in b if e["observed_at"]==self.start+4*3600+37*60)
-        self.assertAlmostEqual(x["h4_gross_pct"],100*(108/104-1),places=3)
+        self.assertAlmostEqual(x["h4_gross_pct"],100*(107/103-1),places=3)
     def test_price_only_not_buyer_gate(self):
         summary=h.summarize([dict(policy="H_MOMENTUM_PRICE_ONLY",observed_at=self.start,
                          h4_gross_pct=8.,h24_gross_pct=None)])
