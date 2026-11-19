@@ -1,0 +1,41 @@
+name: MEME-006 HIST001 historical-price-only falsification
+on:
+  pull_request:
+    paths:
+      - "research/meme006_hist001/**"
+      - ".github/workflows/meme006-hist001-priceonly.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  retrospective:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Offline tests: candle timestamps, horizons, thresholds
+        run: python -m unittest discover -s research/meme006_hist001 -p 'test_*.py' -v
+      - name: Recover immutable cohort from MEME005 18 Nov; no re-selection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme006-hist-seed
+          gh run download 44362407659 --repo "$GITHUB_REPOSITORY" \
+            --name meme005-asof-observation --dir /tmp/meme006-hist-seed
+          echo '39ee74fb7521ca699b7e3bbbb83b37fcd133ac05fe8ee2349c79c360043889e4  /tmp/meme006-hist-seed/snapshot.json' | sha256sum -c -
+      - name: Query historical hourly GeckoTerminal OHLCV (GET only, no orders)
+        run: python research/meme006_hist001/historical_price_audit.py /tmp/meme006-hist-seed/snapshot.json
+      - name: Archive immutable derived metrics and source GET SHA-256 receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme006-hist001-report
+          path: meme006-hist001/
+          retention-days: 90
+          if-no-files-found: warn
