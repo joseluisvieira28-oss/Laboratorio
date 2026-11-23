@@ -14,8 +14,8 @@ def seeded():
     for s,b in m.books.items():
         b.status="SYNCED"
         b.last_update_id=100
-        b.bids={D("99"):D("100"),D("98"):D("100")}
-        b.asks={D("101"):D("100"),D("102"):D("100")}
+        b.bids={D("99.99"):D("100"),D("99.98"):D("100")}
+        b.asks={D("100.01"):D("100"),D("100.02"):D("100")}
         m.last_depth_ns[s]=0
     m._start(0)
     return m
@@ -36,7 +36,7 @@ class BookMath(unittest.TestCase):
     def test_quote_walk_100(self):
         m=seeded();b=m.books["BTCUSDT"]
         units=buy_quote(b,D("100"))
-        self.assertEqual(units,D("100")/D("101"))
+        self.assertEqual(units,D("100")/D("100.01"))
         proceeds=sell_base(b,units)
         self.assertLess(proceeds,D("100"))
     def test_no_quotes_no_extrapolation(self):
@@ -73,7 +73,7 @@ class AsOf(unittest.TestCase):
     def test_flow_control_not_relabelled_primary(self):
         m=seeded()
         primary_window(m)
-        m.books["BTCUSDT"].bids[D("99")]=D("0.1")
+        m.books["BTCUSDT"].bids[D("99.99")]=D("0.1");m.books["BTCUSDT"].bids[D("99.98")]=D("0.1")
         m._advance(WINDOW_NS)
         kinds=[e["kind"] for e in m.events if e["symbol"]=="BTCUSDT"]
         self.assertEqual(kinds,["FLOW_ONLY_CONTROL"])
