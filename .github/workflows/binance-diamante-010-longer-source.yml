@@ -1,0 +1,50 @@
+name: BINANCE-010 One Prospective 30m Spot L2 Freeze-Locked Source Pilot (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante010/requests/**"
+      - ".github/workflows/binance-diamante-010-longer-source.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance010-one-only-frozen-30min-source-pilot
+  cancel-in-progress: false
+jobs:
+  one-prospective-thirty-minute-read-only:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true && github.head_ref == 'research/binance-diamante-010-longer-prospective-20261123'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GITHUB_REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify SHA of ALL original 003/004 untouched science and one one-shot UTC-day marker
+        run: python research/binance_diamante010/runner.py guard
+      - name: Original 003+004 and new 010 synthetic guards; no network
+        run: |
+          python -m unittest discover -s research/binance_diamante003 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante004 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante010 -p 'test_*.py' -v
+      - name: Install anonymous public WebSocket transport only
+        run: python -m pip install "websockets>=14,<16"
+      - name: ONE 1800-second original Binance Spot public 3-book L2+aggTrade SOURCE capture (no orders)
+        run: python research/binance_diamante010/runner.py capture
+      - name: Exact original 004 30s sell+depth rule, enlarged only to 60 windows, 60s shadow quotes
+        run: python research/binance_diamante010/runner.py study
+      - name: SHA-chain + second deterministic source and decision shadow replay
+        run: python research/binance_diamante010/runner.py replay
+      - name: No economic GO ever; audit 180 windows, 1680s last signal and UTC day provenance
+        run: python research/binance_diamante010/runner.py audit
+      - name: Preserve one limited source archive + SHA and hypothetical ledger (no private data or orders)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance010-30min-original-source-${{ github.run_id }}
+          path: binance010-evidence/
+          retention-days: 7
+          compression-level: 6
+          if-no-files-found: warn
