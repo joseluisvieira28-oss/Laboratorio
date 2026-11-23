@@ -1,0 +1,40 @@
+name: BINANCE-007E Public SOL L2 Frozen 90MB Source Gate (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante007e/**"
+      - ".github/workflows/binance-diamante-007e-l2.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance007e-once-public-source-no-trading
+  cancel-in-progress: false
+jobs:
+  source-probe:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Original snapshot/U-u/ghost-level plus fixed 007E budget tests, no market data
+        run: |
+          python -m py_compile research/binance_diamante007/*.py research/binance_diamante007d/*.py research/binance_diamante007e/*.py
+          python -m unittest discover -s research/binance_diamante007 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante007e -p 'test_*.py' -v
+      - name: Install public Parquet processing package only
+        run: python -m pip install "pyarrow>=17,<26"
+      - name: ONE source-byte check and bounded historical Spot SOL August 2026 L2 replay
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python research/binance_diamante007e/probe_90mb.py
+      - name: Archive only source SHA metadata, gap diagnostics, no third-party raw files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance007e-public-sol-l2-${{ github.run_id }}
+          path: binance007e-evidence/
+          retention-days: 60
+          if-no-files-found: warn
