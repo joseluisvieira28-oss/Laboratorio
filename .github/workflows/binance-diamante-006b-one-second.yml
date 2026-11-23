@@ -1,0 +1,36 @@
+name: BINANCE-006B Frozen 90-Day Official Spot 1s Flow Proxy (NO TRADES)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante006b/**"
+      - ".github/workflows/binance-diamante-006b-one-second.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance006b-one-shot-90d
+  cancel-in-progress: false
+jobs:
+  original-source-frozen-90d:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Pre-source synthetic timing, 1s CSV, costs, OOS day-cluster and no-lookahead tests
+        run: python -m unittest discover -s research/binance_diamante006b -p 'test_*.py' -v
+      - name: One bounded 90-day public Binance 1s ZIP+CHECKSUM original SHA study (no retries)
+        run: python research/binance_diamante006b/run_1s.py
+      - name: Preserve actual original-source receipt and censored hypothetical rows even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance006b-90d-1s-source-${{ github.run_id }}
+          path: binance006b-evidence/
+          retention-days: 60
+          compression-level: 9
+          if-no-files-found: warn
