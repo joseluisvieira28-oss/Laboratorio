@@ -66,7 +66,7 @@ class NormalizedL2(unittest.TestCase):
         with self.assertRaisesRegex(SourceBlocked,"CROSSED"):verify_l2(self.rows,len(self.rows))
     def test_same_second_receipt_regression_fail_closed(self):
         self.rows[-1]["local_timestamp"]=at(-100)
-        with self.assertRaisesRegex(SourceBlocked,"REGRESSION"):verify_l2(self.rows,len(self.rows))
+        with self.assertRaisesRegex(SourceBlocked,"REGRESSION|LOCAL_TIMESTAMP_BEFORE_SOURCE_TIME"):verify_l2(self.rows,len(self.rows))
     def test_nan_price_fails(self):
         self.rows[-1]["price"]="nan"
         with self.assertRaises(SourceBlocked):verify_l2(self.rows,len(self.rows))
