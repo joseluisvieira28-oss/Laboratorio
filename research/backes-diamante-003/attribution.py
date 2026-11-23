@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BACKES-003: forensic attribution of unchanged BACKES-002. Read-only."""
+"""BACKES-003: forensic attribution of unchanged BACKES-002. Read-only.\nThis module must never tune any trading rule on its diagnostic sample.\n"""
 import concurrent.futures as cf
 import datetime as dt
 import importlib.util
