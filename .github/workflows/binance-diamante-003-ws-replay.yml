@@ -1,0 +1,35 @@
+name: BINANCE-003 continuous Spot book SOURCE ONLY (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante003/**"
+      - ".github/workflows/binance-diamante-003-ws-replay.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bounded-public-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline zero-network state-machine, gaps, hashes and replay tests
+        run: python -m unittest discover -s research/binance_diamante003 -p 'test_*.py' -v
+      - name: Install only public WS transport dependency
+        run: python -m pip install "websockets>=14,<16"
+      - name: ONE 45-second public Binance Spot WS session plus 3 REST snapshots, no retries
+        run: python research/binance_diamante003/capture.py
+      - name: Independent offline hash-chain and book replay, no new market requests
+        if: always()
+        run: python research/binance_diamante003/verify_offline.py
+      - name: Preserve exact raw journal, snapshots and receipts even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance003-source-replay-${{ github.run_id }}
+          path: binance003-evidence/
+          retention-days: 30
+          if-no-files-found: warn
