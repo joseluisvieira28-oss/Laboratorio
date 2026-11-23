@@ -1,0 +1,60 @@
+name: BINANCE-005 Dated PR-marker Multi-Day Replication (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante005/requests/**"
+      - ".github/workflows/binance-diamante-005-daily-pr.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance005-daily-frozen-pr
+  cancel-in-progress: false
+jobs:
+  one-frozen-public-session:
+    if: github.event.pull_request.draft == true && github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      GITHUB_REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fail closed unless exact BINANCE004 code, current UTC marker and public repo
+        run: python research/binance_diamante005/guard.py
+      - name: All 004 science and 005 audit tests, zero network
+        run: |
+          python -m unittest discover -s research/binance_diamante003 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante004 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante005 -p 'test_*.py' -v
+      - name: Install free public WebSocket transport package, no data vendor subscriptions
+        run: python -m pip install "websockets>=14,<16"
+      - name: Exact previously frozen BINANCE004 480-second public WS capture
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python research/binance_diamante004/capture_forward.py
+      - name: Exact previously frozen 004 30s event / 60s forward hypothetical economic shadow
+        run: python research/binance_diamante004/study.py
+      - name: Exact original SHA journal + deterministic shadow replay
+        run: python research/binance_diamante004/verify_offline.py
+      - name: Embed GitHub run identity and immutable source hash provenance in receipts
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, datetime
+          dest=pathlib.Path("binance004-evidence")
+          dest.mkdir(exist_ok=True)
+          info={"study":"BINANCE005_DATED_TRIGGER","run_id":os.getenv("GITHUB_RUN_ID"),
+                "sha":os.getenv("GITHUB_SHA"),"no_orders":True,
+                "utc_runner_receipt":datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          (dest/"binance005_run_identity.json").write_text(json.dumps(info,indent=2,sort_keys=True)+"\n")
+          PY
+      - name: Preserve original market byte-journal, signed SHA receipts and no-fill returns
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance005-daily-${{ github.run_id }}
+          path: binance004-evidence/
+          retention-days: 60
+          if-no-files-found: error
