@@ -1,0 +1,49 @@
+name: CARRY-001 Research Funding Basis (no-trades)
+on:
+  pull_request:
+    paths:
+      - "research/carry001/**"
+      - ".github/workflows/carry-001-funding.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reuse independently hashed RAW public source from first attempt
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 44122672805 --repo "$GITHUB_REPOSITORY" --name carry001-evidence-44122672805 --dir carry001-evidence
+      - name: Probe official public data sources
+        run: python research/carry001/probe.py
+      - name: Verify historic price sources
+        run: python research/carry001/price_probe.py
+      - name: Read-only timing and fee unit tests
+        run: python -m unittest discover -s research/carry001 -p 'test_*.py' -v
+      - name: Rebuild settlement history if historical CSV absent
+        run: |
+          if [ -s carry001-evidence/funding_events.csv ]; then echo "Verified prior source CSV reused"; else python research/carry001/collector.py; fi
+      - name: Rebuild historical candles if CSV absent
+        continue-on-error: true
+        run: |
+          if [ -s carry001-evidence/price_candles.csv ]; then echo "Verified prior price CSV reused"; else python research/carry001/price_collector.py; fi
+      - name: Audit older 2023-2024 funding sources (independent robustness)
+        run: python research/carry001/prehistory.py
+      - name: Historical previous-week strategy and real-cost stress
+        run: python research/carry001/study.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: carry001-evidence-${{ github.run_id }}
+          path: carry001-evidence/
+          if-no-files-found: warn
+          retention-days: 90
