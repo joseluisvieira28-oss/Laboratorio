@@ -1,0 +1,30 @@
+name: BINANCE-001 public Spot source gate (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante001/**"
+      - ".github/workflows/binance-diamante-001-source-gate.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline fail-closed unit tests (no network)
+        run: python -m unittest discover -s research/binance_diamante001 -p 'test_*.py' -v
+      - name: Exactly six bounded public archive GETs, integrity only
+        run: python research/binance_diamante001/source_gate.py
+      - name: Preserve source receipts even on SOURCE_BLOCKED
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance001-source-gate-${{ github.run_id }}
+          path: binance001-evidence/
+          retention-days: 30
+          if-no-files-found: warn
