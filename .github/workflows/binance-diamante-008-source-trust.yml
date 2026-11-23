@@ -1,0 +1,37 @@
+name: BINANCE-008 HF Redirect Trust + Tardis Sep Spot L2 First-Day Source (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante008/**"
+      - ".github/workflows/binance-diamante-008-source-trust.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance008-one-frozen-source-first-attempt
+  cancel-in-progress: false
+jobs:
+  original-source-only:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fail-closed offline host verification + normalized 1st day source snapshot tests
+        run: |
+          python -m py_compile research/binance_diamante008/*.py
+          python -m unittest discover -s research/binance_diamante008 -p 'test_*.py' -v
+      - name: One HTTP HEAD no-follow signed-URL-redacted Hugging Face + one public Tardis free sample source check
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python research/binance_diamante008/probe_sources.py
+      - name: Preserve only audit receipt and SHA; never any third-party L2 source bytes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance008-hf-trust-tardis-sep-${{ github.run_id }}
+          path: binance008-evidence/
+          retention-days: 60
+          if-no-files-found: warn
