@@ -1,0 +1,40 @@
+name: CARRY-002 ETH Collateral & Depth Independent Audit
+on:
+  pull_request:
+    paths:
+      - "research/carry002/**"
+      - ".github/workflows/carry-002-eth-risk.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download immutable CARRY-001 historical source (no keys)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p carry001-evidence
+          gh run download 44124154333 --repo "$GITHUB_REPOSITORY" --name carry001-evidence-44124154333 --dir carry001-evidence
+          test -s carry001-evidence/extended_funding_events.csv
+          test -s carry001-evidence/price_candles.csv
+      - name: Unit tests (offline)
+        run: python -m unittest discover -s research/carry002 -p 'test_*.py' -v
+      - name: Reconstruct 8/12-week funding, basis and margin
+        run: python research/carry002/audit.py
+      - name: ONE public read-only depth snapshot (no Binance bypass)
+        run: python research/carry002/orderbook_probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: carry002-evidence-${{ github.run_id }}
+          path: carry002-evidence/
+          retention-days: 90
+          if-no-files-found: warn
