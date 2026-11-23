@@ -1,0 +1,40 @@
+name: BINANCE-007B Free Historic Spot L2 Second Provider Gate (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante007b/**"
+      - ".github/workflows/binance-diamante-007b-goooddy.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance007b-source-once
+  cancel-in-progress: false
+jobs:
+  qualify-second-free-public-l2-source:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: First and second source synthetic snapshot, sequence and strict protocol tests
+        run: |
+          python -m py_compile research/binance_diamante007/*.py research/binance_diamante007b/*.py
+          python -m unittest discover -s research/binance_diamante007 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante007b -p 'test_*.py' -v
+      - name: Install only public Parquet inspection package
+        run: python -m pip install "pyarrow>=17,<26"
+      - name: Once-only anonymous Goooddy September Spot BTC public L2 snapshot/diff/trade verification
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python research/binance_diamante007b/probe_goooddy.py
+      - name: Persist original source receipts, no paid or third-party market bytes republished
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance007b-second-free-l2-${{ github.run_id }}
+          path: binance007b-evidence/
+          retention-days: 60
+          if-no-files-found: warn
