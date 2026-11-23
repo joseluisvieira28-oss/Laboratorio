@@ -18,7 +18,7 @@ PINNED = {
 FIRST=dt.date(2026,11,23)
 LAST=dt.date(2026,12,23)
 def git_blob_sha(raw:bytes)->str:
-    return hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\\0"+raw).hexdigest()
+    return hashlib.sha1(b"blob "+str(len(raw)).encode()+bytes([0])+raw).hexdigest()
 
 def check(today=None, base=None, private=None):
     today=today or dt.datetime.now(dt.timezone.utc).date()
