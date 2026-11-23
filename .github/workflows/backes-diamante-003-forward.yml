@@ -1,0 +1,39 @@
+name: BACKES-003 prospective Monday shadow (no trades)
+on:
+  push:
+    branches:
+      - research/backes-diamante-003-attribution-forward-20261123
+    paths:
+      - research/backes-diamante-003/requests/**
+permissions:
+  contents: read
+jobs:
+  weekly-capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Select exact dated immutable request file
+        id: date
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST="$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -E '^research/backes-diamante-003/requests/[0-9]{4}-[0-9]{2}-[0-9]{2}\.txt$' | head -1)"
+          test -n "$REQUEST"
+          test "$(cat "$REQUEST")" = "$(basename "$REQUEST" .txt)"
+          echo "date=$(basename "$REQUEST" .txt)" >> "$GITHUB_OUTPUT"
+      - name: Read-only source-backed snapshot after frozen signal decision
+        run: python research/backes-diamante-003/weekly_snapshot.py "${{ steps.date.outputs.date }}"
+      - name: Archive snapshot even when source blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backes-003-forward-${{ github.run_id }}
+          path: research/backes-diamante-003/forward_results/
+          if-no-files-found: warn
+          retention-days: 90
