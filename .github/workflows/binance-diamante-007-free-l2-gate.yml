@@ -1,0 +1,39 @@
+name: BINANCE-007 Free Historical Spot L2 Snapshot+Diff Source Gate (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante007/**"
+      - ".github/workflows/binance-diamante-007-free-l2-gate.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance007-historical-free-l2-one-off
+  cancel-in-progress: false
+jobs:
+  public-l2-source-and-bounded-replay:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Offline no-lookahead source/sequence/ghost-level/license tests; no internet
+        run: |
+          python -m py_compile research/binance_diamante007/*.py
+          python -m unittest discover -s research/binance_diamante007 -p 'test_*.py' -v
+      - name: Install only free Parquet transport dependency
+        run: python -m pip install "pyarrow>=17,<26"
+      - name: ONE anonymous immutable-revision public HF L2 meta/size/provenance/row-replay gate
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python research/binance_diamante007/source_probe.py
+      - name: Store bounded integrity manifest and failure receipts; NEVER raw third-party Parquet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance007-free-l2-source-replay-${{ github.run_id }}
+          path: binance007-evidence/
+          retention-days: 60
+          if-no-files-found: warn
