@@ -207,8 +207,8 @@ def bounded_diff_replay(pq,depth_file,book):
                     close_group()
                     group=[]
                     gkey=key
-                    if source_from is not None and
-                       timestamp(rec["timestamp_ms"])-source_from>MAX_REPLAY_MILLIS:
+                    if (source_from is not None and
+                        timestamp(rec["timestamp_ms"])-source_from>MAX_REPLAY_MILLIS):
                         stop_reason="PRE_REGISTERED_30MIN_CAPTURE_SPAN"
                         break
                 group.append(rec)
