@@ -1,5 +1,11 @@
 name: BACKES-002 public Binance BTC ETH rotation (read-only)
 on:
+  push:
+    branches:
+      - research/backes-diamante-001-public-source-audit-20261123
+    paths:
+      - 'research/backes-diamante-002/**'
+      - '.github/workflows/backes-diamante-002.yml'
   pull_request:
     branches:
       - main
@@ -10,7 +16,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: backes-002-${{ github.ref }}
+  group: backes-002-single-research-run
   cancel-in-progress: true
 jobs:
   historical-audit:
