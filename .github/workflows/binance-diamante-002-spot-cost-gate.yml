@@ -1,0 +1,30 @@
+name: BINANCE-002 Spot depth and aggTrades cost gate (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante002/**"
+      - ".github/workflows/binance-diamante-002-spot-cost-gate.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Zero-network offline schema and cost mathematics tests
+        run: python -m unittest discover -s research/binance_diamante002 -p 'test_*.py' -v
+      - name: Bounded public six-GET Binance Spot source (read-only)
+        run: python research/binance_diamante002/source_cost_gate.py
+      - name: Preserve original public source bytes and SHA receipts even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance002-source-cost-${{ github.run_id }}
+          path: binance002-evidence/
+          retention-days: 30
+          if-no-files-found: warn
