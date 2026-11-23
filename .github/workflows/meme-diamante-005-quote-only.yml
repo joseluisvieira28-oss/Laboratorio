@@ -1,0 +1,42 @@
+name: MEME-DIAMANTE-005 Raydium no-key quote-only proof
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante005/raydium_quote_probe.py"
+      - "research/meme_diamante005/test_quote_probe.py"
+      - ".github/workflows/meme-diamante-005-quote-only.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  quote-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Synthetic quote tests, NO network trading
+        run: python -m unittest discover -s research/meme_diamante005 -p "test_quote_probe.py" -v
+      - name: Get immutable previously captured market snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/meme005-prior
+          gh run download 44362407659 --repo "$GITHUB_REPOSITORY" \
+            --name meme005-asof-observation --dir /tmp/meme005-prior
+          echo '39ee74fb7521ca699b7e3bbbb83b37fcd133ac05fe8ee2349c79c360043889e4  /tmp/meme005-prior/snapshot.json' | sha256sum --check
+      - name: Compute only GET /compute quotes (no signing, submission or swap)
+        run: python research/meme_diamante005/raydium_quote_probe.py /tmp/meme005-prior/snapshot.json
+      - name: Retain timestamped quote source receipts, no raw paid data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme005-raydium-quote-only
+          path: meme005-quote-evidence/
+          retention-days: 90
+          if-no-files-found: warn

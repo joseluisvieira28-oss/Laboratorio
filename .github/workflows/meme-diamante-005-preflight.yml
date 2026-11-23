@@ -1,0 +1,32 @@
+name: MEME-DIAMANTE-005 read-only mature-pool economics preflight
+on:
+  pull_request:
+    paths:
+      - "research/meme_diamante005/**"
+      - ".github/workflows/meme-diamante-005-preflight.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Synthetic code checks (NO trading)
+        run: python -m unittest discover -s research/meme_diamante005 -p 'test_*.py' -v
+      - name: One-time public market observability (GET only)
+        env:
+          MEME005_OUTPUT_DIR: "meme005-evidence"
+        run: python research/meme_diamante005/collector.py
+      - name: Retain timestamped evidence snapshot and source availability failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meme005-asof-observation
+          path: meme005-evidence/
+          retention-days: 90
+          if-no-files-found: warn
