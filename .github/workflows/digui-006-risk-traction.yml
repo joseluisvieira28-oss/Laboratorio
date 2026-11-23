@@ -1,0 +1,32 @@
+name: DIGUI-006 Risk and Traction (research only)
+on:
+  pull_request:
+    paths:
+      - "research/digui006/**"
+      - ".github/workflows/digui-006-risk-traction.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  screening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install analytical dependencies
+        run: python -m pip install "numpy>=1.26,<3" "pandas>=2.2,<4" "scikit-learn>=1.4,<2" "pyarrow>=15,<25"
+      - name: Run read-only study with pinned public source
+        run: python research/digui006/study.py digui006-result.json
+      - name: Post-hoc leakage/field audit (NOT new test evidence)
+        run: python research/digui006/diagnostics.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: digui006-metrics
+          path: |
+            digui006-result.json
+            digui006-diagnostics.json
+          if-no-files-found: warn
