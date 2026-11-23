@@ -1,0 +1,41 @@
+name: BACKES-003 forensic attribution (read-only)
+on:
+  push:
+    branches:
+      - research/backes-diamante-003-attribution-forward-20261123
+    paths:
+      - research/backes-diamante-003/attribution.py
+      - research/backes-diamante-003/test_attribution.py
+      - research/backes-diamante-003/PROTOCOL.md
+      - .github/workflows/backes-diamante-003-forensic.yml
+  pull_request:
+    branches:
+      - research/backes-diamante-001-public-source-audit-20261123
+    paths:
+      - research/backes-diamante-003/attribution.py
+      - research/backes-diamante-003/test_attribution.py
+      - research/backes-diamante-003/PROTOCOL.md
+      - .github/workflows/backes-diamante-003-forensic.yml
+permissions:
+  contents: read
+jobs:
+  historical-attribution:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests, offline
+        run: python -m unittest discover -s research/backes-diamante-003 -p 'test_*.py' -v
+      - name: Source-backed forensic BACKES-002 replication
+        run: python research/backes-diamante-003/attribution.py
+      - name: Archive evidence including SOURCE_BLOCKED
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backes-003-forensic-${{ github.run_id }}
+          path: research/backes-diamante-003/results/
+          if-no-files-found: warn
+          retention-days: 90
