@@ -1,0 +1,38 @@
+name: BINANCE-006 90d Historical Spot Data + Free L2 Candidate Gate (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante006/**"
+      - ".github/workflows/binance-diamante-006-historical-gate.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance006-one-off-pr-historical
+  cancel-in-progress: false
+jobs:
+  frozen-historical-spot:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Frozen chronological OOS/no-lookahead/fee/source safety unit tests (offline only)
+        run: python -m unittest discover -s research/binance_diamante006 -p 'test_*.py' -v
+      - name: Free historical Binance Spot L2 sample metadata HEAD checks ONLY
+        run: python research/binance_diamante006/l2_probe.py
+      - name: ONE 90-day official Spot aggTrades + 1m klines original SHA source gate and cost-stressed flow-only OOS
+        run: python research/binance_diamante006/run_history.py
+      - name: Preserve exact official source receipts, source failures, immutable test ledger and verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance006-official-history-${{ github.run_id }}
+          path: binance006-evidence/
+          retention-days: 60
+          compression-level: 9
+          if-no-files-found: warn
