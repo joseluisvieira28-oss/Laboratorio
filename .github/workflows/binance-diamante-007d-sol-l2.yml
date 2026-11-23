@@ -1,0 +1,40 @@
+name: BINANCE-007D Public SOL August Historical Spot L2 Replayer (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante007d/**"
+      - ".github/workflows/binance-diamante-007d-sol-l2.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance007d-sol-source-first-attempt
+  cancel-in-progress: false
+jobs:
+  public-sol-source-replay-only:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: All inherited U-u, snapshot, metadata, ghost-level and independent scope tests
+        run: |
+          python -m py_compile research/binance_diamante007/*.py research/binance_diamante007d/*.py
+          python -m unittest discover -s research/binance_diamante007 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante007d -p 'test_*.py' -v
+      - name: Install only free Parquet reader
+        run: python -m pip install "pyarrow>=17,<26"
+      - name: ONE immutable public Goooddy SOLUSDT August source and bounded U-u snapshot-depth-trade replay
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python research/binance_diamante007d/probe_sol.py
+      - name: Archive source receipts and failure only, no third-party L2 raw bytes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance007d-free-sol-l2-${{ github.run_id }}
+          path: binance007d-evidence/
+          retention-days: 60
+          if-no-files-found: warn
