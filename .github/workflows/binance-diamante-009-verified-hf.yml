@@ -1,0 +1,40 @@
+name: BINANCE-009 Trusted HF CDN Original SOL Historical L2 Replay (SOURCE ONLY)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante009/**"
+      - ".github/workflows/binance-diamante-009-verified-hf.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance009-once-official-HF-redirect-source
+  cancel-in-progress: false
+jobs:
+  read-only-official-redirect-source:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Strict original snapshot U/u, timestamps, ghost levels + official-only trust tests
+        run: |
+          python -m py_compile research/binance_diamante007/*.py research/binance_diamante007d/*.py research/binance_diamante007e/*.py research/binance_diamante009/*.py
+          python -m unittest discover -s research/binance_diamante007 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante009 -p 'test_*.py' -v
+      - name: Install only free Parquet reader
+        run: python -m pip install "pyarrow>=17,<26"
+      - name: One original byte SHA LFS verification and bounded L2 replay from verified official HF redirect
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python research/binance_diamante009/official_hf_source.py
+      - name: Archive only source SHA receipts and gap evidence, NEVER third-party raw archives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance009-official-HF-SOL-L2-${{ github.run_id }}
+          path: binance009-evidence/
+          retention-days: 60
+          if-no-files-found: warn
