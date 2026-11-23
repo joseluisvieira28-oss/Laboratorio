@@ -1,0 +1,30 @@
+name: BINANCE-007C HF Dataset Catalog Forensics (NO TRADING)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante007c/**"
+      - ".github/workflows/binance-diamante-007c-catalog.yml"
+permissions:
+  contents: read
+jobs:
+  public-metadata-only:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Static test source read syntax
+        run: python -m py_compile research/binance_diamante007c/catalog.py
+      - name: One anonymous source-catalog metadata probe, NO Parquet download
+        run: python research/binance_diamante007c/catalog.py
+      - name: Archive only catalog JSON and SHA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance007c-public-metadata-${{ github.run_id }}
+          path: binance007c-evidence/
+          retention-days: 60
+          if-no-files-found: warn
