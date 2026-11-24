@@ -1,0 +1,48 @@
+name: FLOW-002 source feasibility
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/flow-diamante-002-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'research/flow-diamante-001-delisting-audit-2026-11-24'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify anonymous archive metadata (no prices, no raw redistribution)
+        run: |
+          python3 - <<'PY'
+          import urllib.request as u, urllib.parse as p, urllib.error as e
+          import json, hashlib, datetime, time
+          base="https://api.cryptohftdata.com/v1/"
+          events={"2025-06-26":["ALPHA","BSW","KMD","LEVER","LTO"],"2025-10-29":["FLM","KDA","PERP"],"2025-12-03":["FIS","REI","VOXEL"]}
+          # June 26 is outside documented archive coverage. No market files requested for protected dates.
+          def request(path,params,method="GET"):
+              url=base+path+"?"+p.urlencode(params)
+              try:
+                  with u.urlopen(u.Request(url,method=method,headers={"User-Agent":"FLOW-002-research"}),timeout=10) as res:
+                      body=res.read(1000001) if method=="GET" else b""
+                      return res.status,body,res.headers.get("Content-Type")
+              except e.HTTPError as ex: return ex.code,b"",None
+              except Exception as ex: return None,b"",type(ex).__name__
+          report={}
+          for venue in ("binance_spot","bybit_spot","okx_spot"):
+              code,raw,ctype=request("symbols",{"exchange":venue,"data_type":"orderbook"})
+              symbols=None
+              try:
+                  obj=json.loads(raw)
+                  if code==200 and isinstance(obj["symbols"],list) and all(isinstance(x,str) for x in obj["symbols"]):
+                      symbols=set(obj["symbols"])
+              except (ValueError,KeyError,TypeError): pass
+              report[venue]={"http":code,"schema_ok":symbols is not None,"candidate_count":len(symbols) if symbols is not None else None,"matches":{day:{s:(s+"USDT" in symbols or s+"-USDT" in symbols) if symbols is not None else None for s in ss} for day,ss in events.items()},"raw_sha256":hashlib.sha256(raw).hexdigest() if raw else None,"response_type":ctype}
+          # Test HEAD only for a neutral non-event BTC file. Never download market values.
+          controls={}
+          for venue in ("binance_spot","bybit_spot"):
+              code,_,ctype=request("download",{"file":venue+"/2026-11-20/12/BTCUSDT_orderbook.parquet"},"HEAD")
+              controls[venue]={"http":code,"response_type":ctype}
+          print("FLOW_METADATA",json.dumps({"venues":report,"neutral_head_controls":controls,"archive_start":"2025-06-28","protected_event_market_values_opened":False,"raw_data_published":False,"classification":"METADATA_ONLY_NOT_ECONOMIC"},sort_keys=True))
+          PY
