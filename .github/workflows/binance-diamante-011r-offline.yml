@@ -1,0 +1,64 @@
+name: BINANCE-011R Offline Reproduce Original Archived 011 SHA and Shadow (NO MARKET)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante011r/**"
+      - ".github/workflows/binance-diamante-011r-offline.yml"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: binance011r-read-only-one-archived-replay
+  cancel-in-progress: false
+jobs:
+  reproduce-pinned-old-artifact-only:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true && github.head_ref == 'research/binance-diamante-011r-offline-artifact-replay-20261124' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Original 003 004 010 source SHA locks and 011R offline no-market tests
+        run: |
+          python -m py_compile research/binance_diamante011r/*.py
+          python -m unittest discover -s research/binance_diamante011r -p 'test_*.py' -v
+      - name: Authenticate only to original GitHub Actions artifact read endpoint and validate exact pinned ID
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api repos/joseluisvieira28-oss/Laboratorio/actions/artifacts/14895554598 > /tmp/binance011r-original-artifact-meta.json
+          python - <<'PY'
+          import json
+          v=json.load(open("/tmp/binance011r-original-artifact-meta.json"))
+          assert v["id"] == 14895554598, "ARTIFACT_ID_CHANGED"
+          assert v["name"] == "binance011-frozen-30min-source-45337495640", "WRONG_ARTIFACT_NAME"
+          assert v["size_in_bytes"] == 19967839, "ORIGINAL_ARTIFACT_ZIP_SIZE_CHANGED"
+          assert v["expired"] is False, "ARCHIVE_EXPIRED"
+          print("PINNED_GITHUB_ARCHIVE_METADATA_PASS",v["id"],v["size_in_bytes"])
+          PY
+      - name: Download EXACT previous 2026-11-24 source artifact; NEVER start a new Binance capture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download 45337495640 -R joseluisvieira28-oss/Laboratorio --name binance011-frozen-30min-source-45337495640 --dir binance011r-input
+          test -f binance011r-input/lossless_segments_manifest.json
+          test -f binance011r-input/forward_verdict.json
+          test ! -f binance011r-input/journal.jsonl
+      - name: Original gzip SHA chain, raw bytes and explicit 004/010 60-window replay
+        run: python research/binance_diamante011r/replay_artifact.py
+      - name: Publish ONLY compact replay verdict and SHA, not raw or compressed third-party market data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance011r-one-original-artifact-audit-${{ github.run_id }}
+          path: binance011r-results/
+          retention-days: 7
+          if-no-files-found: warn
