@@ -1,0 +1,88 @@
+name: YIELD-001 Pendle curve census
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/yield-diamante-001-census.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  census:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'research/yield-diamante-001-pendle-2026-11-24'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Current public market census and exact identity curve screen
+        run: |
+          python3 - <<'PY'
+          import urllib.request as u, urllib.parse as p, json, hashlib, datetime as dt, math, re, collections
+          now=dt.datetime.now(dt.timezone.utc)
+          ROOT="https://api-v2.pendle.finance/core/v2/markets/all"
+          receipts=[]; markets={}; errors=[]; exhausted=False; sample=None
+          def date(x):
+              if isinstance(x,(int,float)):
+                  return dt.datetime.fromtimestamp(x/(1000 if x>1e11 else 1),dt.timezone.utc)
+              y=dt.datetime.fromisoformat(x.replace("Z","+00:00"))
+              return y if y.tzinfo else y.replace(tzinfo=dt.timezone.utc)
+          def addr(x):
+              if isinstance(x,dict): x=x.get("address") or x.get("id")
+              if isinstance(x,str):
+                  m=re.fullmatch(r"(?:[0-9]+-)?(0x[0-9a-fA-F]{40})",x)
+                  if m:return m[1].lower()
+              return None
+          def num(x):
+              if isinstance(x,bool):return None
+              if isinstance(x,(int,float)) and math.isfinite(x):return float(x)
+              return None
+          for i in range(20):
+              try:
+                  url=ROOT+"?"+p.urlencode({"limit":100,"skip":i*100})
+                  with u.urlopen(u.Request(url,headers={"User-Agent":"YIELD-001-source-research"}),timeout=15) as res:
+                      raw=res.read(20000001); status=res.status
+                  if len(raw)>20000000:raise ValueError("cap")
+                  obj=json.loads(raw); rows=obj["markets"]
+                  if not isinstance(rows,list):raise ValueError("schema")
+                  receipts.append({"page":i,"http":status,"rows":len(rows),"sha256":hashlib.sha256(raw).hexdigest()})
+                  if rows and sample is None:
+                      q=rows[0];sample={"keys":sorted(q),"currentData_keys":sorted(q.get("currentData") or {}),"sy":q.get("sy"),"underlyingAsset":q.get("underlyingAsset"),"accountingAsset":q.get("accountingAsset")}
+                  for m in rows:
+                      k=(m.get("chainId"),addr(m.get("address")))
+                      if None in k:errors.append("missing identity");continue
+                      if k in markets:errors.append("duplicate market")
+                      markets[k]=m
+                  if len(rows)<100:exhausted=True;break
+              except Exception as e:errors.append(type(e).__name__+":"+str(e));break
+          active=[]; rejects=collections.Counter()
+          for (chain,market),m in markets.items():
+              try: expiry=date(m["expiry"]); days=(expiry-now).total_seconds()/86400
+              except Exception:rejects["expiry_invalid"]+=1;continue
+              if days<=0:rejects["expired"]+=1;continue
+              d=m.get("currentData") or {}
+              apy=num(d.get("impliedApy",m.get("impliedApy")))
+              liquidity=num(d.get("liquidity",m.get("liquidity")))
+              if liquidity is None:liquidity=num(d.get("totalTvl",m.get("totalTvl")))
+              sy=addr(m.get("sy")); underlying=addr(m.get("underlyingAsset")); accounting=addr(m.get("accountingAsset"))
+              if not sy or not underlying or not accounting:rejects["incomplete_exact_identity"]+=1;continue
+              if apy is None or not -0.99<apy<10:rejects["invalid_rate"]+=1;continue
+              if liquidity is None or liquidity<100000:rejects["liquidity_below_or_unknown"]+=1;continue
+              if days<7:rejects["under_7_days"]+=1;continue
+              active.append(dict(chain=chain,market=market,name=m.get("name"),sy=sy,underlying=underlying,accounting=accounting,expiry=expiry.isoformat(),days=days,apy=apy,liquidity=liquidity))
+          groups=collections.defaultdict(list)
+          for a in active:groups[(a["chain"],a["sy"],a["underlying"],a["accounting"])].append(a)
+          pairs=[]
+          for k,g in groups.items():
+              # Adjacent maturities, highest liquidity market per exact expiry; not ranked by rate.
+              by={}
+              for a in g:
+                  if a["expiry"] not in by or a["liquidity"]>by[a["expiry"]]["liquidity"]:by[a["expiry"]]=a
+              ordered=sorted(by.values(),key=lambda a:a["days"])
+              for a,b in zip(ordered,ordered[1:]):
+                  delta=b["days"]-a["days"]
+                  if delta<7:continue
+                  fwd=math.expm1((math.log1p(b["apy"])*b["days"]-math.log1p(a["apy"])*a["days"])/delta)
+                  pairs.append(dict(short=a,long=b,spread_pp=(b["apy"]-a["apy"])*100,forward_apy=fwd,short_hold_gross_1000=1000*math.expm1(math.log1p(a["apy"])*a["days"]/365),long_hold_gross_1000=1000*math.expm1(math.log1p(b["apy"])*b["days"]/365)))
+          pairs.sort(key=lambda x:(-min(x["short"]["liquidity"],x["long"]["liquidity"]),x["short"]["market"],x["long"]["market"]))
+          report=dict(asof=now.isoformat(),receipts=receipts,exhausted=exhausted,errors=errors,unique_markets=len(markets),schema_sample=sample,rejections=rejects,eligible_markets=len(active),exact_identity_groups=len(groups),adjacent_pairs=len(pairs),pairs=pairs[:10],classification="CURRENT_CURVE_DESCRIPTIVE_ONLY",limitations=["Not executable quotes; liquidity/TVL is not depth","Forward rate is implied, not guaranteed reinvestment return","No historical protected outcomes opened","No points valuation, gas, swap or redemption quote, credit/default risk or PnL","Prior Pendle maturity-convergence descriptive and T-30 fixed-variable hold preserved (PR 145)"])
+          print("YIELD_CENSUS",json.dumps(report,default=str,sort_keys=True))
+          PY
