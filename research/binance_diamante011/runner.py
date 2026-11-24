@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import datetime as dt
+import importlib.util
 import hashlib
 import json
 import os
@@ -14,8 +15,15 @@ import sys
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
-sys.path.insert(0,str(ROOT/"research"/"binance_diamante010"))
-import runner as r10
+# Import the frozen 010 runner under a distinct module name.
+# In 'unittest discover', this 011 file is already sys.modules['runner'];
+# importing plain 'runner' would recursively bind 011 instead of 010.
+PARENT_RUNNER=ROOT/"research"/"binance_diamante010"/"runner.py"
+spec=importlib.util.spec_from_file_location("binance010_frozen_runner_independent",PARENT_RUNNER)
+if spec is None or spec.loader is None:raise RuntimeError("ORIGINAL_010_MODULE_UNAVAILABLE")
+r10=importlib.util.module_from_spec(spec)
+sys.modules[spec.name]=r10
+spec.loader.exec_module(r10)
 from lossless_journal import (
     SegmentedJournal,verify_segments,sha_file,RAW_MAX,ARCHIVE_MAX,MAX_SEGMENTS,CHUNK_MAX_RAW
 )
