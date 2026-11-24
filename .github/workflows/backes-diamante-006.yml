@@ -6,6 +6,8 @@ on:
     paths:
       - 'research/backes-diamante-006/shadow.py'
       - 'research/backes-diamante-006/test_shadow.py'
+      - 'research/backes-diamante-006/test_depth.py'
+      - 'research/backes-diamante-006/depth.py'
       - 'research/backes-diamante-006/PROTOCOL.md'
       - '.github/workflows/backes-diamante-006.yml'
   push:
@@ -54,6 +56,9 @@ jobs:
       - name: First-valid-Monday future shadow; refuse late requests
         if: github.event_name == 'push'
         run: python research/backes-diamante-006/shadow.py prospective "${{ steps.date.outputs.target }}"
+      - name: Optional second source-only public level-2 liquidity audit
+        if: github.event_name == 'pull_request'
+        run: python research/backes-diamante-006/depth.py
       - name: Archive all receipts, source SHA256 and BLOCKED reports
         if: always()
         uses: actions/upload-artifact@v4
