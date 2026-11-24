@@ -200,11 +200,19 @@ def evaluate(source,prior):
                        and x["bps_per_traded_notional"]==10 and not x["twohop_routing_stress"])
         expected=next(x for x in prior["venn"][venue]["comparisons"]
                 if x["period"]=="2018-2026" and x["bps_per_leg"]==10 and not x["two_leg_swap_stress"])
-        for key,oldkey in (("FROZEN002","FROZEN002"),("MOM8","MOM8"),("BTC","BTC"),("ETH","ETH"),("MIX","MIX")):
+        for key in ("FROZEN002","MOM8","BTC","ETH"):
             got=original["metrics"][key]["total_return_pct"]
-            target=expected["portfolios"][oldkey]["total_return_pct"]
+            target=expected["portfolios"][key]["total_return_pct"]
             if abs(got-target)>0.00015:
                 raise ValueError(f"PARITY_BLOCKED {venue} {key}: {got} != {target}")
+        # BACKES004 charged only 0.5 of the initial MIX purchase, while
+        # buying 50% BTC and 50% ETH requires 1.0 of NAV traded.
+        # Assert the exact fee correction rather than hiding a prior bug.
+        prior_mix_nav=1+expected["portfolios"]["MIX"]["total_return_pct"]/100
+        correct_mix_nav=prior_mix_nav*(1-.001)/(1-.0005)
+        got_mix_nav=1+original["metrics"]["MIX"]["total_return_pct"]/100
+        if abs(correct_mix_nav-got_mix_nav)>0.0000002:
+            raise ValueError(f"MIX_INITIAL_FEE_CORRECTION_FAILED {venue}: {got_mix_nav} != {correct_mix_nav}")
         results[venue]={"source_pass":True,"parity_pass":True,"scenarios":venue_results}
     return results
 
