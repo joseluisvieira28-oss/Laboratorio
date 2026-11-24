@@ -17,7 +17,7 @@ spec=importlib.util.spec_from_file_location("b002_frozen",S)
 b002=importlib.util.module_from_spec(spec);spec.loader.exec_module(b002)
 CANDIDATES=("FROZEN002","MOM4","MOM8","MOM12")
 PORTFOLIOS=("BTC","ETH","MIX","CASH")+CANDIDATES
-COSTS=(5,10,20,35)
+COSTS=(5,10,20,35,60,80,100)
 WINDOWS=((2018,2022),(2023,2024),(2025,2026),(2018,2026))
 PREDECESSOR_SHA="735fff332994ce546f56258a01787d7f250203efa701586fa24eefd553f1ecaf"
 
@@ -170,7 +170,7 @@ def evaluate(venue,data):
     for y1,y2 in WINDOWS:
         indices=[i for i,r in enumerate(data["BTC"]) if y1<=int(r["date"][:4])<=y2]
         for bps in COSTS:
-            for double in ([False,True] if bps==35 else [False]):
+            for double in ([False,True] if bps in (35,60,80,100) else [False]):
                 result,returns=trade_model(data,policies,indices[0],indices[-1]+1,bps,double)
                 record={"period":f"{y1}-{y2}","bps_per_leg":bps,
                         "two_leg_swap_stress":double,"portfolios":result}
@@ -260,6 +260,19 @@ def main():
            f"{wf['identical_window_benchmarks']['BTC']['total_return_pct']:+.2f}% | "+
            f"{wf['identical_window_benchmarks']['MIX']['total_return_pct']:+.2f}% | "+
            f"{wf['selected_strategy']['max_drawdown_pct']:.2f}% |")
+
+    lines+=["","## Cost stress at initial-tier taker fee scenarios","",
+      "Fee tiers are current official examples, NOT your actual account fees or historical tier history.",
+      "Coinbase 60bps; Kraken 80bps. Both EXCLUDE slippage; 100bps is an extra stress scenario.",
+      "| Venue | Cost per operation | FROZEN002 2025-26 | MOM4 2025-26 | BTC 2025-26 |",
+      "|---|---:|---:|---:|---:|"]
+    for venue,r in outcomes.items():
+        if "comparisons" not in r:continue
+        basis=60 if venue=="Coinbase" else 80 if venue=="Kraken" else 35
+        t=next(x for x in r["comparisons"] if x["period"]=="2025-2026" and x["bps_per_leg"]==basis and not x["two_leg_swap_stress"])
+        lines.append(f"| {venue} | {basis}bps | " +
+            " | ".join(f"{t['portfolios'][k]['total_return_pct']:+.2f}%" for k in ("FROZEN002","MOM4","BTC"))+" |")
+
     lines+=["","## Adversarial verdict", "",
         "All results are retrospective and cannot be called prospective edge.",
         "Compare across venues, periods and signal simplicity. Momentum and swing pivot differences are not independent discoveries.",
