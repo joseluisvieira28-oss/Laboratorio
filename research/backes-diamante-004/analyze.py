@@ -28,7 +28,7 @@ def positions(data):
     for lag in (4,8,12):
         states["MOM"+str(lag)]=["ETH" if i>=lag and r[i]["close"]>r[i-lag]["close"] else "BTC"
                                    for i in range(len(r))]
-    return {k:["BTC"]+[states[k][i-1] for i in range(len(r)-1)] for k in CANDIDATES}
+    return {k:["BTC"]+[states[k][i-1] for i in range(1,len(r))] for k in CANDIDATES}
 
 def check_data(data):
     dates=[q["date"] for q in data["BTC"]]
