@@ -1,0 +1,40 @@
+name: Compound Inventory Ledger Source V0.1
+
+on:
+  push:
+    branches:
+      - pressure-mining-program-v0.1
+    paths:
+      - "pressure_mining_v0_1/compound_inventory_ledger.py"
+      - ".github/workflows/compound-inventory-ledger-source-v0.1.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "pressure_mining_v0_1/compound_inventory_ledger.py"
+      - ".github/workflows/compound-inventory-ledger-source-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile pressure_mining_v0_1/compound_inventory_ledger.py
+      - name: Run source-only inventory ledger
+        run: python pressure_mining_v0_1/compound_inventory_ledger.py
+      - name: Verify
+        run: test -s pressure_mining_v0_1/receipts/COMPOUND_INVENTORY_LEDGER_SOURCE_DIAGNOSTIC_V0.1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compound-inventory-ledger-source-v01
+          path: pressure_mining_v0_1/receipts/COMPOUND_INVENTORY_LEDGER_SOURCE_DIAGNOSTIC_V0.1.json
+          if-no-files-found: error

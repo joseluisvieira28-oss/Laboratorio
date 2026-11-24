@@ -1,0 +1,55 @@
+name: Compound Realized Disposal 30M Preoutcome Preflight V0.1
+
+on:
+  push:
+    branches: [pressure-mining-program-v0.1]
+    paths:
+      - "pressure_mining_v0_1/compound_realized_disposal_30m_preflight.py"
+      - "pressure_mining_v0_1/compound_realized_disposal_30m_discovery.py"
+      - "pressure_mining_v0_1/labs/COMPOUND_REALIZED_DISPOSAL_FLOW_001_30M_PREFLIGHT_FREEZE_V0.1.md"
+      - ".github/workflows/compound-realized-disposal-30m-preflight-v0.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preoutcome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile only
+        run: |
+          python -m py_compile pressure_mining_v0_1/compound_realized_disposal_30m_preflight.py
+          python -m py_compile pressure_mining_v0_1/compound_realized_disposal_30m_discovery.py
+      - name: Run outcome-blind source object preflight
+        run: python pressure_mining_v0_1/compound_realized_disposal_30m_preflight.py
+      - name: Run synthetic-only Discovery tests
+        run: python pressure_mining_v0_1/compound_realized_disposal_30m_discovery.py --synthetic-self-test
+      - name: Verify receipts and lock
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          p="pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_30M_PREOUTCOME_SOURCE_RECEIPT_V0.1.json"
+          j=json.load(open(p))
+          if j.get("status")!="SOURCE_OBJECT_PREFLIGHT_PASS":
+              raise SystemExit(j.get("status"))
+          if j["firewall"].get("market_price_values_opened") is not False:
+              raise SystemExit("market price firewall failed")
+          marker=".github/authorities/compound-realized-disposal-flow-001-2025.authorized"
+          if os.path.exists(marker):
+              raise SystemExit("authority marker unexpectedly exists during preflight")
+          print("PREOUTCOME_PREFLIGHT_PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compound-realized-disposal-30m-preoutcome-v01
+          path: pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_30M_PREOUTCOME_SOURCE_RECEIPT_V0.1.json
+          if-no-files-found: error

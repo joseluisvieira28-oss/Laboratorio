@@ -1,0 +1,53 @@
+name: Compound Realized Disposal Protected 2025 Discovery V0.1
+
+on:
+  push:
+    branches: [pressure-mining-program-v0.1]
+    paths:
+      - ".github/authorities/compound-realized-disposal-flow-001-2025.authorized"
+
+permissions:
+  contents: read
+
+jobs:
+  protected-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CRYPTO_LAB_PROTECTED_OUTCOME_AUTHORITY: "COMPOUND-REALIZED-DISPOSAL-FLOW-001::PROTECTED-2025-ECONOMIC-DISCOVERY::30M::V0.1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate explicit authority marker
+        run: |
+          test -s .github/authorities/compound-realized-disposal-flow-001-2025.authorized
+          test "$(cat .github/authorities/compound-realized-disposal-flow-001-2025.authorized)" = "$CRYPTO_LAB_PROTECTED_OUTCOME_AUTHORITY"
+      - name: Bind canonical freeze identity
+        run: |
+          test "$(git hash-object pressure_mining_v0_1/labs/COMPOUND_REALIZED_DISPOSAL_FLOW_001_2025_ECONOMIC_DISCOVERY_FREEZE_V0.1.md)" = "d36c24bffd8a0f16787e0b7cf72b2d7b60e2f430"
+      - name: Compile finalized runner
+        run: python -m py_compile pressure_mining_v0_1/compound_realized_disposal_30m_discovery.py
+      - name: Run exact protected 2025 Discovery once
+        run: python pressure_mining_v0_1/compound_realized_disposal_30m_discovery.py
+      - name: Verify immutable receipt
+        run: |
+          python - <<'PY'
+          import json
+          p="pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_2025_DISCOVERY_RECEIPT_V0.1.json"
+          j=json.load(open(p))
+          print("scientific_verdict=",j.get("verdict"))
+          if j.get("verdict") not in ("DISCOVERY_PASS_NOT_YET_TIER2","DISCOVERY_FAIL_NO_PROMOTION"):
+              raise SystemExit(2)
+          if j["firewall"].get("protected_2026_market_outcomes_opened") is not False:
+              raise SystemExit("2026 firewall failed")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compound-realized-disposal-protected-2025-discovery-v01
+          path: pressure_mining_v0_1/receipts/COMPOUND_REALIZED_DISPOSAL_FLOW_001_2025_DISCOVERY_RECEIPT_V0.1.json
+          if-no-files-found: error
