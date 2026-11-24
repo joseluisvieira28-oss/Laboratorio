@@ -1,0 +1,31 @@
+name: BACKES-004B Kraken UTC daily recovery (read-only)
+on:
+  pull_request:
+    branches:
+      - research/backes-diamante-004-crossvenue-walkforward-20261124
+    paths:
+      - research/backes-diamante-004b/**
+      - .github/workflows/backes-diamante-004b.yml
+permissions:
+  contents: read
+jobs:
+  kraken-source-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Pure offline lag/cost tests
+        run: python -m unittest discover -s research/backes-diamante-004b -p 'test_*.py' -v
+      - name: Kraken 1440m weekly rebucket, Binance source-backed replication
+        run: python research/backes-diamante-004b/kraken_recovery.py
+      - name: Save immutable source evidence even if blocked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backes-004b-kraken-daily-${{ github.run_id }}
+          path: research/backes-diamante-004b/results/
+          if-no-files-found: warn
+          retention-days: 90
