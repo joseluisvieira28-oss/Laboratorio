@@ -48,7 +48,7 @@ jobs:
                   if not isinstance(rows,list):raise ValueError("schema")
                   receipts.append({"page":i,"http":status,"rows":len(rows),"sha256":hashlib.sha256(raw).hexdigest()})
                   if rows and sample is None:
-                      q=rows[0];sample={"keys":sorted(q),"currentData_keys":sorted(q.get("currentData") or {}),"sy":q.get("sy"),"underlyingAsset":q.get("underlyingAsset"),"accountingAsset":q.get("accountingAsset")}
+                      q=rows[0];sample={"keys":sorted(q),"details_keys":sorted(q.get("details") or {}),"sy":q.get("sy"),"underlyingAsset":q.get("underlyingAsset"),"accountingAsset":q.get("accountingAsset")}
                   for m in rows:
                       k=(m.get("chainId"),addr(m.get("address")))
                       if None in k:errors.append("missing identity");continue
@@ -61,10 +61,12 @@ jobs:
               try: expiry=date(m["expiry"]); days=(expiry-now).total_seconds()/86400
               except Exception:rejects["expiry_invalid"]+=1;continue
               if days<=0:rejects["expired"]+=1;continue
-              d=m.get("currentData") or {}
+              d=m.get("details") or {}
+              if not isinstance(d,dict):rejects["details_schema_invalid"]+=1;continue
               apy=num(d.get("impliedApy",m.get("impliedApy")))
               liquidity=num(d.get("liquidity",m.get("liquidity")))
               if liquidity is None:liquidity=num(d.get("totalTvl",m.get("totalTvl")))
+              if liquidity is None:liquidity=num(d.get("tvl"))
               sy=addr(m.get("sy")); underlying=addr(m.get("underlyingAsset")); accounting=addr(m.get("accountingAsset"))
               if not sy or not underlying or not accounting:rejects["incomplete_exact_identity"]+=1;continue
               if apy is None or not -0.99<apy<10:rejects["invalid_rate"]+=1;continue
