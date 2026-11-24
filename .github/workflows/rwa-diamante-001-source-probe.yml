@@ -1,0 +1,32 @@
+name: RWA-001 public source probe
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/rwa_diamante_001/**'
+      - '.github/workflows/rwa-diamante-001-source-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rwa-source-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'research/rwa-diamante-001-clock-dislocation-2026-11-24'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Public GET source receipts
+        run: python3 research/rwa_diamante_001/source_probe.py
+      - name: Frozen historical trade-only proxy
+        run: python3 research/rwa_diamante_001/historical_proxy.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rwa-source-receipts
+          path: rwa_source_receipts/
+          retention-days: 14
