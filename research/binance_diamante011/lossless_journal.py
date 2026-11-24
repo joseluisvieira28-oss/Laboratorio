@@ -143,6 +143,7 @@ def verify_segments(out,remove_raw=False):
     Returns proof metadata. Raw original deleted only during final package.
     """
     out=Path(out)
+    out.mkdir(parents=True,exist_ok=True)
     plain=out/"journal.jsonl"
     indexpath=out/FILENAME
     result={
