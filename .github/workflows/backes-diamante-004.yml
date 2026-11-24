@@ -1,0 +1,42 @@
+name: BACKES-004 cross-venue BTC ETH historical audit (no trading)
+on:
+  push:
+    branches:
+      - research/backes-diamante-004-crossvenue-walkforward-20261124
+    paths:
+      - research/backes-diamante-004/**
+      - .github/workflows/backes-diamante-004.yml
+  pull_request:
+    branches:
+      - research/backes-diamante-003-attribution-forward-20261123
+    paths:
+      - research/backes-diamante-004/**
+      - .github/workflows/backes-diamante-004.yml
+permissions:
+  contents: read
+concurrency:
+  group: backes-004-audit-single
+  cancel-in-progress: true
+jobs:
+  historical-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Offline regression and leakage tests
+        run: python -m unittest discover -s research/backes-diamante-004 -p 'test_*.py' -v
+      - name: Collect source-backed Kraken and Coinbase plus independent Binance anchor
+        run: python research/backes-diamante-004/collect.py
+      - name: Audit independent venues, costs, pivot vs momentum and rolling chronology
+        run: python research/backes-diamante-004/analyze.py
+      - name: Archive data, source receipts, hashes, reports and failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backes-004-independent-venue-audit-${{ github.run_id }}
+          path: research/backes-diamante-004/results/
+          if-no-files-found: warn
+          retention-days: 90
