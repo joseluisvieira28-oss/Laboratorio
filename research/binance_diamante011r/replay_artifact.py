@@ -52,7 +52,7 @@ def pins():
 
 def receipt(name):
  p=INPUT/name
- sig=INPUT/(name+".sha256")
+ sig=INPUT/((name[:-5]+".sha256") if name in ("source_manifest.json","forward_verdict.json") else (name+".sha256"))
  if not p.is_file() or not sig.is_file():raise Stop("MISSING_RECEIPT_"+name)
  if sha(p)!=sig.read_text().strip().split()[0]:raise Stop("RECEIPT_TAMPERED_"+name)
  return json.loads(p.read_bytes())
