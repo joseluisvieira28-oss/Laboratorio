@@ -1,0 +1,39 @@
+name: BACKES-005 defensive historical audit — no trading
+on:
+  push:
+    branches:
+      - research/backes-diamante-005-defensive-risk-20261124
+    paths:
+      - 'research/backes-diamante-005/**'
+      - '.github/workflows/backes-diamante-005.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  retrospective-risk-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Read exact frozen BACKES-004 artifact from source-verified run
+        uses: actions/download-artifact@v4
+        with:
+          name: backes-004-independent-venue-audit-45337852543
+          run-id: 45337852543
+          github-token: ${{ github.token }}
+          path: research/backes-diamante-005/inputs/
+      - name: Assert original data and economics SHA256 and regression tests
+        run: python -m unittest discover -s research/backes-diamante-005 -p 'test_*.py' -v
+      - name: Execute predetermined risk overlays, costs, and gates
+        run: python research/backes-diamante-005/evaluate.py
+      - name: Save source-backed results (or blocker)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backes-005-defensive-20261124-${{ github.run_id }}
+          path: research/backes-diamante-005/results/
+          retention-days: 90
+          if-no-files-found: warn
