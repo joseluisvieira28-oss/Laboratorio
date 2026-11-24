@@ -52,6 +52,8 @@ jobs:
           test -f binance011r-input/lossless_segments_manifest.json
           test -f binance011r-input/forward_verdict.json
           test ! -f binance011r-input/journal.jsonl
+          echo "Original artifact manifest: filenames ONLY, no market content"
+          find binance011r-input -maxdepth 1 -type f -printf '%f\n' | sort
       - name: Original gzip SHA chain, raw bytes and explicit 004/010 60-window replay
         run: python research/binance_diamante011r/replay_artifact.py
       - name: Publish ONLY compact replay verdict and SHA, not raw or compressed third-party market data
