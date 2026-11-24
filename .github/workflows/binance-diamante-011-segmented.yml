@@ -1,0 +1,57 @@
+name: BINANCE-011 Lossless Segmented 30m Spot L2 Public Source (NO TRADES)
+on:
+  pull_request:
+    paths:
+      - "research/binance_diamante011/requests/**"
+      - ".github/workflows/binance-diamante-011-segmented.yml"
+permissions:
+  contents: read
+concurrency:
+  group: binance011-single-frozen-20261124-source
+  cancel-in-progress: false
+jobs:
+  one-only-free-public-l2-prospective-session:
+    if: github.event.repository.private == false && github.event.pull_request.draft == true && github.head_ref == 'research/binance-diamante-011-segmented-source-20261124' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 44
+    env:
+      GITHUB_REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Guard SHA-locked original Binance003+004+010, exact 2026-11-24 UTC, one capture only
+        run: python research/binance_diamante011/runner.py guard
+      - name: Offline original 003+004+010, new byte-exact gzip chunk corruption and no-trading tests
+        run: |
+          python -m py_compile research/binance_diamante011/*.py
+          python -m unittest discover -s research/binance_diamante003 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante004 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante010 -p 'test_*.py' -v
+          python -m unittest discover -s research/binance_diamante011 -p 'test_*.py' -v
+      - name: Install only free public Binance Spot WebSocket transport
+        run: python -m pip install "websockets>=14,<16"
+      - name: One full 1800sec public Spot 3-book L2 + aggTrade source, exact original JSONL plus gzip chunks
+        run: python research/binance_diamante011/runner.py capture
+      - name: Prove gzip reassembly reproduces every original raw UTF8 byte and SHA before computing signals
+        run: python research/binance_diamante011/runner.py verify-archive
+      - name: Run unchanged 004 quote-shadow with extended 60 windows, no economic GO
+        run: python research/binance_diamante011/runner.py study
+      - name: Independent original 004 raw journal hash chain and deterministic decision replay
+        run: python research/binance_diamante011/runner.py replay
+      - name: Audit 180 30sec symbol windows, same fixed signal fees, only one UTC day
+        run: python research/binance_diamante011/runner.py audit
+      - name: ALWAYS delete uncompressed original source and publish only allowlisted compressed chunks and audit receipts
+        if: always()
+        run: python research/binance_diamante011/runner.py package
+      - name: Upload lossless verified compressed chunks, no uncompressed original journal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance011-frozen-30min-source-${{ github.run_id }}
+          path: binance011-release/
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: warn
