@@ -41,7 +41,10 @@ jobs:
                   with u.urlopen(u.Request(url,headers={"User-Agent":"YIELD-001-source-research"}),timeout=15) as res:
                       raw=res.read(20000001); status=res.status
                   if len(raw)>20000000:raise ValueError("cap")
-                  obj=json.loads(raw); rows=obj["markets"]
+                  obj=json.loads(raw)
+                  print("API_SCHEMA", json.dumps({"http":status,"type":type(obj).__name__,"keys":list(obj)[:20] if isinstance(obj,dict) else None,"nested":{k:{"type":type(v).__name__,"keys":list(v)[:15] if isinstance(v,dict) else None,"length":len(v) if isinstance(v,(list,dict)) else None} for k,v in obj.items()} if isinstance(obj,dict) else None,"sha256":hashlib.sha256(raw).hexdigest()}))
+                  rows=obj if isinstance(obj,list) else next((obj[k] for k in ("markets","results","data") if isinstance(obj.get(k),list)),None)
+                  if rows is None and isinstance(obj.get("data"),dict):rows=next((obj["data"][k] for k in ("markets","results","data") if isinstance(obj["data"].get(k),list)),None)
                   if not isinstance(rows,list):raise ValueError("schema")
                   receipts.append({"page":i,"http":status,"rows":len(rows),"sha256":hashlib.sha256(raw).hexdigest()})
                   if rows and sample is None:
