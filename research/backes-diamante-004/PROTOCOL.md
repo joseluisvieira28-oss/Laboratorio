@@ -33,3 +33,10 @@ NO-GO ECONOMIC if complex strategy is dominated by simple benchmark in two regim
 INCONCLUSIVE if sources/independent tests insufficient.
 CANDIDATE FOR PROSPECTIVE SHADOW ONLY after cross-venue robust positive benchmark relative after costs, period stability, no single-episode dependency and reasonable drawdown.
 NEVER LIVE GO from historic retrospective analysis. No orders/trades, private APIs, credentials, purchases, subscriptions, transfers, paid sources, deployments or strategy re-optimisation after viewing outputs.
+
+
+## Pre-result cost addendum: verified public taker schedules (2026-11-24)
+Before any successful 004 historical economic result was obtained, fee verification revealed that Coinbase Exchange's 30-day volume tier USD 0–10k charges 60bps TAKer and Kraken Pro Spot's initial tier charges 80bps TAKer; these do not include slippage. Official sources:
+- https://help.coinbase.com/en/exchange/trading-and-funding/exchange-fees
+- https://www.kraken.com/pro/fees
+Therefore additional fixed *sensitivity-only* scenarios **60, 80, 100 bps per direct trading leg** are pre-registered alongside 5,10,20,35bps. 100bps is not a calibrated upper bound for adverse execution. For two-hop USD routing, pay two legs on swaps; initial acquisition is one leg. Applied identically to all venues for comparability, with first-tier relevant comparison: Coinbase 60bps and Kraken 80bps. Actual fee tiers, historic changes, bid/ask and liquidity remain not reconstructed. A 10bps result must **not** be advertised as realistic net trading profitability for a low-volume account.
