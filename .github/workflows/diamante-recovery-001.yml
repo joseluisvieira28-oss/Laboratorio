@@ -1,0 +1,25 @@
+name: DIAMANTE-RECOVERY-001
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/diamante_recovery_001/**'
+      - '.github/workflows/diamante-recovery-001.yml'
+permissions:
+  contents: read
+jobs:
+  replay:
+    if: github.head_ref == 'research/diamante-recovery-001-l2-2026-11-24'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned research readers
+        run: python -m pip install --only-binary=:all: --disable-pip-version-check pyarrow==19.0.1 zstandard==0.23.0
+      - name: Private scratch source replay (aggregate only)
+        run: python research/diamante_recovery_001/source_replay.py
