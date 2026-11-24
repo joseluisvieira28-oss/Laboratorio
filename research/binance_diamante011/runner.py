@@ -9,6 +9,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from lossless_journal import (
 )
 
 OUT=Path("binance011-evidence")
+RELEASE=Path("binance011-release")
 EXPECTED_DAY="2026-11-24"
 EXPECTED_BRANCH="research/binance-diamante-011-segmented-source-20261124"
 EXPERIMENT="BINANCE011_FROZEN_004_30MIN_LOSSLESS_JOURNAL_V01"
@@ -170,6 +172,16 @@ def main():
         return 0
     if args.phase=="package":
         result=verify_segments(OUT,remove_raw=True)
+        RELEASE.mkdir(parents=True,exist_ok=True)
+        # Explicit allowlist only; raw original journal NEVER enters public artifact.
+        for src in sorted(OUT.iterdir()):
+            if (src.is_file() and
+                (src.name.endswith(".json") or src.name.endswith(".sha256")
+                 or src.name.endswith(".jsonl.gz"))):
+                shutil.copy2(src,RELEASE/src.name)
+        if (RELEASE/"journal.jsonl").exists():
+            raise RuntimeError("RAW_ORIGINAL_WOULD_BE_PUBLISHED")
+        result["release_file_count"]=len(list(RELEASE.iterdir()))
         print(json.dumps(result,sort_keys=True,indent=2))
         return 0 if result["status"]=="LOSSLESS_SEGMENTED_COMPRESSION_SHA256_PASS" else 2
     if args.phase=="verify-archive":
