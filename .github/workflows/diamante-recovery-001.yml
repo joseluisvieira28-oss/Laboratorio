@@ -16,7 +16,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install pinned research readers
-        run: python3 -m pip install --disable-pip-version-check pyarrow==19.0.1 zstandard==0.23.0
+        run: python -m pip install --only-binary=:all: --disable-pip-version-check pyarrow==19.0.1 zstandard==0.23.0
       - name: Private scratch source replay (aggregate only)
-        run: python3 research/diamante_recovery_001/source_replay.py
+        run: python research/diamante_recovery_001/source_replay.py
