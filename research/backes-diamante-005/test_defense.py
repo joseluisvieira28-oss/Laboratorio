@@ -62,9 +62,14 @@ class Controls(unittest.TestCase):
             got,_=e.simulate(data,pol,0,464,10)
             ref=next(x for x in prior["venn"][venue]["comparisons"] if x["period"]=="2018-2026" and
                 x["bps_per_leg"]==10 and not x["two_leg_swap_stress"])
-            for name in ("FROZEN002","MOM8","BTC","ETH","MIX"):
+            for name in ("FROZEN002","MOM8","BTC","ETH"):
                 self.assertAlmostEqual(got[name]["total_return_pct"],
                     ref["portfolios"][name]["total_return_pct"],places=4)
+            # BACKES004 undercharged the 50/50 INITIAL buy: max(.5,.5)=.5
+            # rather than full 1.0 notional bought. BACKES005 corrects it.
+            old_nav=1+ref["portfolios"]["MIX"]["total_return_pct"]/100
+            adjusted=old_nav*(1-.001)/(1-.0005)
+            self.assertAlmostEqual(1+got["MIX"]["total_return_pct"]/100,adjusted,places=6)
     def test_deterministic_bootstrap(self):
         a=[.01,.03,-.04,.02]*8;b=[0.0]*32
         self.assertEqual(e.bootstrap(a,b),e.bootstrap(a,b))
