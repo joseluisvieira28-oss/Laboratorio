@@ -22,6 +22,8 @@ jobs:
           persist-credentials: false
       - name: Public GET source receipts
         run: python3 research/rwa_diamante_001/source_probe.py
+      - name: Frozen historical trade-only proxy
+        run: python3 research/rwa_diamante_001/historical_proxy.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
