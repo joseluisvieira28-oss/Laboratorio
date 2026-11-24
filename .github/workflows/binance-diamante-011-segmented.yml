@@ -26,6 +26,7 @@ jobs:
         run: python research/binance_diamante011/runner.py guard
       - name: Offline original 003+004+010, new byte-exact gzip chunk corruption and no-trading tests
         run: |
+          python -m py_compile research/binance_diamante011/*.py
           python -m unittest discover -s research/binance_diamante003 -p 'test_*.py' -v
           python -m unittest discover -s research/binance_diamante004 -p 'test_*.py' -v
           python -m unittest discover -s research/binance_diamante010 -p 'test_*.py' -v
