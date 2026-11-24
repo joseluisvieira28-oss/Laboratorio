@@ -56,8 +56,8 @@ jobs:
       - name: First-valid-Monday future shadow; refuse late requests
         if: github.event_name == 'push'
         run: python research/backes-diamante-006/shadow.py prospective "${{ steps.date.outputs.target }}"
-      - name: Optional second source-only public level-2 liquidity audit
-        if: github.event_name == 'pull_request'
+      - name: Independent public level-2 book impact snapshot after decision
+        if: success()
         run: python research/backes-diamante-006/depth.py
       - name: Archive all receipts, source SHA256 and BLOCKED reports
         if: always()
