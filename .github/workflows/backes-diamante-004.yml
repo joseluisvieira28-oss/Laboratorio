@@ -6,16 +6,10 @@ on:
     paths:
       - research/backes-diamante-004/**
       - .github/workflows/backes-diamante-004.yml
-  pull_request:
-    branches:
-      - research/backes-diamante-003-attribution-forward-20261123
-    paths:
-      - research/backes-diamante-004/**
-      - .github/workflows/backes-diamante-004.yml
 permissions:
   contents: read
 concurrency:
-  group: backes-004-audit-single
+  group: backes-004-once-push-only
   cancel-in-progress: true
 jobs:
   historical-audit:
