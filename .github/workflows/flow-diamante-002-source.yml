@@ -46,3 +46,64 @@ jobs:
               controls[venue]={"http":code,"response_type":ctype}
           print("FLOW_METADATA",json.dumps({"venues":report,"neutral_head_controls":controls,"archive_start":"2025-06-28","protected_event_market_values_opened":False,"raw_data_published":False,"classification":"METADATA_ONLY_NOT_ECONOMIC"},sort_keys=True))
           PY
+
+      - name: Bounded official title census, metadata only
+        run: |
+          python3 - <<'PY'
+          import urllib.request as u, urllib.parse as p, urllib.error as e, json, hashlib, re, datetime as d
+          U="https://www.binance.com/bapi/composite/v1/public/cms/article/list/query"
+          C="https://api.cryptohftdata.com/v1/"
+          def get(url,params):
+              with u.urlopen(u.Request(url+"?"+p.urlencode(params),headers={"User-Agent":"Mozilla/5.0","clienttype":"web"}),timeout=12) as r:
+                  raw=r.read(2000001)
+                  if len(raw)>2000000: raise ValueError("cap")
+                  return json.loads(raw),hashlib.sha256(raw).hexdigest()
+          def walk(x):
+              if isinstance(x,dict):
+                  if isinstance(x.get("title"),str) and (x.get("code") or x.get("articleCode")): yield x
+                  for v in x.values(): yield from walk(v)
+              elif isinstance(x,list):
+                  for v in x: yield from walk(v)
+          cats={}; hashes={}; errors=[]
+          for v in ["binance_spot","bybit_spot","okx_spot"]:
+              try:
+                  z,h=get(C+"symbols",{"exchange":v,"data_type":"orderbook"})
+                  cats[v]=set(z["symbols"]);hashes[v]=h
+              except Exception as ex: errors.append([v,type(ex).__name__])
+          articles={}; pages=[]; exhausted=False
+          for i in range(1,21):
+              try:
+                  z,h=get(U,{"type":1,"catalogId":161,"pageNo":i,"pageSize":50})
+                  a=list(walk(z));pages.append({"page":i,"rows":len(a),"sha256":h})
+                  if not a: exhausted=True;break
+                  for x in a: articles[str(x.get("code") or x.get("articleCode"))]=x
+              except Exception as ex:errors.append(["page",i,type(ex).__name__]);break
+          rows=[]; unknown_clock=0
+          for code,x in articles.items():
+              title=x["title"]
+              m=re.fullmatch(r"Binance Will Delist ([A-Z0-9, &]+(?: and [A-Z0-9, &]+)?) on (20\\d\\d-\\d\\d-\\d\\d)",title)
+              # allow several symbols separated by comma/and; no pair/contract titles.
+              if not m: m=re.fullmatch(r"Binance Will Delist ([A-Z0-9, &]+(?: and [A-Z0-9, &]+)?) on (20\\d\\d-\\d\\d-\\d\\d)",title.replace(", and "," and "))
+              if not m:continue
+              v=x.get("releaseDate")
+              try: pub=d.datetime.fromtimestamp(float(v)/(1000 if float(v)>1e11 else 1),d.timezone.utc)
+              except Exception:unknown_clock+=1;continue
+              if not d.date(2025,6,28)<=pub.date()<=d.date(2026,11,24):continue
+              syms=[s.strip() for s in re.split(r",| and | & ",m[1]) if s.strip()]
+              if not all(re.fullmatch(r"[A-Z0-9]{2,20}",s) for s in syms):continue
+              for s in syms:
+                  present=[v for v,z in cats.items() if s+"USDT" in z or s+"-USDT" in z]
+                  rows.append({"code":code,"published":pub.isoformat(),"scheduled_date":m[2],"symbol":s,"venues":present})
+          overlap=[r for r in rows if "binance_spot" in r["venues"] and len(r["venues"])>=2]
+          control={}
+          for v in ["binance_spot","bybit_spot"]:
+              url=C+"download?"+p.urlencode({"file":v+"/2026-11-20/12/BTCUSDT_orderbook.parquet"})
+              try:
+                  with u.urlopen(u.Request(url,headers={"User-Agent":"FLOW-002-research"}),timeout=12) as r:
+                      # Check transport and container signature only; do not parse price rows or publish bytes.
+                      magic=r.read(4)
+                      control[v]={"http":r.status,"container_signature_ok":magic in (b"PAR1",bytes.fromhex("28b52ffd"))}
+              except e.HTTPError as ex:control[v]={"http":ex.code}
+              except Exception as ex:control[v]={"error":type(ex).__name__}
+          print("FLOW_CENSUS",json.dumps({"pages":pages,"exhausted":exhausted,"all_unique_titles":len(articles),"candidate_token_rows":len(rows),"candidate_notice_clusters":len(set(r["code"] for r in rows)),"overlap_rows":len(overlap),"overlap_notice_clusters":len(set(r["code"] for r in overlap)),"overlap":overlap,"unknown_clock":unknown_clock,"errors":errors,"neutral_get_controls":control,"classification":"TITLE_METADATA_SCREEN_ONLY_NO_MARKET_OUTCOMES","limitations":"No detail-body full-token identity validation; date/hour BBO availability not certified; catalogue overlaps do not establish identity or executable spread."},sort_keys=True))
+          PY
