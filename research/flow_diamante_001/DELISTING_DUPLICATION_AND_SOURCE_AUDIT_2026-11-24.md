@@ -1,0 +1,23 @@
+# FLOW-DIAMANTE-001 — delisting audit, 2026-11-24
+Research-only, no orders/payments/accounts/merge. This is an audit, not a new backtest or an authorization to reopen protected outcomes.
+## Recovered original authority
+GitHub branch search 'delist' returned 11 related branches (PR and default-branch code search had returned none). Exact branch comparison and original documents confirm existing full-token announcement, perp short, and forced futures mark/index convergence families.
+- binance-forced-delist-convergence-v0.3-2026-replication-2026-10-07: research/binance_futures_delist_forced_convergence/V02_AUTHORITATIVE_DISCOVERY_CLOSEOUT_2026-10-06.md. NO_EDGE_DISCOVERY. Runs 37414791311 and 37414798706 reproduced n=33/33, 24 article clusters; median signed convergence +62.0572bps; excess +55.6947bps; 63.6364% hit vs >=65%; OI decay 15.2983% vs >=20%. No execution validation. Preserve all gates.
+- Same branch V03_2026_REPLICATION_SOURCE_CLOSEOUT_2026-10-07.md: CLOSED INSUFFICIENT_SAMPLE_2026, run 37682010239, 14 eligible contract observations but 5 independent article clusters vs >=10. No outcomes opened.
+- exchange-delisting-v041-parser-repair-2026-09-23: Dream-Account-OS-v2.3-PARTIAL/research/exchange_delisting_shock_001/PRE_SOURCE_PROTOCOL_V01.json; 2023-24 full-token negative spot effect; 2025/26 protected. source_evidence/EDS_SOURCE_DATA_GATE_V03.json: 42 candidate titles, 0 qualified events, 49 name-resolution rejects (some spurious quote assets); SOURCE INSUFFICIENT, not NO_EDGE. SOURCE_V04_PARSER_ERRATUM_V0.4.1.md documents later parser bug; terminal repaired-run verdict not independently recovered.
+- binance-delisting-perp-short-v0.1: labs/BINANCE_DELISTING_PERP_SHORT_001/SOURCE_CONTRACT_V0.1.json: Binance USD-M short/BTC hedge, 2023-24, 2025/26 protected. No outcomes authorized at source gate. Final economic verdict not verified.
+- delisting-perp-shock-v0.1: labs/DELISTING_PERP_SHOCK_001/SOURCE_PROTOCOL_V0.1.md: Binance full-token delisting shock in USD-M, 2023-24, source-only, protected 2025/26. Terminal economic verdict not verified.
+## Official announcement metadata pilot (not price data)
+Five non-vote notices selected from public search results, 20 token-event labels, only 5 article clusters. Published clock as displayed by English official page; timezone and original unamended point-in-time availability must be certified independently before any market outcome access. Not an exhaustive sample or independent holdout.
+| Published page clock | Spot cessation UTC | Tickers | Official article code |
+|---|---|---|---|
+| 2025-03-21 05:50 | 2025-03-28 03:00 | AERGO AST BURGER COMBO LINA | db7ad1c7aa6248cda735102cdcdc4b8d |
+| 2025-04-24 04:00 | 2025-05-02 03:00 | ALPACA PDA VIB WING | 0274f9d47da1437990bc13eb17b0ec99 |
+| 2025-06-26 07:00 | 2025-07-04 03:00 | ALPHA BSW KMD LEVER LTO | 173b2a63c03141009029407ecfebd14a |
+| 2025-10-29 03:00 | 2025-11-12 03:00 | FLM KDA PERP | a6c810fc36424548917e146dbe21469a |
+| 2025-12-03 06:29 | 2025-12-17 03:00 | FIS REI VOXEL | f958d031b39f46b1ab3947b1d53fa736 |
+Official link prefix https://www.binance.com/en/support/announcement/detail/ . June notice amended and October notice updated; neither presumed point-in-time certified. No price requests for these events. No raw article hashes archived; URLs and manual page metadata only. 
+## External evidence (not our result)
+Public third-party study https://getcoinsight.com/en/research/exchange-announcement-study reports 95 Binance delisting token-events with median -16.8% price change from +3min to +24h; not independently reproduced and does not establish tradable short, matched cross-venue spread, funding, liquidation or costs. Public aggregates already seen; not independent holdout.
+## Decision
+Retire exact failed mark/index hypothesis, preserve other prior source blocks. Do not relabel single-venue short as new. Cross-venue relative basis after public full-token announcement may be a distinct mechanism: simultaneous executable bids/asks in two verified same-token spot markets, inventory pre-positioned (no assumption transfers possible), convergence net both legs and all costs, separate capital/risk. No direction-only claim. Before a new freeze, search full branch archive and Drive for duplicates, confirm free historical BBO or lawful prospective access, verify token identities and independent announcement clusters. 20 labels are not 20 independent shocks. No 100-event corpus completed. No protected 2025/26 price outcomes accessed; no trade, cost, or PnL. Current decision: NO_GO_LIVE; exact convergence retired; cross-venue SOURCE_FEASIBILITY_PENDING, defer until duplicate and source gates pass. Do not change main.
