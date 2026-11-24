@@ -78,12 +78,13 @@ jobs:
                   if not a: exhausted=True;break
                   for x in a: articles[str(x.get("code") or x.get("articleCode"))]=x
               except Exception as ex:errors.append(["page",i,type(ex).__name__]);break
+          assert re.fullmatch(r"Binance Will Delist ([A-Z0-9, &]+(?: and [A-Z0-9, &]+)?) on (20[0-9][0-9]-[0-9][0-9]-[0-9][0-9])", "Binance Will Delist FLM, KDA and PERP on 2025-11-12")
           rows=[]; unknown_clock=0
           for code,x in articles.items():
               title=x["title"]
-              m=re.fullmatch(r"Binance Will Delist ([A-Z0-9, &]+(?: and [A-Z0-9, &]+)?) on (20\\d\\d-\\d\\d-\\d\\d)",title)
+              m=re.fullmatch(r"Binance Will Delist ([A-Z0-9, &]+(?: and [A-Z0-9, &]+)?) on (20[0-9][0-9]-[0-9][0-9]-[0-9][0-9])",title)
               # allow several symbols separated by comma/and; no pair/contract titles.
-              if not m: m=re.fullmatch(r"Binance Will Delist ([A-Z0-9, &]+(?: and [A-Z0-9, &]+)?) on (20\\d\\d-\\d\\d-\\d\\d)",title.replace(", and "," and "))
+              if not m: m=re.fullmatch(r"Binance Will Delist ([A-Z0-9, &]+(?: and [A-Z0-9, &]+)?) on (20[0-9][0-9]-[0-9][0-9]-[0-9][0-9])",title.replace(", and "," and "))
               if not m:continue
               v=x.get("releaseDate")
               try: pub=d.datetime.fromtimestamp(float(v)/(1000 if float(v)>1e11 else 1),d.timezone.utc)
