@@ -1,0 +1,64 @@
+name: BACKES-006 dual-venue shadow preflight / future dates — no trading
+on:
+  pull_request:
+    branches:
+      - research/backes-diamante-005-defensive-risk-20261124
+    paths:
+      - 'research/backes-diamante-006/shadow.py'
+      - 'research/backes-diamante-006/test_shadow.py'
+      - 'research/backes-diamante-006/PROTOCOL.md'
+      - '.github/workflows/backes-diamante-006.yml'
+  push:
+    branches:
+      - research/backes-diamante-006-shadow-dualvenue-20261124
+    paths:
+      - 'research/backes-diamante-006/requests/*.txt'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  public-data-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrieve the exact archived 004 price series
+        uses: actions/download-artifact@v4
+        with:
+          name: backes-004-independent-venue-audit-45337852543
+          run-id: 45337852543
+          github-token: ${{ github.token }}
+          path: research/backes-diamante-006/inputs/
+      - name: Prevent backfills and prove parity against frozen defensive 005
+        run: python -m unittest discover -s research/backes-diamante-006 -p 'test_*.py' -v
+      - name: LATE PREFLIGHT — Tuesday test, NOT a prospective trade
+        if: github.event_name == 'pull_request'
+        run: python research/backes-diamante-006/shadow.py preflight 2026-11-23
+      - name: Validate one new date-only forward request
+        if: github.event_name == 'push'
+        id: date
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILES="$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -E '^research/backes-diamante-006/requests/[0-9]{4}-[0-9]{2}-[0-9]{2}[.]txt$' || true)"
+          COUNT="$(printf '%s\n' "$FILES" | grep -c . || true)"
+          test "$COUNT" = 1
+          REQ="$(basename "$FILES" .txt)"
+          test "$(cat "$FILES")" = "$REQ"
+          echo "target=$REQ" >> "$GITHUB_OUTPUT"
+      - name: First-valid-Monday future shadow; refuse late requests
+        if: github.event_name == 'push'
+        run: python research/backes-diamante-006/shadow.py prospective "${{ steps.date.outputs.target }}"
+      - name: Archive all receipts, source SHA256 and BLOCKED reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backes-006-public-shadow-${{ github.run_id }}
+          path: research/backes-diamante-006/results/
+          if-no-files-found: warn
+          retention-days: 90
