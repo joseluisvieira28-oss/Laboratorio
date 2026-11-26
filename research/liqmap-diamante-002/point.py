@@ -63,15 +63,12 @@ def clean_candles(rows,first,n,now_ms=None):
         t=int(r["t"])
         if t not in wanted:continue
         if t in m:raise ValueError("PRICE_SOURCE_BLOCKED duplicate hour")
-        a,b,c,d=(float(r[k]) for k in ("o","h","l","c"))
-        if not all(math.isfinite(x) and x>0 for x in (a,b,c,d)) or not (c<=b and c>=d and d<=a<=b and d<=c):
-            # the condition above also validates that the close and open are within high/low;
-            # see required final invariant below.
+        o,h,lo,cl=(float(r[k]) for k in ("o","h","l","c"))
+        if not all(math.isfinite(x) and x>0 for x in (o,h,lo,cl)) or not (lo<=min(o,cl)<=max(o,cl)<=h):
             raise ValueError("PRICE_SOURCE_BLOCKED bad OHLC")
-        if not (d<=a<=b and d<=float(r["c"])<=b):raise ValueError("bad OHLC")
         if int(r["T"]) != t+ONE_H-1:raise ValueError("PRICE_SOURCE_BLOCKED bad candle end")
         if now_ms is not None and int(r["T"])>now_ms:raise ValueError("PRICE_SOURCE_BLOCKED unfinished candle")
-        m[t]={"t":t,"o":a,"h":b,"l":d,"c":float(r["c"])}
+        m[t]={"t":t,"o":o,"h":h,"l":lo,"c":cl}
     if len(m)!=n or any(t not in m for t in wanted):
         raise ValueError("PRICE_SOURCE_BLOCKED missing full 1h candles "+str(len(m))+"/"+str(n))
     return [m[first+i*ONE_H] for i in range(n)]
