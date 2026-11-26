@@ -29,3 +29,23 @@ jobs:
           path: research/liqmap-diamante-003/results/
           if-no-files-found: warn
           retention-days: 90
+  validate-actual-parquet:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Free PyArrow parquet schema inspection, no accounts
+        run: python -m pip install --quiet 'pyarrow>=15,<30'
+      - name: Verify 2025-07-29 and 2026-10-13 actual file sha256, liq price and as-of dates
+        run: python research/liqmap-diamante-003/schema_sample.py
+      - name: Archive result even if source unavailable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap-003-two-parquet-schema-${{ github.run_id }}
+          path: research/liqmap-diamante-003/schema_results/
+          if-no-files-found: warn
+          retention-days: 90
