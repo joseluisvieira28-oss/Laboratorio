@@ -1,0 +1,30 @@
+name: LIQMAP-001B — genuine free position-snapshot one-day replay NO TRADING
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'research/liqmap-diamante-001/real_position_one_day.py'
+      - 'research/liqmap-diamante-001/PROTOCOL_REAL_POSITIONS_SAMPLE.md'
+      - '.github/workflows/liqmap-001b-real-position.yml'
+permissions:
+  contents: read
+jobs:
+  one-day-true-position-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reproduce timestamped public actual-position historical sample WITHOUT user IDs
+        run: python research/liqmap-diamante-001/real_position_one_day.py
+      - name: Save results even if one-day source unavailable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap-001b-public-real-position-${{ github.run_id }}
+          path: research/liqmap-diamante-001/sample_results/
+          if-no-files-found: warn
+          retention-days: 90

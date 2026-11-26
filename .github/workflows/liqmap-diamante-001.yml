@@ -1,0 +1,33 @@
+name: LIQMAP-001 — falsification of assumed liquidation pool magnets (NO TRADING)
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'research/liqmap-diamante-001/**'
+      - '.github/workflows/liqmap-diamante-001.yml'
+permissions:
+  contents: read
+jobs:
+  historical-proxy-falsification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test controls without external sources
+        run: python -m unittest discover -s research/liqmap-diamante-001 -p 'test_*.py' -v
+      - name: Fetch full official public OI and OHLC history with receipt hashes
+        run: python research/liqmap-diamante-001/collect.py
+      - name: Retrospective proxy vs momentum and matched-distance placebo
+        run: python research/liqmap-diamante-001/evaluate.py
+      - name: Preserve evidence even for SOURCE_BLOCKED failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap-001-independent-${{ github.run_id }}
+          path: research/liqmap-diamante-001/results/
+          if-no-files-found: warn
+          retention-days: 90

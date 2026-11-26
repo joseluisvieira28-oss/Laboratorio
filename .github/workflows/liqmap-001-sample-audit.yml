@@ -1,0 +1,29 @@
+name: LIQMAP-001 — independent public position snapshot sample metadata (no trading)
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'research/liqmap-diamante-001/free_sample_audit.py'
+      - '.github/workflows/liqmap-001-sample-audit.yml'
+permissions:
+  contents: read
+jobs:
+  source-feasibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Identify FREE point-in-time liquidation-price sample, hash source and test coverage
+        run: python research/liqmap-diamante-001/free_sample_audit.py
+      - name: Preserve receipts or explicit SOURCE_BLOCKED status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap-001-free-actual-position-sample-${{ github.run_id }}
+          path: research/liqmap-diamante-001/sample_results/
+          retention-days: 90
+          if-no-files-found: warn
