@@ -1,0 +1,39 @@
+name: LIQMAP-004 actual liquidation cascades source audit (no trading)
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'research/liqmap-diamante-004/**'
+      - '.github/workflows/liqmap-diamante-004.yml'
+permissions:
+  contents: read
+jobs:
+  source-inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Public archive parquet schema support
+        run: python -m pip install --quiet 'pyarrow>=15,<30'
+      - name: Audit 4 months of events/candles and two real Parquet schemas
+        run: python research/liqmap-diamante-004/inventory.py
+      - name: Install numerical research dependencies
+        run: python -m pip install --quiet 'numpy>=1.24,<3' 'pandas>=2,<4'
+      - name: Enforce fixed 336-hour trailing threshold, zero lookahead and costs
+        run: python -m unittest discover -s research/liqmap-diamante-004 -p 'test_*.py' -v
+      - name: Execute four-month true-liquidation BTC ETH first-hour four-hour event study
+        run: python research/liqmap-diamante-004/study.py
+      - name: Preserve original public source SHA256 and source blockers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap004-source-inventory-${{ github.run_id }}
+          path: |
+            research/liqmap-diamante-004/results/
+            research/liqmap-diamante-004/study_results/
+          retention-days: 90
+          if-no-files-found: warn
