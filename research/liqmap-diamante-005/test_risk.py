@@ -65,7 +65,8 @@ class TemporalRiskTests(unittest.TestCase):
                 "brier_improvement":x,
                 "weekly_bootstrap_brier_improvement_CI95":{"low":-0.001}}}
         util=lambda:{"2026-09":{"10":{"price":{"ending_NAV":1},"extended":{"ending_NAV":1}}},
-             "2026-10":{"10":{"price":{"ending_NAV":1},"extended":{"ending_NAV":1},
+             "2026-10":{"10":{"price":{"ending_NAV":1,"max_close_only_drawdown_pct":-1.},
+                               "extended":{"ending_NAV":1,"max_close_only_drawdown_pct":-1.},
                                "passive":{"ending_NAV":1}}}}
         g=r.gate({"BTC-PERP":make(.006),"ETH-PERP":make(.006)},
                  {"BTC-PERP":util(),"ETH-PERP":util()})
