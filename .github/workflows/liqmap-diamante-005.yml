@@ -1,0 +1,37 @@
+name: LIQMAP-005 — real liquidations vs price-only 4h tail risk (NO TRADING)
+on:
+  pull_request:
+    branches:
+      - research/liqmap-diamante-004-cascade-events-20261126
+    paths:
+      - 'research/liqmap-diamante-005/**'
+      - '.github/workflows/liqmap-diamante-005.yml'
+permissions:
+  contents: read
+jobs:
+  public-historical-risk-study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Numerical and Parquet public-data dependencies
+        run: python -m pip install --quiet 'numpy>=1.24,<3' 'pandas>=2,<4' 'pyarrow>=15,<30' 'scikit-learn>=1.4,<2'
+      - name: Read-only SHA256 audit Ironflow liquidations and matching Hyperliquid candles
+        run: python research/liqmap-diamante-004/inventory.py
+      - name: Test causal 333-event risk threshold, future-blind features, costs and locked decisions
+        run: python -m unittest discover -s research/liqmap-diamante-005 -p 'test_*.py' -v
+      - name: Fixed July-Aug model fit, independent Sep Oct scoring and LONG-CASH utility
+        run: python research/liqmap-diamante-005/risk.py
+      - name: Preserve source receipts, Brier/bootstrap and all economic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap005-actual-liquidation-risk-${{ github.run_id }}
+          path: |
+            research/liqmap-diamante-004/results/
+            research/liqmap-diamante-005/study_results/
+          retention-days: 90
+          if-no-files-found: warn
