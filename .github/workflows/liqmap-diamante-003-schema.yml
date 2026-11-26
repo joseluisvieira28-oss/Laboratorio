@@ -1,0 +1,32 @@
+name: LIQMAP-003 free HF historical positions: actual Parquet schema (NO TRADING)
+on:
+  pull_request:
+    branches:
+      - research/liqmap-diamante-002-forward-map-20261126
+    paths:
+      - research/liqmap-diamante-003/schema_sample.py
+      - research/liqmap-diamante-003/SCHEMA_PROTOCOL.md
+      - .github/workflows/liqmap-diamante-003-schema.yml
+permissions:
+  contents: read
+jobs:
+  free-parquet-schema:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Read-only Python parquet validator
+        run: python -m pip install --quiet 'pyarrow>=15,<30'
+      - name: Verify exact HF files, LFS hashes and genuinely dated BTC liquidation prices
+        run: python research/liqmap-diamante-003/schema_sample.py
+      - name: Always preserve aggregate-only findings and blockers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap-003-two-parquet-schema-${{ github.run_id }}
+          path: research/liqmap-diamante-003/schema_results/
+          if-no-files-found: warn
+          retention-days: 90
