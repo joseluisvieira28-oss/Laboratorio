@@ -31,7 +31,7 @@ def audit_csv(raw):
     fields=reader.fieldnames or []
     rows=0;empty=0;dates={}; symbols={};nulls={}
     # No user account identifiers retained or shipped in sample results.
-    named=[x for x in fields if any(s in x.lower() for s in ("time","date","timestamp","coin","symbol","liq","price","side","size","value"))]
+    named=[x for x in fields if any(s in x.lower() for s in ("time","date","timestamp","coin","symbol","liq","price","side","size","value","ts"))]
     interesting=named[:24]
     first_safe=None
     for row in reader:
@@ -41,7 +41,7 @@ def audit_csv(raw):
             val=row.get(key)
             if not val:
                 nulls[key]=nulls.get(key,0)+1;continue
-            if any(t in key.lower() for t in ("time","date")):
+            if key.lower()=="ts" or any(t in key.lower() for t in ("time","date")):
                 if key not in dates:dates[key]={"first":val,"last":val,"sample_uniques":set()}
                 d=dates[key];d["first"]=min(d["first"],val);d["last"]=max(d["last"],val)
                 if len(d["sample_uniques"])<10000:d["sample_uniques"].add(val)
