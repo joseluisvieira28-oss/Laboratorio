@@ -92,7 +92,11 @@ def hf_inventory(report,repo,preferred):
         result["root_entries"]=[{"path":x.get("path"),"type":x.get("type")} for x in root[:100]]
         candidates=[x.get("path") for x in root if
              any(key in x.get("path","").lower() for key in ("position","snapshot"))]
-        folder=preferred if preferred in candidates else (candidates[0] if candidates else None)
+        # Public HF tree root is recursively paginated and may list >1000
+        # nested account_values paths before snapshots_perp appears. Query
+        # the known folder DIRECTLY; absence from a partial root page
+        # is NOT evidence of no archive.
+        folder=preferred
         result["selected_tree_folder"]=folder
         if folder is None:
             result["status"]="NO_POSITION_TREE"
