@@ -1,0 +1,31 @@
+name: LIQMAP-003 historical map forensic availability (NO TRADING)
+on:
+  pull_request:
+    branches:
+      - research/liqmap-diamante-002-forward-map-20261126
+    paths:
+      - research/liqmap-diamante-003/**
+      - .github/workflows/liqmap-diamante-003.yml
+permissions:
+  contents: read
+jobs:
+  verify-historical-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Deterministic no-paid-data tests
+        run: python -m unittest discover -s research/liqmap-diamante-003 -p 'test_*.py' -v
+      - name: Audit authentic GitHub commits and free HF positions inventory
+        run: python research/liqmap-diamante-003/inventory.py
+      - name: Always archive source receipts, SHA256 and verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liqmap-003-historical-inventory-${{ github.run_id }}
+          path: research/liqmap-diamante-003/results/
+          if-no-files-found: warn
+          retention-days: 90
