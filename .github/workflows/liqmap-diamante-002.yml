@@ -87,7 +87,13 @@ jobs:
           test "$GITHUB_REF_NAME" = "research/liqmap-diamante-002-forward-map-20261126"
           git config user.name "LIQMAP research evidence bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A research/liqmap-diamante-002/observations/ research/liqmap-diamante-002/settlements/ research/liqmap-diamante-002/rollup_summary.json
+          git add -A research/liqmap-diamante-002/rollup_summary.json
+          if [ -d research/liqmap-diamante-002/observations ]; then
+            git add -A research/liqmap-diamante-002/observations || true
+          fi
+          if [ -d research/liqmap-diamante-002/settlements ]; then
+            git add -A research/liqmap-diamante-002/settlements || true
+          fi
           if ! git diff --cached --quiet; then
             git commit -m "evidence: LIQMAP002 ${{ steps.req.outputs.date }} frozen map and matured outcomes"
             git push origin HEAD:refs/heads/research/liqmap-diamante-002-forward-map-20261126
