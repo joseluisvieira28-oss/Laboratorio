@@ -65,3 +65,6 @@ Não selecionar Setembro ex post como estratégia: foi escolhido por ser favorá
 - **Hipótese original sobre níveis de liquidação calculados de posições reais de outro arquivo: ECONOMIC NO-GO** neste teste histórico, porque a vantagem vs baseline é trivial e incerta e net after-cost negativa.
 - **NEURON product claimed edge: NOT TESTED / NO EVIDENCE**, não comprar pela alegação de performance.
 - **Real capital trading: NO-GO.** Manter somente LIQMAP-002 já iniciada para observação prospectiva com snapshots verdadeiramente congelados e timestamps; nenhum trade ou gasto realizado.
+
+## Transparência CI: falha secundária, resultado histórico preservado
+No workflow global #45777543433, o job independente de inventário de fontes falhou por uma dependência PyArrow ausente ao carregar test_backtest.py. Este erro de orquestração é distinto do job historical-105-day-BTC, que instalou PyArrow, concluiu com sucesso, aprovou 8/8 testes e arquivou a análise económica de 104/105 dias. A auditoria de inventário já tinha sido executada com sucesso nos runs #45776591340 e #45776746721; a análise de schema também passou no job separado. Por isso não chamar à execução global 100% verde. A falha secundária não altera o conteúdo imutável do artefacto económico nem os números NO-GO.
