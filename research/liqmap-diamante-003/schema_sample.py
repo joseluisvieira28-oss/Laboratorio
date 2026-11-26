@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect TWO pre-frozen free Parquet files. NO TRADES, NO USER ROWS WRITTEN."""
+"""Inspect TWO pre-frozen free Parquet files. NO TRADES, NO USER ROWS WRITTEN.\nZero wallets exposed. Schema evidence is source-only, never a performance result.\n"""
 import collections
 import datetime as dt
 import hashlib
