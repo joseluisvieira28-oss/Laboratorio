@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = "research/liqmap-diamante-002-forward-map-20261126"
+          test "${{ github.event.pull_request.head.ref }}" = "research/liqmap-diamante-002-forward-map-20261126"
           git config user.name "LIQMAP research evidence bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A research/liqmap-diamante-002/rollup_summary.json
