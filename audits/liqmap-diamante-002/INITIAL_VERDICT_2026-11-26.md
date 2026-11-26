@@ -21,3 +21,11 @@ O preflight com pull_request está confirmado. O workflow push/branch da primeir
 Cada snapshot com hora, SHA256 fonte, cobertura OI >=30%, weighted age P50 <=15m, banda mais forte 0.5–5% e espelho log simétrico. Outcome após 24 candles horários FUTUROS completos, classificado TARGET_FIRST/MIRROR_FIRST/NEITHER/AMBIGUOUS, comparador MOM24 na mesma barreira e custo hipotético 10/35/80bps por lado +5bps slippage. No mínimo 50 eventos resolvidos, Wilson lower >50%, vantagem >5pp MOM24, bootstrap semanal lower95 >0, 80bps net positivo e consistência de 2 meses para só poder dizer CANDIDATE_SHADOW. Insuficiente -> INCONCLUSIVE; suficiente e falha -> ECONOMIC NO-GO. Nenhum caso aprova trades com capital real (sem fills, custos e risco reais, estudos noutra exchange).
 
 Sem subscrições, dados pagos, ordens, contratos, conta, wallets privados, merges ou produção.
+
+## Atualização operacional confirmada (ainda 26/11/2026)
+- O acionamento de cada marcador datado foi corrigido para sincronização do PR #400, observável pelo conector GitHub (sem cron em main). Não muda nenhum limiar de sinal, benchmark ou custo.
+- Dry-run com marcador SETTLE_ONLY_2026-11-25, sem previsão nem PnL, foi executado por GitHub Actions [run #45766432576](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/45766432576), com ambos os jobs daily-capture e preflight SUCCESS.
+- Artefacto de escrita na branch: [ID 15092255952](https://github.com/joseluisvieira28-oss/Laboratorio/actions/runs/45766432576/artifacts/15092255952), SHA256 reportado pelo GitHub e803a63e237cf26c5ed4a116fe3f92a0057fb1547ab1529d57254cd3d0ab96f2.
+- Ficheiro efectivamente persistido research/liqmap-diamante-002/rollup_summary.json na branch do PR, SHA GitHub bc4d427c1b7c36176a0c27a17b63929f5eaac172: 61 dias esperados, 0 observados, 0 maturados, scientific_status FORWARD_PENDING_OR_CENSORED, live_trading_verdict NO_GO.
+- Automação criada e confirmada ACTIVA para 63 execuções diárias, primeira 2026-11-27 07:00 Europe/Zurich (horário flexível), última 2027-01-28. No dia da captura, o relógio real e a integridade da fonte decidem se a observação é válida. Não prometer execução futura garantida.
+- Evidência agora: **TECH/SOURCE/ARCHIVE GATES PASS**, mas **ZERO ECONOMIC FORWARD EVIDENCE**, nenhum GO real.
