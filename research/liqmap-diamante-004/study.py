@@ -249,6 +249,26 @@ def summarize(result):
            "weekly_bootstrap_excess_v_mom_CI975":bootstrap_week(events,lambda e:e["hypothetical_net_bps"]["80"][model]-e["hypothetical_net_bps"]["80"]["momentum4"]),
            "months":month,
            "months_positive":sum(x["mean_net_bps"] is not None and x["mean_net_bps"]>0 for x in month.values())}
+    # This negative control was specified in PROTOCOL BEFORE outcomes.
+    # Pair the current forced-side gross outcome with the most recent strictly
+    # PAST (t-336h..t-4h) non-cascade same weekday/hour & volatility half.
+    # It is NOT a randomized control, and coverage may be incomplete.
+    paired=[e for e in events if e["controls"]["status"]=="MATCHED_PAST_CONTROL"]
+    delta=[(e["time"],e["hypothetical_net_bps"]["80"]["continuation"]-
+                (e["controls"]["same_forced_direction_gross_bps"]-170))
+           for e in paired]
+    control={
+        "matched_events":len(paired),
+        "total_events":len(events),
+        "coverage_fraction":len(paired)/len(events) if events else None,
+        "mean_cascade_continuation_minus_historical_matched_control_bps":
+             round(statistics.mean(v for _,v in delta),5) if delta else None,
+        "bootstrap_week_975":bootstrap_week(
+             [{"time":t,"delta":d} for t,d in delta],lambda e:e["delta"]) if delta else
+             {"low":None,"high":None,"n_weeks":0},
+        "interpretation":"PAST same hour+weekday and volatility-half matched; not random and not full coverage"
+    }
+    models["matched_past_no_cascade_control"]=control
     return models
 
 def gate(report):
